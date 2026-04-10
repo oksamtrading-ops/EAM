@@ -1,0 +1,258 @@
+// ============================================================
+// EAM PLATFORM — PRISMA SCHEMA (POC)
+// Module 1: Business Capability Map
+// Stack: PostgreSQL + pgvector (Neon)
+// ============================================================
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum IndustryType {
+  BANKING
+  RETAIL
+  LOGISTICS
+  MANUFACTURING
+  HEALTHCARE
+  GENERIC
+}
+
+enum CapabilityLevel {
+  L1
+  L2
+  L3
+}
+
+enum StrategicImportance {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  NOT_ASSESSED
+}
+
+enum MaturityLevel {
+  INITIAL
+  DEVELOPING
+  DEFINED
+  MANAGED
+  OPTIMIZING
+  NOT_ASSESSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  IMPORT
+  ASSESS
+}
+
+// ============================================================
+// USER (synced from Clerk)
+// ============================================================
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaces        Workspace[]
+  ownedCapabilities BusinessCapability[] @relation("CapabilityOwner")
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+// ============================================================
+// WORKSPACE (single default for POC)
+// ============================================================
+
+model Workspace {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  clientName  String?
+  description String?
+  industry    IndustryType @default(GENERIC)
+  logoUrl     String?
+  userId      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capabilities  BusinessCapability[]
+  organizations Organization[]
+  auditLogs     AuditLog[]
+  tags          CapabilityTag[]
+
+  @@map("workspaces")
+}
+
+// ============================================================
+// ORGANIZATION (Business Unit)
+// ============================================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  parentId    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent       Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children     Organization[] @relation("OrgHierarchy")
+  capabilities BusinessCapability[]
+
+  @@map("organizations")
+}
+
+// ============================================================
+// BUSINESS CAPABILITY
+// ============================================================
+
+model BusinessCapability {
+  id                  String              @id @default(cuid())
+  workspaceId         String
+  parentId            String?
+  level               CapabilityLevel     @default(L1)
+  name                String
+  description         String?
+  ownerId             String?
+  organizationId      String?
+  strategicImportance StrategicImportance @default(NOT_ASSESSED)
+  currentMaturity     MaturityLevel       @default(NOT_ASSESSED)
+  targetMaturity      MaturityLevel       @default(NOT_ASSESSED)
+  sortOrder           Int                 @default(0)
+  isActive            Boolean             @default(true)
+  externalId          String?
+
+  embedding Unsupported("vector(1536)")?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent       BusinessCapability?  @relation("CapabilityTree", fields: [parentId], references: [id])
+  children     BusinessCapability[] @relation("CapabilityTree")
+  owner        User?                @relation("CapabilityOwner", fields: [ownerId], references: [id])
+  organization Organization?        @relation(fields: [organizationId], references: [id])
+  tags         CapabilityTagMap[]
+  assessments  CapabilityAssessment[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, parentId])
+  @@index([workspaceId, level])
+  @@map("business_capabilities")
+}
+
+// ============================================================
+// TAGS
+// ============================================================
+
+model CapabilityTag {
+  id          String  @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String  @default("#6366f1")
+  description String?
+
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mappings  CapabilityTagMap[]
+
+  @@unique([workspaceId, name])
+  @@map("capability_tags")
+}
+
+model CapabilityTagMap {
+  capabilityId String
+  tagId        String
+  assignedAt   DateTime @default(now())
+
+  capability BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  tag        CapabilityTag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([capabilityId, tagId])
+  @@map("capability_tag_maps")
+}
+
+// ============================================================
+// CAPABILITY ASSESSMENT
+// ============================================================
+
+model CapabilityAssessment {
+  id                  String              @id @default(cuid())
+  capabilityId        String
+  assessedById        String?
+  currentMaturity     MaturityLevel
+  targetMaturity      MaturityLevel
+  strategicImportance StrategicImportance
+  notes               String?
+  assessedAt          DateTime            @default(now())
+
+  capability BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+
+  @@index([capabilityId])
+  @@map("capability_assessments")
+}
+
+// ============================================================
+// INDUSTRY TEMPLATES
+// ============================================================
+
+model CapabilityTemplate {
+  id          String          @id @default(cuid())
+  industry    IndustryType
+  level       CapabilityLevel
+  name        String
+  description String?
+  parentCode  String?
+  code        String          @unique
+  sortOrder   Int             @default(0)
+  isActive    Boolean         @default(true)
+
+  @@index([industry, level])
+  @@map("capability_templates")
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  workspaceId String
+  userId      String?
+  action      AuditAction
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+  createdAt   DateTime    @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id])
+
+  @@index([workspaceId, entityType])
+  @@index([workspaceId, createdAt])
+  @@map("audit_logs")
+}
