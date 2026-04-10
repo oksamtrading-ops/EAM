@@ -10,6 +10,7 @@ import { HeatMapView } from "./views/HeatMapView";
 import { TreeView } from "./views/TreeView";
 import { CapabilityDetailPanel } from "./panels/CapabilityDetailPanel";
 import { AISuggestionPanel } from "./panels/AISuggestionPanel";
+import { VersionHistoryPanel } from "./panels/VersionHistoryPanel";
 import { CreateCapabilityDialog } from "./modals/CreateCapabilityDialog";
 import { TemplateImportDialog } from "./modals/TemplateImportDialog";
 
@@ -21,6 +22,7 @@ export function CapabilityPageClient() {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
   const [colorBy, setColorBy] = useState<"maturity" | "importance">("maturity");
 
   const { workspaceId } = useWorkspace();
@@ -61,8 +63,10 @@ export function CapabilityPageClient() {
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
-          onAI={() => setShowAI(!showAI)}
+          onAI={() => { setShowAI(!showAI); setShowVersions(false); }}
           showAI={showAI}
+          onVersions={() => { setShowVersions(!showVersions); setShowAI(false); }}
+          showVersions={showVersions}
           capabilityCount={countCapabilities(tree ?? [])}
         />
 
@@ -118,6 +122,11 @@ export function CapabilityPageClient() {
         open={showAI}
         onClose={() => setShowAI(false)}
         tree={tree ?? []}
+      />
+
+      <VersionHistoryPanel
+        open={showVersions}
+        onClose={() => setShowVersions(false)}
       />
 
       <CreateCapabilityDialog

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown } from "lucide-react";
+import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -21,6 +21,8 @@ type Props = {
   onExport: () => void;
   onAI: () => void;
   showAI: boolean;
+  onVersions: () => void;
+  showVersions: boolean;
   capabilityCount: number;
 };
 
@@ -34,6 +36,8 @@ export function CapabilityToolbar({
   onExport,
   onAI,
   showAI,
+  onVersions,
+  showVersions,
   capabilityCount,
 }: Props) {
   return (
@@ -111,6 +115,16 @@ export function CapabilityToolbar({
         >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
           AI Assistant
+        </Button>
+
+        <Button
+          size="sm"
+          variant={showVersions ? "default" : "outline"}
+          onClick={onVersions}
+          className={`h-9 text-xs ${showVersions ? "bg-[#1a1f2e] hover:bg-[#2a2f3e] text-white" : ""}`}
+        >
+          <History className="h-3.5 w-3.5 mr-1.5" />
+          Versions
         </Button>
 
         <Button
