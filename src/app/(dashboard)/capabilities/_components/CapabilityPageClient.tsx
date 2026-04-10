@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { toast } from "sonner";
 import { CapabilityToolbar } from "./CapabilityToolbar";
 import { GridView } from "./views/GridView";
 import { HeatMapView } from "./views/HeatMapView";
@@ -22,9 +23,32 @@ export function CapabilityPageClient() {
   const [showAI, setShowAI] = useState(false);
   const [colorBy, setColorBy] = useState<"maturity" | "importance">("maturity");
 
+  const { workspaceId } = useWorkspace();
   const { data: tree, isLoading } = trpc.capability.getTree.useQuery();
 
   const isEmpty = !isLoading && (!tree || tree.length === 0);
+
+  async function handleExport() {
+    toast.info("Generating PowerPoint...");
+    try {
+      const res = await fetch("/api/export/pptx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.headers.get("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") ?? "Capability_Map.pptx";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PPTX downloaded");
+    } catch {
+      toast.error("Export failed");
+    }
+  }
 
   return (
     <div className="flex h-full">
@@ -36,6 +60,7 @@ export function CapabilityPageClient() {
           onColorByChange={setColorBy}
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
+          onExport={handleExport}
           onAI={() => setShowAI(!showAI)}
           showAI={showAI}
           capabilityCount={countCapabilities(tree ?? [])}

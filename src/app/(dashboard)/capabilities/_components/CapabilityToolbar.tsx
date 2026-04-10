@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch } from "lucide-react";
+import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,6 +18,7 @@ type Props = {
   onColorByChange: (v: "maturity" | "importance") => void;
   onCreateNew: () => void;
   onImport: () => void;
+  onExport: () => void;
   onAI: () => void;
   showAI: boolean;
   capabilityCount: number;
@@ -30,6 +31,7 @@ export function CapabilityToolbar({
   onColorByChange,
   onCreateNew,
   onImport,
+  onExport,
   onAI,
   showAI,
   capabilityCount,
@@ -118,7 +120,17 @@ export function CapabilityToolbar({
           className="h-9 text-xs"
         >
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Import Template
+          Import
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onExport}
+          className="h-9 text-xs"
+        >
+          <FileDown className="h-3.5 w-3.5 mr-1.5" />
+          Export PPTX
         </Button>
 
         <Button

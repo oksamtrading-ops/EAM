@@ -75,6 +75,7 @@ model User {
   workspaces        Workspace[]
   ownedCapabilities BusinessCapability[] @relation("CapabilityOwner")
   auditLogs         AuditLog[]
+  createdVersions   CapabilityMapVersion[]
 
   @@map("users")
 }
@@ -100,6 +101,7 @@ model Workspace {
   organizations Organization[]
   auditLogs     AuditLog[]
   tags          CapabilityTag[]
+  versions      CapabilityMapVersion[]
 
   @@map("workspaces")
 }
@@ -232,6 +234,27 @@ model CapabilityTemplate {
 
   @@index([industry, level])
   @@map("capability_templates")
+}
+
+// ============================================================
+// CAPABILITY MAP VERSIONING
+// ============================================================
+
+model CapabilityMapVersion {
+  id          String   @id @default(cuid())
+  workspaceId String
+  label       String
+  description String?
+  snapshot    Json
+  createdById String?
+  isAutomatic Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation(fields: [createdById], references: [id])
+
+  @@index([workspaceId, createdAt])
+  @@map("capability_map_versions")
 }
 
 // ============================================================
