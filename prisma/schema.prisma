@@ -60,6 +60,63 @@ enum AuditAction {
 }
 
 // ============================================================
+// MODULE 2 ENUMS
+// ============================================================
+
+enum ApplicationLifecycle {
+  PLANNED
+  ACTIVE
+  PHASING_OUT
+  RETIRED
+  SUNSET
+}
+
+enum ApplicationType {
+  SAAS
+  COTS
+  CUSTOM
+  PAAS
+  OPEN_SOURCE
+  LEGACY
+}
+
+enum DeploymentModel {
+  CLOUD_PUBLIC
+  CLOUD_PRIVATE
+  ON_PREMISE
+  HYBRID
+  SAAS_HOSTED
+  UNKNOWN
+}
+
+enum BusinessValueScore {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  BV_UNKNOWN
+}
+
+enum TechnicalHealthScore {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  TH_CRITICAL
+  TH_UNKNOWN
+}
+
+enum RationalizationStatus {
+  KEEP
+  INVEST
+  MIGRATE
+  RETIRE
+  CONSOLIDATE
+  EVALUATE
+  RAT_NOT_ASSESSED
+}
+
+// ============================================================
 // USER (synced from Clerk)
 // ============================================================
 
@@ -72,10 +129,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspaces        Workspace[]
-  ownedCapabilities BusinessCapability[] @relation("CapabilityOwner")
-  auditLogs         AuditLog[]
-  createdVersions   CapabilityMapVersion[]
+  workspaces         Workspace[]
+  ownedCapabilities  BusinessCapability[] @relation("CapabilityOwner")
+  auditLogs          AuditLog[]
+  createdVersions    CapabilityMapVersion[]
+  ownedApplications  Application[] @relation("AppOwner")
 
   @@map("users")
 }
@@ -102,6 +160,7 @@ model Workspace {
   auditLogs     AuditLog[]
   tags          CapabilityTag[]
   versions      CapabilityMapVersion[]
+  applications  Application[]
 
   @@map("workspaces")
 }
@@ -160,6 +219,7 @@ model BusinessCapability {
   organization Organization?        @relation(fields: [organizationId], references: [id])
   tags         CapabilityTagMap[]
   assessments  CapabilityAssessment[]
+  applicationMappings ApplicationCapabilityMap[]
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
@@ -234,6 +294,87 @@ model CapabilityTemplate {
 
   @@index([industry, level])
   @@map("capability_templates")
+}
+
+// ============================================================
+// MODULE 2: APPLICATION
+// ============================================================
+
+model Application {
+  id                    String                @id @default(cuid())
+  workspaceId           String
+  name                  String
+  description           String?
+  alias                 String?
+  vendor                String?
+  version               String?
+  applicationType       ApplicationType       @default(CUSTOM)
+  deploymentModel       DeploymentModel       @default(UNKNOWN)
+  lifecycle             ApplicationLifecycle  @default(ACTIVE)
+  lifecycleStartDate    DateTime?
+  lifecycleEndDate      DateTime?
+  businessValue         BusinessValueScore    @default(BV_UNKNOWN)
+  technicalHealth       TechnicalHealthScore  @default(TH_UNKNOWN)
+  rationalizationStatus RationalizationStatus @default(RAT_NOT_ASSESSED)
+  rationalizationNotes  String?
+  annualCostUsd         Decimal?              @db.Decimal(14, 2)
+  businessOwnerName     String?
+  itOwnerName           String?
+  ownerId               String?
+  sortOrder             Int                   @default(0)
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner        User?                    @relation("AppOwner", fields: [ownerId], references: [id])
+  capabilities ApplicationCapabilityMap[]
+  assessments  ApplicationAssessment[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, lifecycle])
+  @@index([workspaceId, rationalizationStatus])
+  @@map("applications")
+}
+
+// ============================================================
+// APPLICATION ↔ CAPABILITY MAPPING
+// ============================================================
+
+model ApplicationCapabilityMap {
+  applicationId String
+  capabilityId  String
+  workspaceId   String
+  supportType   String   @default("SUPPORTS")
+  notes         String?
+  assignedAt    DateTime @default(now())
+
+  application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  capability  BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, capabilityId])
+  @@index([workspaceId, capabilityId])
+  @@map("application_capability_maps")
+}
+
+// ============================================================
+// APPLICATION ASSESSMENT
+// ============================================================
+
+model ApplicationAssessment {
+  id                    String                @id @default(cuid())
+  applicationId         String
+  assessedById          String?
+  businessValue         BusinessValueScore
+  technicalHealth       TechnicalHealthScore
+  rationalizationStatus RationalizationStatus
+  notes                 String?
+  assessedAt            DateTime              @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("application_assessments")
 }
 
 // ============================================================

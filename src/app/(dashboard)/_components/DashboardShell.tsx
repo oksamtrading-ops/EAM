@@ -9,6 +9,7 @@ import {
   Tags,
   Building2,
   BarChart3,
+  AppWindow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -19,6 +20,12 @@ const navItems = [
     href: "/capabilities",
     icon: Network,
     description: "Business capability map",
+  },
+  {
+    label: "Applications",
+    href: "/applications",
+    icon: AppWindow,
+    description: "Application portfolio",
   },
   {
     label: "Organizations",
