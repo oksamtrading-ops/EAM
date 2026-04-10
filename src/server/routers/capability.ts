@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
+import { auditLog } from "@/server/services/audit";
 
 const CapabilityCreateInput = z.object({
   name: z.string().min(1).max(200),
@@ -168,6 +169,7 @@ export const capabilityRouter = router({
         },
       });
 
+      auditLog(ctx, { action: "CREATE", entityType: "BusinessCapability", entityId: capability.id, after: capability as any });
       return capability;
     }),
 
@@ -196,6 +198,7 @@ export const capabilityRouter = router({
         return tx.businessCapability.update({ where: { id }, data });
       });
 
+      auditLog(ctx, { action: "UPDATE", entityType: "BusinessCapability", entityId: id, before: existing as any, after: updated as any });
       return updated;
     }),
 
@@ -228,6 +231,7 @@ export const capabilityRouter = router({
         data: { isActive: false },
       });
 
+      auditLog(ctx, { action: "DELETE", entityType: "BusinessCapability", entityId: input.id, before: existing as any });
       return { success: true };
     }),
 
@@ -357,35 +361,60 @@ export const capabilityRouter = router({
         orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
       });
 
-      if (input.replaceExisting) {
-        await ctx.db.businessCapability.updateMany({
-          where: { workspaceId: ctx.workspaceId },
-          data: { isActive: false },
-        });
-      }
-
       const codeToId = new Map<string, string>();
 
-      for (const level of ["L1", "L2", "L3"] as const) {
-        const levelTemplates = templates.filter((t) => t.level === level);
-        for (const tpl of levelTemplates) {
-          const parentId = tpl.parentCode
-            ? codeToId.get(tpl.parentCode)
-            : undefined;
-          const cap = await ctx.db.businessCapability.create({
-            data: {
-              workspaceId: ctx.workspaceId,
-              name: tpl.name,
-              description: tpl.description,
-              level: tpl.level,
-              parentId: parentId ?? null,
-              externalId: tpl.code,
-              sortOrder: tpl.sortOrder,
-            },
+      // Run entire import in a single transaction to minimize round trips
+      await ctx.db.$transaction(async (tx) => {
+        if (input.replaceExisting) {
+          await tx.businessCapability.updateMany({
+            where: { workspaceId: ctx.workspaceId },
+            data: { isActive: false },
           });
-          codeToId.set(tpl.code, cap.id);
         }
-      }
+
+        // Must create sequentially per level (L2/L3 need parent IDs from L1)
+        for (const level of ["L1", "L2", "L3"] as const) {
+          const levelTemplates = templates.filter((t) => t.level === level);
+
+          // L1 has no parents — batch create
+          if (level === "L1") {
+            for (const tpl of levelTemplates) {
+              const cap = await tx.businessCapability.create({
+                data: {
+                  workspaceId: ctx.workspaceId,
+                  name: tpl.name,
+                  description: tpl.description,
+                  level: tpl.level,
+                  parentId: null,
+                  externalId: tpl.code,
+                  sortOrder: tpl.sortOrder,
+                },
+                select: { id: true },
+              });
+              codeToId.set(tpl.code, cap.id);
+            }
+          } else {
+            for (const tpl of levelTemplates) {
+              const parentId = tpl.parentCode
+                ? codeToId.get(tpl.parentCode)
+                : null;
+              const cap = await tx.businessCapability.create({
+                data: {
+                  workspaceId: ctx.workspaceId,
+                  name: tpl.name,
+                  description: tpl.description,
+                  level: tpl.level,
+                  parentId: parentId ?? null,
+                  externalId: tpl.code,
+                  sortOrder: tpl.sortOrder,
+                },
+                select: { id: true },
+              });
+              codeToId.set(tpl.code, cap.id);
+            }
+          }
+        }
+      });
 
       return { imported: templates.length };
     }),

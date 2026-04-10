@@ -7,7 +7,14 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  const { workspaceId } = await req.json();
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  const workspaceId = typeof body?.workspaceId === "string" ? body.workspaceId : null;
+  if (!workspaceId) return new Response("workspaceId is required", { status: 400 });
 
   const workspace = await db.workspace.findFirst({
     where: { id: workspaceId },

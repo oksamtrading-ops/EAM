@@ -127,10 +127,25 @@ async function captureSnapshot(db: any, workspaceId: string): Promise<Capability
 async function replaySnapshot(db: any, workspaceId: string, snap: CapabilitySnapshot) {
   const oldIdToNewId = new Map<string, string>();
 
+  // Build a map of tag names to IDs for restoring tag associations
+  const existingTags = await db.capabilityTag.findMany({
+    where: { workspaceId },
+    select: { id: true, name: true },
+  });
+  const tagNameToId = new Map<string, string>(
+    existingTags.map((t: any) => [t.name, t.id])
+  );
+
   for (const level of ["L1", "L2", "L3"] as const) {
-    const caps = (snap.capabilities ?? []).filter((c: any) => c.level === level);
+    const caps = (snap.capabilities ?? []).filter((c) => c.level === level);
     for (const cap of caps) {
       const newParentId = cap.parentId ? oldIdToNewId.get(cap.parentId) : null;
+
+      // Resolve tag names to IDs (only for tags that still exist)
+      const tagIds = (cap.tags ?? [])
+        .map((name) => tagNameToId.get(name))
+        .filter((id): id is string => !!id);
+
       const created = await db.businessCapability.create({
         data: {
           workspaceId,
@@ -143,6 +158,9 @@ async function replaySnapshot(db: any, workspaceId: string, snap: CapabilitySnap
           currentMaturity: cap.currentMaturity,
           targetMaturity: cap.targetMaturity,
           externalId: cap.externalId,
+          tags: tagIds.length > 0
+            ? { create: tagIds.map((tagId) => ({ tagId })) }
+            : undefined,
         },
       });
       oldIdToNewId.set(cap.id, created.id);

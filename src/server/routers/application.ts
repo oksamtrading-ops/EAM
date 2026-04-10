@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
+import { auditLog } from "@/server/services/audit";
 import type { ApplicationLifecycle, RationalizationStatus } from "@/generated/prisma/client";
 
 const ApplicationCreateInput = z.object({
@@ -109,6 +110,7 @@ export const applicationRouter = router({
             : undefined,
         },
       });
+      auditLog(ctx, { action: "CREATE", entityType: "Application", entityId: app.id, after: app as any });
       return app;
     }),
 
@@ -162,6 +164,7 @@ export const applicationRouter = router({
         where: { id: input.id },
         data: { isActive: false },
       });
+      auditLog(ctx, { action: "DELETE", entityType: "Application", entityId: input.id, before: existing as any });
       return { success: true };
     }),
 

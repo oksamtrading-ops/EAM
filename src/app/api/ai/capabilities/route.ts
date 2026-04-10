@@ -1,12 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
+import { rateLimit } from "@/lib/rate-limit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit: 10 AI requests per minute per user
+  const { allowed } = rateLimit(userId, { maxRequests: 10, windowMs: 60_000 });
+  if (!allowed) {
+    return Response.json(
+      { error: "Rate limit exceeded. Please wait a moment before trying again." },
+      { status: 429 }
+    );
+  }
 
   const { action, workspaceId, payload } = await req.json();
 

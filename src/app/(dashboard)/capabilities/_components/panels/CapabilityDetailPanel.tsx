@@ -360,8 +360,17 @@ function EditableField({
   return (
     <h2
       className={`cursor-pointer hover:text-primary ${className}`}
+      tabIndex={0}
+      role="button"
+      aria-label={`Edit ${value}. Press Enter or double-click to edit.`}
       onDoubleClick={() => setEditing(true)}
-      title="Double-click to edit"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setEditing(true);
+        }
+      }}
+      title="Press Enter or double-click to edit"
     >
       {value}
     </h2>
