@@ -26,9 +26,9 @@ export function CapabilityPageClient() {
   const [colorBy, setColorBy] = useState<"maturity" | "importance">("maturity");
 
   const { workspaceId } = useWorkspace();
-  const { data: tree, isLoading } = trpc.capability.getTree.useQuery();
+  const { data: tree, isLoading, error } = trpc.capability.getTree.useQuery();
 
-  const isEmpty = !isLoading && (!tree || tree.length === 0);
+  const isEmpty = !isLoading && !error && (!tree || tree.length === 0);
 
   async function handleExport() {
     toast.info("Generating PowerPoint...");
@@ -71,7 +71,12 @@ export function CapabilityPageClient() {
         />
 
         <div className={`flex-1 overflow-auto ${view === "tree" ? "p-2" : "p-6"}`}>
-          {isLoading ? (
+          {error ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <p className="text-sm text-red-600 mb-2">Failed to load capabilities</p>
+              <p className="text-xs text-muted-foreground">{error.message}</p>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
               Loading capabilities...
             </div>

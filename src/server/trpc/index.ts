@@ -31,7 +31,7 @@ const enforceAuth = t.middleware(async ({ ctx, next }) => {
 
 export const protectedProcedure = t.procedure.use(enforceAuth);
 
-// Workspace middleware — ensures workspace context
+// Workspace middleware — ensures workspace context AND ownership
 const enforceWorkspace = t.middleware(async ({ ctx, next }) => {
   if (!ctx.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -42,10 +42,31 @@ const enforceWorkspace = t.middleware(async ({ ctx, next }) => {
       message: "Workspace context required",
     });
   }
+
+  // Verify the authenticated user owns this workspace
+  const user = await ctx.db.user.findUnique({
+    where: { clerkId: ctx.userId },
+    select: { id: true },
+  });
+  if (!user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "User not found" });
+  }
+
+  const workspace = await ctx.db.workspace.findFirst({
+    where: { id: ctx.workspaceId, userId: user.id },
+  });
+  if (!workspace) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Not authorized for this workspace",
+    });
+  }
+
   return next({
     ctx: {
       ...ctx,
       userId: ctx.userId,
+      dbUserId: user.id,
       workspaceId: ctx.workspaceId,
     },
   });

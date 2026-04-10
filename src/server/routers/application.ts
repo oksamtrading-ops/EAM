@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
+import type { ApplicationLifecycle, RationalizationStatus } from "@/generated/prisma/client";
 
 const ApplicationCreateInput = z.object({
   name: z.string().min(1).max(300),
@@ -64,8 +65,8 @@ export const applicationRouter = router({
         where: {
           workspaceId: ctx.workspaceId,
           isActive: true,
-          ...(input?.lifecycle ? { lifecycle: input.lifecycle as any } : {}),
-          ...(input?.rationalization ? { rationalizationStatus: input.rationalization as any } : {}),
+          ...(input?.lifecycle ? { lifecycle: input.lifecycle as ApplicationLifecycle } : {}),
+          ...(input?.rationalization ? { rationalizationStatus: input.rationalization as RationalizationStatus } : {}),
           ...(input?.search ? { name: { contains: input.search, mode: "insensitive" as const } } : {}),
         },
         include: {

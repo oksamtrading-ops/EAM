@@ -3,26 +3,20 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
 
 export const workspaceRouter = router({
-  // Get or create default workspace for current user
   getOrCreate: protectedProcedure.query(async ({ ctx }) => {
-    // Find existing workspace for this user
+    const user = await ctx.db.user.findUnique({
+      where: { clerkId: ctx.userId },
+    });
+
+    if (!user) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    }
+
     let workspace = await ctx.db.workspace.findFirst({
-      where: { userId: ctx.userId },
+      where: { userId: user.id },
     });
 
     if (!workspace) {
-      // Auto-create a default workspace for POC
-      const user = await ctx.db.user.findUnique({
-        where: { clerkId: ctx.userId },
-      });
-
-      if (!user) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "User not found in database",
-        });
-      }
-
       workspace = await ctx.db.workspace.create({
         data: {
           name: "My Workspace",
@@ -35,7 +29,6 @@ export const workspaceRouter = router({
     return workspace;
   }),
 
-  // Update workspace settings
   update: protectedProcedure
     .input(
       z.object({
@@ -44,22 +37,27 @@ export const workspaceRouter = router({
         clientName: z.string().optional(),
         description: z.string().optional(),
         industry: z
-          .enum([
-            "BANKING",
-            "RETAIL",
-            "LOGISTICS",
-            "MANUFACTURING",
-            "HEALTHCARE",
-            "GENERIC",
-          ])
+          .enum(["BANKING", "RETAIL", "LOGISTICS", "MANUFACTURING", "HEALTHCARE", "GENERIC"])
           .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return ctx.db.workspace.update({
-        where: { id },
-        data,
+
+      // Verify ownership
+      const user = await ctx.db.user.findUnique({
+        where: { clerkId: ctx.userId },
+        select: { id: true },
       });
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const workspace = await ctx.db.workspace.findFirst({
+        where: { id, userId: user.id },
+      });
+      if (!workspace) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not your workspace" });
+      }
+
+      return ctx.db.workspace.update({ where: { id }, data });
     }),
 });

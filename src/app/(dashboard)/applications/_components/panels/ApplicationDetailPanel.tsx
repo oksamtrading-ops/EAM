@@ -30,6 +30,7 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
       utils.application.getById.invalidate({ id: applicationId });
       toast.success("Application updated");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const assessMutation = trpc.application.assess.useMutation({
@@ -38,6 +39,7 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
       utils.application.getById.invalidate({ id: applicationId });
       toast.success("Assessment saved");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const deleteMutation = trpc.application.delete.useMutation({
@@ -46,6 +48,7 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
       onClose();
       toast.success("Application deleted");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   if (isLoading || !app) {

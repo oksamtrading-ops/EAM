@@ -60,7 +60,7 @@ export const versionRouter = router({
       });
 
       // Replay snapshot
-      const snap = version.snapshot as any;
+      const snap = version.snapshot as CapabilitySnapshot;
       await replaySnapshot(ctx.db, ctx.workspaceId, snap);
 
       return { restored: true, fromLabel: version.label };
@@ -77,7 +77,27 @@ export const versionRouter = router({
     }),
 });
 
-async function captureSnapshot(db: any, workspaceId: string) {
+type CapabilitySnapshot = {
+  version: number;
+  capturedAt: string;
+  capabilities: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    level: string;
+    parentId: string | null;
+    sortOrder: number;
+    strategicImportance: string;
+    currentMaturity: string;
+    targetMaturity: string;
+    organizationId: string | null;
+    ownerId: string | null;
+    tags: string[];
+    externalId: string | null;
+  }>;
+};
+
+async function captureSnapshot(db: any, workspaceId: string): Promise<CapabilitySnapshot> {
   const capabilities = await db.businessCapability.findMany({
     where: { workspaceId, isActive: true },
     include: { tags: { include: { tag: true } } },
@@ -104,7 +124,7 @@ async function captureSnapshot(db: any, workspaceId: string) {
   };
 }
 
-async function replaySnapshot(db: any, workspaceId: string, snap: any) {
+async function replaySnapshot(db: any, workspaceId: string, snap: CapabilitySnapshot) {
   const oldIdToNewId = new Map<string, string>();
 
   for (const level of ["L1", "L2", "L3"] as const) {

@@ -22,10 +22,10 @@ export function ApplicationPageClient() {
   const [showRationalization, setShowRationalization] = useState(false);
 
   const { workspaceId } = useWorkspace();
-  const { data: apps, isLoading } = trpc.application.list.useQuery();
+  const { data: apps, isLoading, error } = trpc.application.list.useQuery();
   const { data: capTree } = trpc.capability.getTree.useQuery();
 
-  const isEmpty = !isLoading && (!apps || apps.length === 0);
+  const isEmpty = !isLoading && !error && (!apps || apps.length === 0);
 
   async function handleExport() {
     toast.info("Generating APM PowerPoint...");
@@ -63,7 +63,12 @@ export function ApplicationPageClient() {
         />
 
         <div className="flex-1 overflow-auto p-6">
-          {isLoading ? (
+          {error ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <p className="text-sm text-red-600 mb-2">Failed to load applications</p>
+              <p className="text-xs text-muted-foreground">{error.message}</p>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
               Loading applications...
             </div>

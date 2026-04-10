@@ -57,6 +57,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
       utils.capability.getById.invalidate({ id: capabilityId });
       toast.success("Capability updated");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const deleteMutation = trpc.capability.delete.useMutation({
@@ -65,6 +66,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
       onClose();
       toast.success("Capability deleted");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const assessMutation = trpc.capability.assess.useMutation({
@@ -73,6 +75,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
       utils.capability.getById.invalidate({ id: capabilityId });
       toast.success("Assessment saved");
     },
+    onError: (err) => toast.error(err.message),
   });
 
   if (isLoading || !cap) {
