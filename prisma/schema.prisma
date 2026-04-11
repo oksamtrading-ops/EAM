@@ -506,9 +506,10 @@ model Initiative {
   startDate       DateTime?
   endDate         DateTime?
   budgetUsd       Decimal?           @db.Decimal(14, 2)
-  budgetCurrency  String             @default("USD")
-  ownerId         String?
-  businessSponsor String?
+  budgetCurrency     String             @default("USD")
+  cancellationReason String?
+  ownerId            String?
+  businessSponsor    String?
   progressPct     Int                @default(0)
   ragStatus       String             @default("GREEN")
   isActive        Boolean            @default(true)

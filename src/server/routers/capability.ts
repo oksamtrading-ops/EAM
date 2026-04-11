@@ -335,6 +335,76 @@ export const capabilityRouter = router({
       return { assessed: input.assessments.length };
     }),
 
+  // Return L1 domains for a template (used by the domain picker UI)
+  getTemplateDomains: workspaceProcedure
+    .input(
+      z.object({
+        industry: z.enum([
+          "BANKING",
+          "RETAIL",
+          "LOGISTICS",
+          "MANUFACTURING",
+          "HEALTHCARE",
+          "GENERIC",
+          "ENTERPRISE_BCM",
+        ]),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const l1s = await ctx.db.capabilityTemplate.findMany({
+        where: { industry: input.industry, level: "L1", isActive: true },
+        orderBy: [{ sortOrder: "asc" }],
+      });
+      const l1Codes = l1s.map((t) => t.code);
+
+      // Count direct L2 children per L1
+      const l2All = await ctx.db.capabilityTemplate.findMany({
+        where: {
+          industry: input.industry,
+          level: "L2",
+          isActive: true,
+          parentCode: { in: l1Codes },
+        },
+        select: { code: true, parentCode: true },
+      });
+      const l2ToL1 = new Map<string, string>();
+      const l2CountMap = new Map<string, number>();
+      for (const l2 of l2All) {
+        if (l2.parentCode) {
+          l2ToL1.set(l2.code, l2.parentCode);
+          l2CountMap.set(l2.parentCode, (l2CountMap.get(l2.parentCode) ?? 0) + 1);
+        }
+      }
+
+      // Count L3s per L1 (traced through L2 parent chain)
+      const l2Codes = l2All.map((l2) => l2.code);
+      const l3All = l2Codes.length
+        ? await ctx.db.capabilityTemplate.findMany({
+            where: {
+              industry: input.industry,
+              level: "L3",
+              isActive: true,
+              parentCode: { in: l2Codes },
+            },
+            select: { parentCode: true },
+          })
+        : [];
+      const l3CountMap = new Map<string, number>();
+      for (const l3 of l3All) {
+        const l1Code = l2ToL1.get(l3.parentCode ?? "");
+        if (l1Code) l3CountMap.set(l1Code, (l3CountMap.get(l1Code) ?? 0) + 1);
+      }
+
+      return l1s.map((l1) => ({
+        code: l1.code,
+        name: l1.name,
+        band: l1.band,
+        strategicImportance: l1.strategicImportance as string,
+        l2Count: l2CountMap.get(l1.code) ?? 0,
+        l3Count: l3CountMap.get(l1.code) ?? 0,
+      }));
+    }),
+
   // Import from industry template
   importFromTemplate: workspaceProcedure
     .input(
@@ -346,20 +416,95 @@ export const capabilityRouter = router({
           "MANUFACTURING",
           "HEALTHCARE",
           "GENERIC",
+          "ENTERPRISE_BCM",
         ]),
         levels: z.array(z.enum(["L1", "L2", "L3"])).default(["L1", "L2"]),
         replaceExisting: z.boolean().default(false),
+        // Optional: restrict import to specific L1 domain codes
+        domainCodes: z.array(z.string()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const templates = await ctx.db.capabilityTemplate.findMany({
-        where: {
-          industry: input.industry,
-          level: { in: input.levels },
-          isActive: true,
-        },
-        orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
-      });
+      let templates;
+
+      if (input.domainCodes?.length) {
+        // Hierarchical fetch: only import templates that belong to selected domains
+        const l1s = await ctx.db.capabilityTemplate.findMany({
+          where: {
+            industry: input.industry,
+            level: "L1",
+            code: { in: input.domainCodes },
+            isActive: true,
+          },
+          orderBy: [{ sortOrder: "asc" }],
+        });
+        const l1Codes = l1s.map((t) => t.code);
+
+        const l2s =
+          input.levels.some((l) => l !== "L1") && l1Codes.length
+            ? await ctx.db.capabilityTemplate.findMany({
+                where: {
+                  industry: input.industry,
+                  level: "L2",
+                  parentCode: { in: l1Codes },
+                  isActive: true,
+                },
+                orderBy: [{ sortOrder: "asc" }],
+              })
+            : [];
+        const l2Codes = l2s.map((t) => t.code);
+
+        const l3s =
+          input.levels.includes("L3") && l2Codes.length
+            ? await ctx.db.capabilityTemplate.findMany({
+                where: {
+                  industry: input.industry,
+                  level: "L3",
+                  parentCode: { in: l2Codes },
+                  isActive: true,
+                },
+                orderBy: [{ sortOrder: "asc" }],
+              })
+            : [];
+
+        templates = [...l1s, ...l2s, ...l3s];
+      } else {
+        // No domain filter — import everything at the requested levels
+        templates = await ctx.db.capabilityTemplate.findMany({
+          where: {
+            industry: input.industry,
+            level: { in: input.levels },
+            isActive: true,
+          },
+          orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
+        });
+      }
+
+      // Pre-create value-chain band tags outside the transaction
+      // so we can upsert them cleanly (no nested transaction needed)
+      const BAND_COLORS: Record<string, string> = {
+        Grow: "#86BC25",
+        Run: "#3b82f6",
+        Protect: "#f59e0b",
+      };
+      const uniqueBands = [...new Set(
+        templates.map((t) => t.band).filter((b): b is string => !!b)
+      )];
+      const bandTagIds = new Map<string, string>();
+      for (const band of uniqueBands) {
+        const tag = await ctx.db.capabilityTag.upsert({
+          where: { workspaceId_name: { workspaceId: ctx.workspaceId, name: band } },
+          update: {},
+          create: {
+            workspaceId: ctx.workspaceId,
+            name: band,
+            color: BAND_COLORS[band] ?? "#6366f1",
+            description: `Value chain band: ${band}`,
+          },
+          select: { id: true },
+        });
+        bandTagIds.set(band, tag.id);
+      }
 
       const codeToId = new Map<string, string>();
 
@@ -376,42 +521,34 @@ export const capabilityRouter = router({
         for (const level of ["L1", "L2", "L3"] as const) {
           const levelTemplates = templates.filter((t) => t.level === level);
 
-          // L1 has no parents — batch create
-          if (level === "L1") {
-            for (const tpl of levelTemplates) {
-              const cap = await tx.businessCapability.create({
-                data: {
-                  workspaceId: ctx.workspaceId,
-                  name: tpl.name,
-                  description: tpl.description,
-                  level: tpl.level,
-                  parentId: null,
-                  externalId: tpl.code,
-                  sortOrder: tpl.sortOrder,
-                },
-                select: { id: true },
-              });
-              codeToId.set(tpl.code, cap.id);
-            }
-          } else {
-            for (const tpl of levelTemplates) {
-              const parentId = tpl.parentCode
-                ? codeToId.get(tpl.parentCode)
-                : null;
-              const cap = await tx.businessCapability.create({
-                data: {
-                  workspaceId: ctx.workspaceId,
-                  name: tpl.name,
-                  description: tpl.description,
-                  level: tpl.level,
-                  parentId: parentId ?? null,
-                  externalId: tpl.code,
-                  sortOrder: tpl.sortOrder,
-                },
-                select: { id: true },
-              });
-              codeToId.set(tpl.code, cap.id);
-            }
+          for (const tpl of levelTemplates) {
+            const parentId =
+              level === "L1"
+                ? null
+                : (tpl.parentCode ? codeToId.get(tpl.parentCode) ?? null : null);
+
+            const cap = await tx.businessCapability.create({
+              data: {
+                workspaceId: ctx.workspaceId,
+                name: tpl.name,
+                description: tpl.description,
+                level: tpl.level,
+                parentId,
+                externalId: tpl.code,
+                sortOrder: tpl.sortOrder,
+                strategicImportance: tpl.strategicImportance,
+                // Assign band tag inline if this capability has one
+                ...(tpl.band && bandTagIds.has(tpl.band)
+                  ? {
+                      tags: {
+                        create: [{ tagId: bandTagIds.get(tpl.band)! }],
+                      },
+                    }
+                  : {}),
+              },
+              select: { id: true },
+            });
+            codeToId.set(tpl.code, cap.id);
           }
         }
       });

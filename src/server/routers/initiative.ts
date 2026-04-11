@@ -25,6 +25,7 @@ const InitiativeCreateInput = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budgetUsd: z.number().positive().optional(),
+  budgetCurrency: z.string().default("USD"),
   ownerId: z.string().optional(),
   businessSponsor: z.string().optional(),
   capabilityMaps: z
@@ -77,6 +78,7 @@ const InitiativeUpdateInput = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   budgetUsd: z.number().positive().nullable().optional(),
+  budgetCurrency: z.string().optional(),
   ownerId: z.string().nullable().optional(),
   businessSponsor: z.string().nullable().optional(),
   ragStatus: z.enum(["RED", "AMBER", "GREEN"]).optional(),
@@ -351,6 +353,7 @@ export const initiativeRouter = router({
         status: z.enum(["DRAFT", "PLANNED", "IN_PROGRESS", "ON_HOLD", "COMPLETE", "CANCELLED"]),
         ragStatus: z.enum(["RED", "AMBER", "GREEN"]).optional(),
         progressPct: z.number().int().min(0).max(100).optional(),
+        cancellationReason: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -365,6 +368,7 @@ export const initiativeRouter = router({
           status: input.status,
           ragStatus: input.ragStatus ?? existing.ragStatus,
           progressPct: input.progressPct ?? existing.progressPct,
+          ...(input.cancellationReason ? { cancellationReason: input.cancellationReason } : {}),
         },
       });
 

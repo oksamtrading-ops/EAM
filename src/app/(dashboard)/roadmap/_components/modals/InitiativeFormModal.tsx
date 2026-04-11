@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Loader2, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
+import { DatePicker } from "../shared/DatePicker";
 
 const EMPTY_FORM = {
   name: "",
@@ -15,9 +16,18 @@ const EMPTY_FORM = {
   startDate: "",
   endDate: "",
   budgetUsd: "",
+  budgetCurrency: "USD",
   businessSponsor: "",
   ragStatus: "GREEN",
 };
+
+const CURRENCIES = [
+  { code: "USD", label: "USD — US Dollar" },
+  { code: "EUR", label: "EUR — Euro" },
+  { code: "GBP", label: "GBP — British Pound" },
+  { code: "JPY", label: "JPY — Japanese Yen" },
+  { code: "CAD", label: "CAD — Canadian Dollar" },
+];
 
 const CATEGORIES = [
   "MODERNISATION",
@@ -71,6 +81,7 @@ export function InitiativeFormModal({
       ? new Date(initiative.endDate).toISOString().split("T")[0]
       : "",
     budgetUsd: initiative?.budgetUsd ? String(Number(initiative.budgetUsd)) : "",
+    budgetCurrency: (initiative as any)?.budgetCurrency ?? "USD",
     businessSponsor: initiative?.businessSponsor ?? "",
     ragStatus: initiative?.ragStatus ?? "GREEN",
   });
@@ -153,6 +164,7 @@ export function InitiativeFormModal({
       startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
       endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
       budgetUsd: form.budgetUsd ? Number(form.budgetUsd) : undefined,
+      budgetCurrency: form.budgetCurrency,
       businessSponsor: form.businessSponsor || undefined,
     };
     if (isEdit) {
@@ -315,22 +327,20 @@ export function InitiativeFormModal({
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
                 Start Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={form.startDate}
-                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
+                placeholder="Select start date"
               />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
                 End Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={form.endDate}
-                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                onChange={(v) => setForm((f) => ({ ...f, endDate: v }))}
+                placeholder="Select end date"
               />
             </div>
           </div>
@@ -338,16 +348,27 @@ export function InitiativeFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Budget (USD)
+                Budget
               </label>
-              <input
-                type="number"
-                min={0}
-                value={form.budgetUsd}
-                onChange={(e) => setForm((f) => ({ ...f, budgetUsd: e.target.value }))}
-                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
-                placeholder="e.g. 500000"
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={form.budgetCurrency}
+                  onChange={(e) => setForm((f) => ({ ...f, budgetCurrency: e.target.value }))}
+                  className="border rounded-md px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25] w-24 shrink-0"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.budgetUsd}
+                  onChange={(e) => setForm((f) => ({ ...f, budgetUsd: e.target.value }))}
+                  className="flex-1 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                  placeholder="e.g. 500000"
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
