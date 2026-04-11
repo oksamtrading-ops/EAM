@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from "@xyflow/react";
+import { useCallback, useMemo } from "react";
+import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType, type Connection } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
 import { useRoadmapContext } from "../RoadmapContext";
 import { RAGStatusDot } from "../shared/RAGStatusDot";
 
@@ -38,6 +40,27 @@ const nodeTypes = { initiativeNode: InitiativeFlowNode };
 export function DependencyPanel() {
   const { roadmap } = useRoadmapContext();
   const { initiatives } = roadmap ?? {};
+  const utils = trpc.useUtils();
+
+  const addDependency = trpc.initiative.addDependency.useMutation({
+    onSuccess: () => {
+      utils.initiative.getRoadmapData.invalidate();
+      toast.success("Dependency saved");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+      // source = the blocking initiative (edge origin), target = the dependent
+      addDependency.mutate({
+        blockingId: connection.source,
+        dependentId: connection.target,
+      });
+    },
+    [addDependency]
+  );
 
   const { nodes, edges } = useMemo(() => {
     const nodes = (initiatives ?? []).map((initiative, i) => ({
@@ -67,6 +90,7 @@ export function DependencyPanel() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onConnect={onConnect}
         fitView
         attributionPosition="bottom-right"
       >
