@@ -122,6 +122,23 @@ export const archStateRouter = router({
       );
     }),
 
+  delete: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.architectureState.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await ctx.db.architectureState.delete({ where: { id: input.id } });
+      auditLog(ctx, {
+        action: "DELETE",
+        entityType: "ArchitectureState",
+        entityId: input.id,
+        before: { label: existing.label, stateType: existing.stateType } as Record<string, unknown>,
+      });
+      return { success: true };
+    }),
+
   list: workspaceProcedure
     .input(z.object({ initiativeId: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
