@@ -26,6 +26,7 @@ enum IndustryType {
   MANUFACTURING
   HEALTHCARE
   GENERIC
+  ENTERPRISE_BCM
 }
 
 enum CapabilityLevel {
@@ -129,11 +130,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspaces         Workspace[]
-  ownedCapabilities  BusinessCapability[] @relation("CapabilityOwner")
-  auditLogs          AuditLog[]
-  createdVersions    CapabilityMapVersion[]
-  ownedApplications  Application[] @relation("AppOwner")
+  workspaces          Workspace[]
+  ownedCapabilities   BusinessCapability[]  @relation("CapabilityOwner")
+  auditLogs           AuditLog[]
+  createdVersions     CapabilityMapVersion[]
+  ownedApplications   Application[]         @relation("AppOwner")
+  ownedInitiatives    Initiative[]          @relation("InitiativeOwner")
+  ownedObjectives     Objective[]           @relation("ObjectiveOwner")
+  ownedMilestones     Milestone[]           @relation("MilestoneOwner")
+  createdArchStates   ArchitectureState[]   @relation("ArchStateCreator")
 
   @@map("users")
 }
@@ -154,13 +159,17 @@ model Workspace {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  capabilities  BusinessCapability[]
-  organizations Organization[]
-  auditLogs     AuditLog[]
-  tags          CapabilityTag[]
-  versions      CapabilityMapVersion[]
-  applications  Application[]
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capabilities   BusinessCapability[]
+  organizations  Organization[]
+  auditLogs      AuditLog[]
+  tags           CapabilityTag[]
+  versions       CapabilityMapVersion[]
+  applications   Application[]
+  initiatives    Initiative[]
+  objectives     Objective[]
+  archStates     ArchitectureState[]
+  initiativeTags InitiativeTag[]
 
   @@map("workspaces")
 }
@@ -282,15 +291,17 @@ model CapabilityAssessment {
 // ============================================================
 
 model CapabilityTemplate {
-  id          String          @id @default(cuid())
-  industry    IndustryType
-  level       CapabilityLevel
-  name        String
-  description String?
-  parentCode  String?
-  code        String          @unique
-  sortOrder   Int             @default(0)
-  isActive    Boolean         @default(true)
+  id                  String              @id @default(cuid())
+  industry            IndustryType
+  level               CapabilityLevel
+  name                String
+  description         String?
+  parentCode          String?
+  code                String              @unique
+  sortOrder           Int                 @default(0)
+  isActive            Boolean             @default(true)
+  strategicImportance StrategicImportance @default(NOT_ASSESSED)
+  band                String?
 
   @@index([industry, level])
   @@map("capability_templates")
@@ -396,6 +407,302 @@ model CapabilityMapVersion {
 
   @@index([workspaceId, createdAt])
   @@map("capability_map_versions")
+}
+
+// ============================================================
+// MODULE 3 ENUMS
+// ============================================================
+
+enum InitiativeStatus {
+  DRAFT
+  PLANNED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETE
+  CANCELLED
+}
+
+enum InitiativePriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum InitiativeCategory {
+  MODERNISATION
+  CONSOLIDATION
+  DIGITALISATION
+  COMPLIANCE
+  OPTIMISATION
+  INNOVATION
+  DECOMMISSION
+}
+
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETE
+  BLOCKED
+  CANCELLED
+}
+
+enum ArchStateType {
+  AS_IS
+  TO_BE
+}
+
+enum DependencyType {
+  FINISH_TO_START
+  FINISH_TO_FINISH
+  START_TO_START
+}
+
+enum RoadmapHorizon {
+  H1_NOW
+  H2_NEXT
+  H3_LATER
+  BEYOND
+}
+
+// ============================================================
+// MODULE 3: OBJECTIVE
+// ============================================================
+
+model Objective {
+  id             String    @id @default(cuid())
+  workspaceId    String
+  name           String
+  description    String?
+  targetDate     DateTime?
+  kpiDescription String?
+  kpiTarget      String?
+  ownerId        String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner       User?                  @relation("ObjectiveOwner", fields: [ownerId], references: [id])
+  initiatives InitiativeObjectiveMap[]
+
+  @@index([workspaceId])
+  @@map("objectives")
+}
+
+// ============================================================
+// MODULE 3: INITIATIVE
+// ============================================================
+
+model Initiative {
+  id              String             @id @default(cuid())
+  workspaceId     String
+  name            String
+  description     String?
+  category        InitiativeCategory @default(MODERNISATION)
+  status          InitiativeStatus   @default(DRAFT)
+  priority        InitiativePriority @default(MEDIUM)
+  horizon         RoadmapHorizon     @default(H2_NEXT)
+  startDate       DateTime?
+  endDate         DateTime?
+  budgetUsd       Decimal?           @db.Decimal(14, 2)
+  budgetCurrency  String             @default("USD")
+  ownerId         String?
+  businessSponsor String?
+  progressPct     Int                @default(0)
+  ragStatus       String             @default("GREEN")
+  isActive        Boolean            @default(true)
+  sortOrder       Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner        User?                    @relation("InitiativeOwner", fields: [ownerId], references: [id])
+  milestones   Milestone[]
+  capabilities InitiativeCapabilityMap[]
+  applications InitiativeApplicationMap[]
+  objectives   InitiativeObjectiveMap[]
+  dependsOn    InitiativeDependency[]   @relation("DependentInitiative")
+  blockedBy    InitiativeDependency[]   @relation("BlockingInitiative")
+  archStates   ArchitectureState[]
+  tags         InitiativeTagMap[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, horizon])
+  @@map("initiatives")
+}
+
+// ============================================================
+// MODULE 3: MILESTONE
+// ============================================================
+
+model Milestone {
+  id           String          @id @default(cuid())
+  initiativeId String
+  workspaceId  String
+  name         String
+  description  String?
+  status       MilestoneStatus @default(NOT_STARTED)
+  dueDate      DateTime?
+  completedAt  DateTime?
+  ownerId      String?
+  sortOrder    Int             @default(0)
+  isCritical   Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  initiative Initiative          @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  owner      User?               @relation("MilestoneOwner", fields: [ownerId], references: [id])
+  blockedBy  MilestoneDependency[] @relation("DependentMilestone")
+  blocks     MilestoneDependency[] @relation("BlockingMilestone")
+
+  @@index([initiativeId])
+  @@index([workspaceId])
+  @@map("milestones")
+}
+
+// ============================================================
+// MODULE 3: DEPENDENCIES
+// ============================================================
+
+model InitiativeDependency {
+  id             String         @id @default(cuid())
+  workspaceId    String
+  dependentId    String
+  blockingId     String
+  dependencyType DependencyType @default(FINISH_TO_START)
+  lagDays        Int            @default(0)
+  notes          String?
+  createdAt      DateTime       @default(now())
+
+  dependent Initiative @relation("DependentInitiative", fields: [dependentId], references: [id], onDelete: Cascade)
+  blocking  Initiative @relation("BlockingInitiative",  fields: [blockingId],  references: [id], onDelete: Cascade)
+
+  @@unique([dependentId, blockingId])
+  @@index([workspaceId])
+  @@map("initiative_dependencies")
+}
+
+model MilestoneDependency {
+  dependentId String
+  blockingId  String
+  createdAt   DateTime @default(now())
+
+  dependent Milestone @relation("DependentMilestone", fields: [dependentId], references: [id], onDelete: Cascade)
+  blocking  Milestone @relation("BlockingMilestone",  fields: [blockingId],  references: [id], onDelete: Cascade)
+
+  @@id([dependentId, blockingId])
+  @@map("milestone_dependencies")
+}
+
+// ============================================================
+// MODULE 3: INITIATIVE ↔ CAPABILITY MAP
+// ============================================================
+
+model InitiativeCapabilityMap {
+  initiativeId    String
+  capabilityId    String
+  workspaceId     String
+  impactType      String   @default("IMPROVES")
+  currentMaturity String?
+  targetMaturity  String?
+  notes           String?
+  assignedAt      DateTime @default(now())
+
+  initiative Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+
+  @@id([initiativeId, capabilityId])
+  @@index([workspaceId, capabilityId])
+  @@map("initiative_capability_maps")
+}
+
+// ============================================================
+// MODULE 3: INITIATIVE ↔ APPLICATION MAP
+// ============================================================
+
+model InitiativeApplicationMap {
+  initiativeId  String
+  applicationId String
+  workspaceId   String
+  changeType    String   @default("MODIFIES")
+  notes         String?
+  assignedAt    DateTime @default(now())
+
+  initiative Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+
+  @@id([initiativeId, applicationId])
+  @@index([workspaceId, applicationId])
+  @@map("initiative_application_maps")
+}
+
+// ============================================================
+// MODULE 3: OBJECTIVE ↔ INITIATIVE MAP
+// ============================================================
+
+model InitiativeObjectiveMap {
+  initiativeId String
+  objectiveId  String
+  assignedAt   DateTime @default(now())
+
+  initiative Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  objective  Objective  @relation(fields: [objectiveId],  references: [id], onDelete: Cascade)
+
+  @@id([initiativeId, objectiveId])
+  @@map("initiative_objective_maps")
+}
+
+// ============================================================
+// MODULE 3: ARCHITECTURE STATE (As-Is / To-Be snapshots)
+// ============================================================
+
+model ArchitectureState {
+  id           String        @id @default(cuid())
+  workspaceId  String
+  initiativeId String?
+  stateType    ArchStateType
+  label        String
+  description  String?
+  snapshot     Json
+  createdById  String?
+  createdAt    DateTime      @default(now())
+
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  initiative  Initiative? @relation(fields: [initiativeId], references: [id])
+  createdBy   User?       @relation("ArchStateCreator", fields: [createdById], references: [id])
+
+  @@index([workspaceId, stateType])
+  @@index([initiativeId])
+  @@map("architecture_states")
+}
+
+// ============================================================
+// MODULE 3: INITIATIVE TAGS
+// ============================================================
+
+model InitiativeTag {
+  id          String @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String @default("#6366f1")
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mappings  InitiativeTagMap[]
+
+  @@unique([workspaceId, name])
+  @@map("initiative_tags")
+}
+
+model InitiativeTagMap {
+  initiativeId String
+  tagId        String
+  assignedAt   DateTime @default(now())
+
+  initiative Initiative    @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  tag        InitiativeTag @relation(fields: [tagId],        references: [id], onDelete: Cascade)
+
+  @@id([initiativeId, tagId])
+  @@map("initiative_tag_maps")
 }
 
 // ============================================================
