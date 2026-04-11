@@ -55,13 +55,18 @@ export function RoadmapPageClient() {
         setSelectedId,
       }}
     >
-      <div className="flex h-full">
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="h-full">
+        <main className="flex flex-col h-full min-w-0 overflow-hidden">
+          <RoadmapToolbar
+            view={view}
+            onViewChange={setView}
+            onNewInitiative={() => setShowCreate(true)}
+            onArchState={() => setShowArchState(true)}
+          />
+
           {/* Snapshot header */}
-          <div className="px-6 pt-6 pb-4 border-b bg-background shrink-0">
-            <h1 className="text-2xl font-bold text-foreground">Architecture Roadmap</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Strategic initiatives and transformation timeline</p>
-            <div className="grid grid-cols-4 gap-4 mt-5">
+          <div className="px-6 pt-4 pb-4 border-b bg-background shrink-0">
+            <div className="grid grid-cols-4 gap-4">
               {[
                 { label: "Active Initiatives", value: stats.active, color: "text-foreground" },
                 { label: "Completed", value: stats.completed, color: "text-emerald-500" },
@@ -76,27 +81,20 @@ export function RoadmapPageClient() {
             </div>
           </div>
 
-          <RoadmapToolbar
-            view={view}
-            onViewChange={setView}
-            onNewInitiative={() => setShowCreate(true)}
-            onArchState={() => setShowArchState(true)}
-          />
-
           <ObjectiveProgressStrip objectives={objectives as any} />
 
           {view === "gantt" && <GanttView />}
           {view === "lanes" && <LaneView />}
           {view === "kanban" && <KanbanView />}
         </main>
-
-        {selectedId && (
-          <InitiativeDetailPanel
-            initiativeId={selectedId}
-            onClose={() => setSelectedId(null)}
-          />
-        )}
       </div>
+
+      {selectedId && (
+        <InitiativeDetailPanel
+          initiativeId={selectedId}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
 
       <InitiativeFormModal
         open={showCreate}

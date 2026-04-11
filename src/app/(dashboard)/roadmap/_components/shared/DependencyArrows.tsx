@@ -55,8 +55,8 @@ export function DependencyArrows({
 
   return (
     <svg
-      className="absolute inset-0 pointer-events-none ml-56"
-      style={{ width: "calc(100% - 224px)", height: `${initiatives.length * ROW_HEIGHT}px` }}
+      className="absolute inset-0 pointer-events-none"
+      style={{ width: "100%", height: `${initiatives.length * ROW_HEIGHT}px` }}
       overflow="visible"
     >
       <defs>

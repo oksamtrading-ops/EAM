@@ -72,7 +72,7 @@ export function RationalizationPanel({ open, onClose, apps }: Props) {
   );
 
   return (
-    <aside className="w-[400px] border-l bg-white flex flex-col h-full shadow-lg">
+    <aside className="fixed right-0 top-0 h-screen w-[400px] z-40 border-l bg-white flex flex-col shadow-xl">
       <div className="px-5 py-4 border-b flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-[#1a1f2e]/5 flex items-center justify-center">

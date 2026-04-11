@@ -25,9 +25,9 @@ export function RoadmapToolbar({
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b bg-background shrink-0">
       <div className="flex items-center gap-2">
-        <h1 className="text-base font-semibold">Roadmap</h1>
+        <h1 className="text-base font-semibold">Architecture Roadmap</h1>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          Architecture &amp; Transformation Planning
+          Strategic initiatives and transformation timeline
         </span>
       </div>
 

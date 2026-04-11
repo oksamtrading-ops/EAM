@@ -60,7 +60,7 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
   }
 
   return (
-    <aside className="w-[400px] border-l bg-white flex flex-col h-full overflow-hidden">
+    <aside className="fixed right-0 top-0 h-screen w-[400px] z-40 border-l bg-white flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
       <div className="p-4 border-b flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

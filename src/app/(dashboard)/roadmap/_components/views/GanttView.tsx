@@ -1,18 +1,23 @@
 "use client";
 
-import { format } from "date-fns";
+import { addMonths, differenceInMonths } from "date-fns";
 import { useRoadmapContext } from "../RoadmapContext";
 import { RAGStatusDot } from "../shared/RAGStatusDot";
 import { GanttHeader } from "../shared/GanttHeader";
 import { HorizonBands } from "../shared/HorizonBands";
 import { DependencyArrows } from "../shared/DependencyArrows";
 
+const MONTH_PX = 90;       // pixels per month in the bar area
+const LABEL_W = 224;       // px — label column width
+const MIN_MONTHS = 18;     // always show at least 18 months
+const ROW_H = 44;          // h-10 (40) + mb-1 (4)
+
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-300",
   PLANNED: "bg-blue-400",
-  IN_PROGRESS: "bg-green-500",
+  IN_PROGRESS: "bg-[#86BC25]",
   ON_HOLD: "bg-yellow-400",
-  COMPLETE: "bg-green-700",
+  COMPLETE: "bg-emerald-600",
   CANCELLED: "bg-gray-300 opacity-40",
 };
 
@@ -36,126 +41,136 @@ export function GanttView() {
     );
   }
 
+  const today = now ? new Date(now) : new Date();
+
   const allDates = initiatives.flatMap((i) =>
     [i.startDate, i.endDate].filter(Boolean)
   ) as Date[];
 
-  const minDate =
-    allDates.length > 0
-      ? new Date(Math.min(...allDates.map((d) => new Date(d).getTime())))
-      : new Date();
-  const maxDate =
-    allDates.length > 0
-      ? new Date(Math.max(...allDates.map((d) => new Date(d).getTime())))
-      : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+  // minDate: earliest of today or earliest initiative date (floor to start of month)
+  const rawMin = allDates.length > 0
+    ? new Date(Math.min(...allDates.map((d) => new Date(d).getTime())))
+    : today;
+  const minDate = new Date(Math.min(today.getTime(), rawMin.getTime()));
+  minDate.setDate(1);
+  minDate.setHours(0, 0, 0, 0);
+
+  // maxDate: ensure at least MIN_MONTHS visible
+  const rawMax = allDates.length > 0
+    ? new Date(Math.max(...allDates.map((d) => new Date(d).getTime())))
+    : addMonths(today, MIN_MONTHS);
+  const minMaxDate = addMonths(minDate, MIN_MONTHS);
+  const maxDate = new Date(Math.max(rawMax.getTime(), minMaxDate.getTime()));
+
+  const totalMonths = Math.max(differenceInMonths(maxDate, minDate) + 2, MIN_MONTHS);
   const totalMs = maxDate.getTime() - minDate.getTime() || 1;
+  const chartWidth = totalMonths * MONTH_PX; // bar area total width in px
+  const totalWidth = LABEL_W + chartWidth;
 
   function pct(date: Date | null | undefined, fallback: Date): number {
     const d = date ? new Date(date) : fallback;
     return Math.max(0, Math.min(100, ((d.getTime() - minDate.getTime()) / totalMs) * 100));
   }
 
-  const todayPct = now ? pct(new Date(now), new Date()) : 0;
+  const todayPct = pct(today, today);
 
   return (
-    <div className="flex-1 overflow-auto p-4 select-none">
-      <GanttHeader minDate={minDate} maxDate={maxDate} />
+    <div className="flex-1 overflow-auto select-none">
+      <div style={{ minWidth: totalWidth }}>
+        {/* Header row */}
+        <div className="sticky top-0 z-20 bg-background border-b">
+          <GanttHeader minDate={minDate} maxDate={maxDate} labelW={LABEL_W} chartWidth={chartWidth} />
+        </div>
 
-      <div className="relative mt-1">
-        {/* Today line */}
-        <div
-          className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-20 pointer-events-none"
-          style={{ left: `calc(224px + ${todayPct}% * (100% - 224px) / 100)` }}
-        />
-
-        {/* Horizon bands (behind rows) */}
-        {horizonBoundaries && (
-          <HorizonBands
-            minDate={minDate}
-            totalMs={totalMs}
-            horizonBoundaries={{
-              H1_NOW: new Date(horizonBoundaries.H1_NOW),
-              H2_NEXT: new Date(horizonBoundaries.H2_NEXT),
-              H3_LATER: new Date(horizonBoundaries.H3_LATER),
-            }}
+        <div className="relative" style={{ paddingLeft: LABEL_W }}>
+          {/* Today line */}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-20 pointer-events-none"
+            style={{ left: `calc(${LABEL_W}px + ${todayPct}% * ${chartWidth}px / 100)` }}
           />
-        )}
 
-        {/* Initiative rows */}
-        {initiatives.map((initiative) => {
-          const left = pct(
-            initiative.startDate ? new Date(initiative.startDate) : null,
-            minDate
-          );
-          const right = pct(
-            initiative.endDate ? new Date(initiative.endDate) : null,
-            maxDate
-          );
-          const width = Math.max(right - left, 0.5);
-          const isSelected = selectedId === initiative.id;
+          {/* Horizon bands */}
+          {horizonBoundaries && (
+            <HorizonBands
+              minDate={minDate}
+              totalMs={totalMs}
+              horizonBoundaries={{
+                H1_NOW: new Date(horizonBoundaries.H1_NOW),
+                H2_NEXT: new Date(horizonBoundaries.H2_NEXT),
+                H3_LATER: new Date(horizonBoundaries.H3_LATER),
+              }}
+            />
+          )}
 
-          return (
-            <div
-              key={initiative.id}
-              className="relative h-10 mb-1 flex items-center group"
-            >
-              {/* Label */}
-              <div className="w-56 shrink-0 text-xs font-medium truncate pr-3 flex items-center gap-1.5 z-10">
-                <RAGStatusDot status={initiative.ragStatus} />
-                <span className="truncate">{initiative.name}</span>
-              </div>
+          {/* Initiative rows */}
+          {initiatives.map((initiative) => {
+            const left = pct(
+              initiative.startDate ? new Date(initiative.startDate) : null,
+              minDate
+            );
+            const right = pct(
+              initiative.endDate ? new Date(initiative.endDate) : null,
+              maxDate
+            );
+            const width = Math.max(right - left, 0.5);
+            const isSelected = selectedId === initiative.id;
 
-              {/* Bar area */}
-              <div className="flex-1 relative h-6">
+            return (
+              <div
+                key={initiative.id}
+                className="relative h-10 mb-1 flex items-center group"
+              >
+                {/* Sticky label */}
                 <div
-                  className={`absolute h-full rounded-md cursor-pointer transition-all ${STATUS_COLORS[initiative.status]} ${isSelected ? "ring-2 ring-offset-1 ring-blue-500" : "hover:brightness-110"}`}
-                  style={{ left: `${left}%`, width: `${width}%` }}
-                  onClick={() =>
-                    setSelectedId(
-                      isSelected ? null : initiative.id
-                    )
-                  }
-                  title={initiative.name}
+                  className="absolute left-0 flex items-center gap-1.5 z-10 bg-background pr-3 h-full"
+                  style={{ width: LABEL_W, marginLeft: -LABEL_W }}
                 >
-                  {/* Progress fill */}
-                  <div
-                    className="h-full rounded-md bg-black/10"
-                    style={{ width: `${initiative.progressPct}%` }}
-                  />
+                  <RAGStatusDot status={initiative.ragStatus} />
+                  <span className="text-xs font-medium truncate">{initiative.name}</span>
                 </div>
 
-                {/* Milestone diamonds */}
-                {initiative.milestones
-                  .filter((m) => m.dueDate)
-                  .map((m) => (
+                {/* Bar area */}
+                <div className="relative h-6 w-full">
+                  <div
+                    className={`absolute h-full rounded-md cursor-pointer transition-all ${STATUS_COLORS[initiative.status]} ${isSelected ? "ring-2 ring-offset-1 ring-blue-500" : "hover:brightness-110"}`}
+                    style={{ left: `${left}%`, width: `${width}%` }}
+                    onClick={() => setSelectedId(isSelected ? null : initiative.id)}
+                    title={initiative.name}
+                  >
                     <div
-                      key={m.id}
-                      className={`absolute z-10 w-3 h-3 border-2 border-white
-                        ${m.status === "COMPLETE"
-                          ? "bg-green-600"
-                          : m.isCritical
-                          ? "bg-red-500"
-                          : "bg-blue-500"
-                        }`}
-                      style={{
-                        left: `${pct(m.dueDate ? new Date(m.dueDate) : null, maxDate)}%`,
-                        top: "50%",
-                        transform: "translate(-50%, -50%) rotate(45deg)",
-                      }}
-                      title={`${m.name} — ${m.dueDate ? format(new Date(m.dueDate), "MMM d") : ""}`}
+                      className="h-full rounded-md bg-black/10"
+                      style={{ width: `${initiative.progressPct}%` }}
                     />
-                  ))}
-              </div>
-            </div>
-          );
-        })}
+                  </div>
 
-        {/* Dependency arrows overlay */}
-        <DependencyArrows
-          initiatives={initiatives as any}
-          pct={pct}
-          minDate={minDate}
-        />
+                  {/* Milestone diamonds */}
+                  {initiative.milestones
+                    .filter((m) => m.dueDate)
+                    .map((m) => (
+                      <div
+                        key={m.id}
+                        className={`absolute z-10 w-3 h-3 border-2 border-white
+                          ${m.status === "COMPLETE" ? "bg-emerald-600" : m.isCritical ? "bg-red-500" : "bg-blue-500"}`}
+                        style={{
+                          left: `${pct(m.dueDate ? new Date(m.dueDate) : null, maxDate)}%`,
+                          top: "50%",
+                          transform: "translate(-50%, -50%) rotate(45deg)",
+                        }}
+                        title={m.name}
+                      />
+                    ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Dependency arrows */}
+          <DependencyArrows
+            initiatives={initiatives as any}
+            pct={pct}
+            minDate={minDate}
+          />
+        </div>
       </div>
     </div>
   );

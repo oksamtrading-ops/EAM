@@ -42,7 +42,7 @@ export function AISuggestionPanel({ open, onClose, tree }: Props) {
   if (!open) return null;
 
   return (
-    <aside className="w-[420px] border-l bg-white flex flex-col h-full shadow-lg">
+    <aside className="fixed right-0 top-0 h-screen w-[420px] z-40 border-l bg-white flex flex-col shadow-xl">
       {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#86BC25]/5 to-transparent">
         <div className="flex items-center gap-2">

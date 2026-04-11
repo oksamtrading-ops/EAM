@@ -80,7 +80,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
 
   if (isLoading || !cap) {
     return (
-      <aside className="w-96 border-l bg-background p-4">
+      <aside className="fixed right-0 top-0 h-screen w-96 z-40 border-l bg-background p-4 shadow-xl">
         <div className="animate-pulse">Loading...</div>
       </aside>
     );
@@ -90,7 +90,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
     MATURITY_NUMERIC[cap.targetMaturity] - MATURITY_NUMERIC[cap.currentMaturity];
 
   return (
-    <aside className="w-96 border-l bg-background flex flex-col h-full overflow-hidden">
+    <aside className="fixed right-0 top-0 h-screen w-96 z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
       <div className="p-4 border-b flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

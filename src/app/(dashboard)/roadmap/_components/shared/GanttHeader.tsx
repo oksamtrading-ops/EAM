@@ -3,11 +3,15 @@ import { format, addMonths, startOfMonth } from "date-fns";
 export function GanttHeader({
   minDate,
   maxDate,
+  labelW,
+  chartWidth,
 }: {
   minDate: Date;
   maxDate: Date;
+  labelW: number;
+  chartWidth: number;
 }) {
-  const totalMs = maxDate.getTime() - minDate.getTime();
+  const totalMs = maxDate.getTime() - minDate.getTime() || 1;
   const months: { label: string; pct: number }[] = [];
 
   let cursor = startOfMonth(minDate);
@@ -21,16 +25,23 @@ export function GanttHeader({
   }
 
   return (
-    <div className="relative h-7 border-b ml-56 select-none">
-      {months.map((m) => (
-        <span
-          key={m.label}
-          className="absolute top-1 text-[10px] text-muted-foreground font-medium"
-          style={{ left: `${m.pct}%` }}
-        >
-          {m.label}
-        </span>
-      ))}
+    <div className="flex">
+      {/* Label column spacer */}
+      <div style={{ width: labelW, minWidth: labelW }} className="shrink-0 border-r bg-background" />
+      {/* Chart header */}
+      <div className="relative h-8 flex-1 overflow-hidden" style={{ minWidth: chartWidth }}>
+        {months.map((m) => (
+          <div
+            key={m.label}
+            className="absolute top-0 h-full flex items-center border-r border-border/40"
+            style={{ left: `${m.pct}%` }}
+          >
+            <span className="pl-1.5 text-[10px] text-muted-foreground font-medium whitespace-nowrap">
+              {m.label}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

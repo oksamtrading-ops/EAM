@@ -32,7 +32,7 @@ export function HorizonBands({
   }
 
   return (
-    <div className="absolute inset-0 pointer-events-none ml-56">
+    <div className="absolute inset-0 pointer-events-none">
       {bands.map((band) => {
         const left = pct(band.from);
         const width = pct(band.to) - left;
