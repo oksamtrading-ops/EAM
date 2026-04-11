@@ -211,18 +211,34 @@ export function InitiativeDetailPanel({
 
                   {/* AI Risk Assessment */}
                   <div className="border-t pt-4">
-                    <button
-                      onClick={handleAssessRisks}
-                      disabled={loadingRisk}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border text-xs font-medium hover:bg-muted/50 disabled:opacity-50 transition-colors"
-                    >
-                      {loadingRisk ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                      )}
-                      Assess Risks
-                    </button>
+                    <div className="group relative">
+                      <button
+                        onClick={handleAssessRisks}
+                        disabled={loadingRisk}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-purple-200 bg-purple-50/50 text-purple-700 text-xs font-medium hover:bg-purple-100 disabled:opacity-50 transition-colors"
+                      >
+                        {loadingRisk ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                        )}
+                        Assess Risks
+                        <span className="ml-1 text-[9px] font-semibold uppercase tracking-wide bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full">
+                          AI
+                        </span>
+                      </button>
+
+                      {/* Hover tooltip */}
+                      <div className="absolute bottom-full left-0 right-0 mb-2 hidden group-hover:block z-50">
+                        <div className="bg-[#1a1f2e] text-white text-[11px] rounded-lg px-3 py-2.5 shadow-lg leading-relaxed">
+                          <p className="font-semibold text-purple-300 mb-1">AI-powered risk assessment</p>
+                          <p className="text-white/80">
+                            Analyses this initiative's timeline, budget, milestones, and dependencies using Claude AI to identify schedule, budget, scope, and change-management risks — each with likelihood, impact, and a recommended mitigation action.
+                          </p>
+                        </div>
+                        <div className="w-3 h-3 bg-[#1a1f2e] rotate-45 mx-auto -mt-1.5" />
+                      </div>
+                    </div>
 
                     {riskResult && (
                       <div className="mt-3 space-y-2">
