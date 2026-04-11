@@ -79,8 +79,7 @@ export function InitiativeCard({
       )}
 
       {/* Milestone progress */}
-      <ProgressBar value={initiative.progressPct} showLabel className="mb-1" />
-      <p className="text-[9px] text-muted-foreground mb-2">Milestone progress</p>
+      <ProgressBar value={initiative.progressPct} showLabel className="mb-2" />
 
       {/* Time progress */}
       {timePct !== null && !isCancelled && (

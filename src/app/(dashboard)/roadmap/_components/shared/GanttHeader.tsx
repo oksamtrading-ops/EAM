@@ -33,10 +33,10 @@ export function GanttHeader({
         {months.map((m) => (
           <div
             key={m.label}
-            className="absolute top-0 h-full flex items-center border-r border-border/40"
+            className="absolute top-0 h-full flex items-center border-r border-border/30"
             style={{ left: `${m.pct}%` }}
           >
-            <span className="pl-1.5 text-[10px] text-muted-foreground font-medium whitespace-nowrap">
+            <span className="pl-1 text-[9px] text-muted-foreground font-semibold whitespace-nowrap tracking-tight uppercase">
               {m.label}
             </span>
           </div>

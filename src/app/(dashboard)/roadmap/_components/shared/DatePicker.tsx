@@ -96,7 +96,7 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 border rounded-md px-3 py-2 text-sm text-left focus:outline-none focus:ring-1 focus:ring-[#86BC25] bg-background hover:border-gray-400 transition-colors"
+        className="w-full h-10 flex items-center gap-2 border rounded-md px-3 text-sm text-left focus:outline-none focus:ring-1 focus:ring-[#86BC25] bg-background hover:border-gray-400 transition-colors"
       >
         <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className={cn("flex-1", !value && "text-muted-foreground")}>

@@ -7,8 +7,8 @@ import { GanttHeader } from "../shared/GanttHeader";
 import { HorizonBands } from "../shared/HorizonBands";
 import { DependencyArrows } from "../shared/DependencyArrows";
 
-const MONTH_PX = 90;       // pixels per month in the bar area
-const LABEL_W = 224;       // px — label column width
+const MONTH_PX = 70;       // pixels per month in the bar area
+const LABEL_W = 200;       // px — label column width
 const MIN_MONTHS = 18;     // always show at least 18 months
 const ROW_H = 44;          // h-10 (40) + mb-1 (4)
 
@@ -77,29 +77,35 @@ export function GanttView() {
   return (
     <div className="flex-1 overflow-auto select-none">
       <div style={{ minWidth: totalWidth }}>
-        {/* Header row */}
-        <div className="sticky top-0 z-20 bg-background border-b">
+        {/* Sticky header row */}
+        <div className="sticky top-0 z-30 bg-background border-b">
           <GanttHeader minDate={minDate} maxDate={maxDate} labelW={LABEL_W} chartWidth={chartWidth} />
         </div>
 
-        <div className="relative" style={{ paddingLeft: LABEL_W }}>
-          {/* Today line */}
+        {/* Rows */}
+        <div className="relative">
+          {/* Today line — positioned over entire chart area */}
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-20 pointer-events-none"
-            style={{ left: `calc(${LABEL_W}px + ${todayPct}% * ${chartWidth}px / 100)` }}
+            style={{ left: `${LABEL_W + (todayPct / 100) * chartWidth}px` }}
           />
 
-          {/* Horizon bands */}
+          {/* Horizon bands sit behind the bar area only */}
           {horizonBoundaries && (
-            <HorizonBands
-              minDate={minDate}
-              totalMs={totalMs}
-              horizonBoundaries={{
-                H1_NOW: new Date(horizonBoundaries.H1_NOW),
-                H2_NEXT: new Date(horizonBoundaries.H2_NEXT),
-                H3_LATER: new Date(horizonBoundaries.H3_LATER),
-              }}
-            />
+            <div
+              className="absolute top-0 bottom-0 pointer-events-none"
+              style={{ left: LABEL_W, right: 0 }}
+            >
+              <HorizonBands
+                minDate={minDate}
+                totalMs={totalMs}
+                horizonBoundaries={{
+                  H1_NOW: new Date(horizonBoundaries.H1_NOW),
+                  H2_NEXT: new Date(horizonBoundaries.H2_NEXT),
+                  H3_LATER: new Date(horizonBoundaries.H3_LATER),
+                }}
+              />
+            </div>
           )}
 
           {/* Initiative rows */}
@@ -116,21 +122,18 @@ export function GanttView() {
             const isSelected = selectedId === initiative.id;
 
             return (
-              <div
-                key={initiative.id}
-                className="relative h-10 mb-1 flex items-center group"
-              >
-                {/* Sticky label */}
+              <div key={initiative.id} className="flex items-center h-10 mb-1 group">
+                {/* Sticky label column */}
                 <div
-                  className="absolute left-0 flex items-center gap-1.5 z-10 bg-background pr-3 h-full"
-                  style={{ width: LABEL_W, marginLeft: -LABEL_W }}
+                  className="sticky left-0 z-10 bg-background flex items-center gap-1.5 pr-3 h-full border-r shrink-0"
+                  style={{ width: LABEL_W }}
                 >
                   <RAGStatusDot status={initiative.ragStatus} />
                   <span className="text-xs font-medium truncate">{initiative.name}</span>
                 </div>
 
                 {/* Bar area */}
-                <div className="relative h-6 w-full">
+                <div className="relative h-6 flex-1">
                   <div
                     className={`absolute h-full rounded-md cursor-pointer transition-all ${STATUS_COLORS[initiative.status]} ${isSelected ? "ring-2 ring-offset-1 ring-blue-500" : "hover:brightness-110"}`}
                     style={{ left: `${left}%`, width: `${width}%` }}
@@ -164,12 +167,14 @@ export function GanttView() {
             );
           })}
 
-          {/* Dependency arrows */}
-          <DependencyArrows
-            initiatives={initiatives as any}
-            pct={pct}
-            minDate={minDate}
-          />
+          {/* Dependency arrows — offset to bar area start */}
+          <div style={{ marginLeft: LABEL_W }}>
+            <DependencyArrows
+              initiatives={initiatives as any}
+              pct={pct}
+              minDate={minDate}
+            />
+          </div>
         </div>
       </div>
     </div>

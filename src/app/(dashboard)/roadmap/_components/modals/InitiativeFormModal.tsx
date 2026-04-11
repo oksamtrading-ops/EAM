@@ -218,7 +218,7 @@ export function InitiativeFormModal({
               required
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+              className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
               placeholder="Initiative name"
             />
           </div>
@@ -244,7 +244,7 @@ export function InitiativeFormModal({
               <select
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="w-full border rounded-md px-2 py-2 text-sm focus:outline-none"
+                className="w-full h-10 border rounded-md px-2 text-sm focus:outline-none"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -260,7 +260,7 @@ export function InitiativeFormModal({
               <select
                 value={form.horizon}
                 onChange={(e) => setForm((f) => ({ ...f, horizon: e.target.value }))}
-                className="w-full border rounded-md px-2 py-2 text-sm focus:outline-none"
+                className="w-full h-10 border rounded-md px-2 text-sm focus:outline-none"
               >
                 {HORIZONS.map((h) => (
                   <option key={h} value={h}>
@@ -276,7 +276,7 @@ export function InitiativeFormModal({
               <select
                 value={form.priority}
                 onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-                className="w-full border rounded-md px-2 py-2 text-sm focus:outline-none"
+                className="w-full h-10 border rounded-md px-2 text-sm focus:outline-none"
               >
                 {PRIORITIES.map((p) => (
                   <option key={p} value={p}>
@@ -296,7 +296,7 @@ export function InitiativeFormModal({
                 <select
                   value={form.status}
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  className="w-full border rounded-md px-2 py-2 text-sm focus:outline-none"
+                  className="w-full h-10 border rounded-md px-2 text-sm focus:outline-none"
                 >
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -312,7 +312,7 @@ export function InitiativeFormModal({
                 <select
                   value={form.ragStatus}
                   onChange={(e) => setForm((f) => ({ ...f, ragStatus: e.target.value }))}
-                  className="w-full border rounded-md px-2 py-2 text-sm focus:outline-none"
+                  className="w-full h-10 border rounded-md px-2 text-sm focus:outline-none"
                 >
                   {["GREEN", "AMBER", "RED"].map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -354,7 +354,7 @@ export function InitiativeFormModal({
                 <select
                   value={form.budgetCurrency}
                   onChange={(e) => setForm((f) => ({ ...f, budgetCurrency: e.target.value }))}
-                  className="border rounded-md px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25] w-24 shrink-0"
+                  className="h-10 border rounded-md px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25] w-24 shrink-0"
                 >
                   {CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>{c.code}</option>
@@ -365,7 +365,7 @@ export function InitiativeFormModal({
                   min={0}
                   value={form.budgetUsd}
                   onChange={(e) => setForm((f) => ({ ...f, budgetUsd: e.target.value }))}
-                  className="flex-1 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                  className="flex-1 h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
                   placeholder="e.g. 500000"
                 />
               </div>
@@ -377,7 +377,7 @@ export function InitiativeFormModal({
               <input
                 value={form.businessSponsor}
                 onChange={(e) => setForm((f) => ({ ...f, businessSponsor: e.target.value }))}
-                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none"
                 placeholder="Sponsor name"
               />
             </div>
