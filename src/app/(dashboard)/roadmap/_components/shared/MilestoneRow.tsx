@@ -24,23 +24,36 @@ type Milestone = {
 export function MilestoneRow({
   milestone,
   onComplete,
+  onRevert,
 }: {
   milestone: Milestone;
   onComplete?: (id: string) => void;
+  onRevert?: (id: string) => void;
 }) {
+  const isComplete = milestone.status === "COMPLETE";
+  const isCancelled = milestone.status === "CANCELLED";
+
+  function handleToggle() {
+    if (isCancelled) return;
+    if (isComplete) {
+      onRevert?.(milestone.id);
+    } else {
+      onComplete?.(milestone.id);
+    }
+  }
+
   return (
     <div
       className={cn(
         "flex items-center gap-3 py-2 px-3 rounded-md hover:bg-muted/50 group",
-        milestone.status === "CANCELLED" && "opacity-50"
+        isCancelled && "opacity-50"
       )}
     >
       <button
-        onClick={() =>
-          milestone.status !== "COMPLETE" && onComplete?.(milestone.id)
-        }
+        onClick={handleToggle}
         className="shrink-0"
-        disabled={milestone.status === "COMPLETE" || milestone.status === "CANCELLED"}
+        disabled={isCancelled}
+        title={isComplete ? "Click to revert to Not Started" : "Mark as complete"}
       >
         {STATUS_ICON[milestone.status] ?? STATUS_ICON.NOT_STARTED}
       </button>

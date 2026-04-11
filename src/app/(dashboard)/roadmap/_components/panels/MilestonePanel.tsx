@@ -21,6 +21,13 @@ export function MilestonePanel({ initiativeId }: { initiativeId: string }) {
     },
   });
 
+  const revertMutation = trpc.milestone.update.useMutation({
+    onSuccess: () => {
+      utils.initiative.getById.invalidate({ id: initiativeId });
+      utils.initiative.getRoadmapData.invalidate();
+    },
+  });
+
   const milestones = initiative?.milestones ?? [];
 
   return (
@@ -49,6 +56,7 @@ export function MilestonePanel({ initiativeId }: { initiativeId: string }) {
               key={m.id}
               milestone={m as any}
               onComplete={(id) => completeMutation.mutate({ id })}
+              onRevert={(id) => revertMutation.mutate({ id, status: "NOT_STARTED" })}
             />
           ))
         )}

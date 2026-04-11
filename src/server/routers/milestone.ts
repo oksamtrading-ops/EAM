@@ -36,6 +36,8 @@ export const milestoneRouter = router({
         },
       });
 
+      await recalculateInitiativeProgress(ctx.db, input.initiativeId);
+
       auditLog(ctx, {
         action: "CREATE",
         entityType: "Milestone",
@@ -75,8 +77,14 @@ export const milestoneRouter = router({
           ...(dueDate !== undefined
             ? { dueDate: dueDate ? new Date(dueDate) : null }
             : {}),
+          // Clear completedAt when reverting away from COMPLETE
+          ...(data.status && data.status !== "COMPLETE" ? { completedAt: null } : {}),
         },
       });
+
+      if (data.status !== undefined) {
+        await recalculateInitiativeProgress(ctx.db, existing.initiativeId);
+      }
 
       auditLog(ctx, {
         action: "UPDATE",

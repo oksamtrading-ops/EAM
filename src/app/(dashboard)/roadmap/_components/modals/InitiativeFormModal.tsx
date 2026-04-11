@@ -5,6 +5,20 @@ import { X, Loader2, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 
+const EMPTY_FORM = {
+  name: "",
+  description: "",
+  category: "MODERNISATION",
+  status: "DRAFT",
+  priority: "MEDIUM",
+  horizon: "H2_NEXT",
+  startDate: "",
+  endDate: "",
+  budgetUsd: "",
+  businessSponsor: "",
+  ragStatus: "GREEN",
+};
+
 const CATEGORIES = [
   "MODERNISATION",
   "CONSOLIDATION",
@@ -69,6 +83,7 @@ export function InitiativeFormModal({
     onSuccess: () => {
       toast.success("Initiative created");
       utils.initiative.getRoadmapData.invalidate();
+      setForm(EMPTY_FORM);
       onClose();
     },
     onError: (e) => toast.error(e.message),
