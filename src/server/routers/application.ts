@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { auditLog } from "@/server/services/audit";
-import type { ApplicationLifecycle, RationalizationStatus } from "@/generated/prisma/client";
+import type { ApplicationLifecycle, RationalizationStatus, CostModel } from "@/generated/prisma/client";
 
 const ApplicationCreateInput = z.object({
   name: z.string().min(1).max(300),
@@ -19,6 +19,11 @@ const ApplicationCreateInput = z.object({
   technicalHealth: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR", "TH_CRITICAL", "TH_UNKNOWN"]).default("TH_UNKNOWN"),
   rationalizationStatus: z.enum(["KEEP", "INVEST", "MIGRATE", "RETIRE", "CONSOLIDATE", "EVALUATE", "RAT_NOT_ASSESSED"]).default("RAT_NOT_ASSESSED"),
   annualCostUsd: z.number().positive().optional(),
+  costCurrency: z.string().default("USD"),
+  costModel: z.enum(["LICENSE_PER_USER", "LICENSE_FLAT", "SUBSCRIPTION", "USAGE_BASED", "OPEN_SOURCE", "INTERNAL"]).optional(),
+  costNotes: z.string().optional(),
+  costRenewalDate: z.string().optional(),
+  licensedUsers: z.number().int().positive().optional(),
   businessOwnerName: z.string().optional(),
   itOwnerName: z.string().optional(),
   capabilityIds: z.array(z.string()).optional(),
@@ -39,6 +44,11 @@ const ApplicationUpdateInput = z.object({
   technicalHealth: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR", "TH_CRITICAL", "TH_UNKNOWN"]).optional(),
   rationalizationStatus: z.enum(["KEEP", "INVEST", "MIGRATE", "RETIRE", "CONSOLIDATE", "EVALUATE", "RAT_NOT_ASSESSED"]).optional(),
   annualCostUsd: z.number().positive().nullable().optional(),
+  costCurrency: z.string().optional(),
+  costModel: z.enum(["LICENSE_PER_USER", "LICENSE_FLAT", "SUBSCRIPTION", "USAGE_BASED", "OPEN_SOURCE", "INTERNAL"]).nullable().optional(),
+  costNotes: z.string().nullable().optional(),
+  costRenewalDate: z.string().nullable().optional(),
+  licensedUsers: z.number().int().positive().nullable().optional(),
   businessOwnerName: z.string().nullable().optional(),
   itOwnerName: z.string().nullable().optional(),
   capabilityIds: z.array(z.string()).optional(),
@@ -96,13 +106,14 @@ export const applicationRouter = router({
   create: workspaceProcedure
     .input(ApplicationCreateInput)
     .mutation(async ({ ctx, input }) => {
-      const { capabilityIds, lifecycleStartDate, lifecycleEndDate, annualCostUsd, ...data } = input;
+      const { capabilityIds, lifecycleStartDate, lifecycleEndDate, annualCostUsd, costRenewalDate, ...data } = input;
 
       const app = await ctx.db.application.create({
         data: {
           ...data,
           workspaceId: ctx.workspaceId,
           annualCostUsd: annualCostUsd ?? null,
+          costRenewalDate: costRenewalDate ? new Date(costRenewalDate) : null,
           lifecycleStartDate: lifecycleStartDate ? new Date(lifecycleStartDate) : null,
           lifecycleEndDate: lifecycleEndDate ? new Date(lifecycleEndDate) : null,
           capabilities: capabilityIds?.length
@@ -117,7 +128,7 @@ export const applicationRouter = router({
   update: workspaceProcedure
     .input(ApplicationUpdateInput)
     .mutation(async ({ ctx, input }) => {
-      const { id, capabilityIds, lifecycleEndDate, annualCostUsd, ...data } = input;
+      const { id, capabilityIds, lifecycleEndDate, annualCostUsd, costRenewalDate, ...data } = input;
 
       const existing = await ctx.db.application.findFirst({
         where: { id, workspaceId: ctx.workspaceId },
@@ -146,6 +157,9 @@ export const applicationRouter = router({
               : {}),
             ...(annualCostUsd !== undefined
               ? { annualCostUsd: annualCostUsd ?? null }
+              : {}),
+            ...(costRenewalDate !== undefined
+              ? { costRenewalDate: costRenewalDate ? new Date(costRenewalDate) : null }
               : {}),
           },
         });

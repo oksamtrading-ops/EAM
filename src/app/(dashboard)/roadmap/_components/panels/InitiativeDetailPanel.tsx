@@ -288,6 +288,7 @@ export function InitiativeDetailPanel({
           open={showEdit}
           initiative={initiative as any}
           onClose={() => setShowEdit(false)}
+          onDeleted={onClose}
         />
       )}
     </>

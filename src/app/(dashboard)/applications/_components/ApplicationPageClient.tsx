@@ -11,6 +11,7 @@ import { RationalizationMatrix } from "./views/RationalizationMatrix";
 import { ApplicationDetailPanel } from "./panels/ApplicationDetailPanel";
 import { RationalizationPanel } from "./panels/RationalizationPanel";
 import { CreateApplicationDialog } from "./modals/CreateApplicationDialog";
+import { ImportExcelDialog } from "./modals/ImportExcelDialog";
 import { AppWindow } from "lucide-react";
 
 export type AppViewMode = "table" | "landscape" | "matrix";
@@ -19,6 +20,7 @@ export function ApplicationPageClient() {
   const [view, setView] = useState<AppViewMode>("table");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [showRationalization, setShowRationalization] = useState(false);
 
   const { workspaceId } = useWorkspace();
@@ -56,6 +58,7 @@ export function ApplicationPageClient() {
           view={view}
           onViewChange={setView}
           onCreateNew={() => setShowCreate(true)}
+          onImport={() => setShowImport(true)}
           onExport={handleExport}
           onRationalization={() => setShowRationalization(!showRationalization)}
           showRationalization={showRationalization}
@@ -120,6 +123,11 @@ export function ApplicationPageClient() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
         capTree={capTree ?? []}
+      />
+
+      <ImportExcelDialog
+        open={showImport}
+        onClose={() => setShowImport(false)}
       />
     </div>
   );

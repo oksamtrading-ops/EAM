@@ -41,8 +41,9 @@ export function RoadmapPageClient() {
     const active = all.filter((i) => i.status !== "CANCELLED" && i.status !== "COMPLETE").length;
     const completed = all.filter((i) => i.status === "COMPLETE").length;
     const inProgress = all.filter((i) => i.status === "IN_PROGRESS").length;
+    const cancelled = all.filter((i) => i.status === "CANCELLED").length;
     const totalUsd = all.reduce((sum, i) => sum + (i.budgetUsd ? Number(i.budgetUsd) : 0), 0);
-    return { active, completed, inProgress, totalUsd };
+    return { active, completed, inProgress, cancelled, totalUsd };
   }, [roadmap?.initiatives]);
 
   return (
@@ -66,14 +67,15 @@ export function RoadmapPageClient() {
 
           {/* Snapshot header */}
           <div className="px-6 pt-4 pb-4 border-b bg-background shrink-0">
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {[
                 { label: "Active Initiatives", value: stats.active, color: "text-foreground" },
                 { label: "Completed", value: stats.completed, color: "text-emerald-500" },
                 { label: "In Progress", value: stats.inProgress, color: "text-blue-500" },
+                { label: "Cancelled", value: stats.cancelled, color: "text-rose-500" },
                 { label: "Total Investment", value: formatBudget(stats.totalUsd) ?? "—", color: "text-foreground" },
               ].map((s) => (
-                <div key={s.label} className="bg-white rounded-xl border p-4 shadow-sm">
+                <div key={s.label} data-slot="card" className="bg-white rounded-xl border p-4 shadow-sm">
                   <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
                   <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
                 </div>

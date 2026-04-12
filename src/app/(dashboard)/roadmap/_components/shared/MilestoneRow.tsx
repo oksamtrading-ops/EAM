@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { CheckCircle2, Circle, AlertCircle, Ban, Clock } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Ban, Clock, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -25,10 +25,14 @@ export function MilestoneRow({
   milestone,
   onComplete,
   onRevert,
+  onEdit,
+  onDelete,
 }: {
   milestone: Milestone;
   onComplete?: (id: string) => void;
   onRevert?: (id: string) => void;
+  onEdit?: (milestone: Milestone) => void;
+  onDelete?: (id: string) => void;
 }) {
   const isComplete = milestone.status === "COMPLETE";
   const isCancelled = milestone.status === "CANCELLED";
@@ -65,7 +69,7 @@ export function MilestoneRow({
           )}
         >
           {milestone.isCritical && (
-            <span className="mr-1 text-red-500 text-[10px] font-bold uppercase">
+            <span className="mr-1 text-red-500 text-xs font-bold uppercase">
               CP
             </span>
           )}
@@ -78,10 +82,30 @@ export function MilestoneRow({
         )}
       </div>
       {milestone.dueDate && (
-        <span className="text-[11px] text-muted-foreground shrink-0">
+        <span className="text-xs text-muted-foreground shrink-0">
           {format(new Date(milestone.dueDate), "MMM d")}
         </span>
       )}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {onEdit && !isCancelled && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(milestone); }}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+            title="Edit milestone"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(milestone.id); }}
+            className="p-1 rounded hover:bg-rose-50 text-muted-foreground hover:text-rose-500"
+            title="Delete milestone"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

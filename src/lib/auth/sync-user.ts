@@ -20,20 +20,38 @@ export async function syncUser() {
     },
   });
 
-  // Ensure a default workspace exists
-  let workspace = await db.workspace.findFirst({
-    where: { userId: user.id },
+  // Fetch all active workspaces for this user
+  let workspaces = await db.workspace.findMany({
+    where: { userId: user.id, isActive: true },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
   });
 
-  if (!workspace) {
-    workspace = await db.workspace.create({
+  // Ensure at least one workspace exists
+  if (workspaces.length === 0) {
+    const ws = await db.workspace.create({
       data: {
         name: "My Workspace",
         slug: `ws-${user.id}`,
         userId: user.id,
+        isDefault: true,
+        isActive: true,
       },
     });
+    workspaces = [ws];
   }
 
-  return { user, workspace };
+  // Ensure exactly one default workspace
+  const hasDefault = workspaces.some((w) => w.isDefault);
+  if (!hasDefault) {
+    await db.workspace.update({
+      where: { id: workspaces[0]!.id },
+      data: { isDefault: true },
+    });
+    workspaces[0] = { ...workspaces[0]!, isDefault: true };
+  }
+
+  // The "default" workspace is the first one (sorted by isDefault desc)
+  const defaultWorkspace = workspaces.find((w) => w.isDefault) ?? workspaces[0]!;
+
+  return { user, workspaces, defaultWorkspace };
 }

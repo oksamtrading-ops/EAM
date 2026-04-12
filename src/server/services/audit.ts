@@ -3,7 +3,8 @@
 type AuditContext = {
   db: any;
   workspaceId: string;
-  userId?: string | null;
+  dbUserId?: string;     // DB User.id — used as the FK for AuditLog.userId
+  userId?: string | null; // Clerk user ID — NOT a DB FK
 };
 
 type AuditPayload = {
@@ -20,7 +21,7 @@ export function auditLog(ctx: AuditContext, payload: AuditPayload): void {
     .create({
       data: {
         workspaceId: ctx.workspaceId,
-        userId: ctx.userId ?? null,
+        userId: ctx.dbUserId ?? null,
         action: payload.action,
         entityType: payload.entityType,
         entityId: payload.entityId,

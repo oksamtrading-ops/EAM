@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   LIFECYCLE_COLORS, LIFECYCLE_LABELS,
   BV_LABELS, BV_COLORS,
@@ -9,6 +12,8 @@ import {
   RAT_LABELS, RAT_COLORS,
   APP_TYPE_LABELS,
 } from "@/lib/constants/application-colors";
+import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
 
 type Props = {
   apps: any[];
@@ -17,6 +22,18 @@ type Props = {
 };
 
 export function TableView({ apps, onSelect, selectedId }: Props) {
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const utils = trpc.useUtils();
+
+  const deleteMutation = trpc.application.delete.useMutation({
+    onSuccess: () => {
+      utils.application.list.invalidate();
+      setPendingDeleteId(null);
+      toast.success("Application deleted");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   return (
     <div className="bg-white rounded-xl border overflow-hidden">
       <table className="w-full text-sm">
@@ -31,15 +48,16 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Rationalization</th>
             <th className="text-right px-4 py-3 font-medium text-xs text-muted-foreground">Cost/yr</th>
             <th className="text-center px-4 py-3 font-medium text-xs text-muted-foreground">Caps</th>
+            <th className="w-8 px-2 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y">
           {apps.map((app) => (
             <tr
               key={app.id}
-              onClick={() => onSelect(app.id)}
+              onClick={() => { if (pendingDeleteId !== app.id) onSelect(app.id); }}
               className={cn(
-                "cursor-pointer transition-colors hover:bg-[#fafbfc]",
+                "group cursor-pointer transition-colors hover:bg-[#fafbfc]",
                 selectedId === app.id && "bg-[#86BC25]/5"
               )}
             >
@@ -58,26 +76,79 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
                 </span>
               </td>
               <td className="px-4 py-3">
-                <StatusPill color={LIFECYCLE_COLORS[app.lifecycle]} label={LIFECYCLE_LABELS[app.lifecycle]} />
+                <Tooltip>
+                  <TooltipTrigger ><span className="cursor-help"><StatusPill color={LIFECYCLE_COLORS[app.lifecycle]} label={LIFECYCLE_LABELS[app.lifecycle]} /></span></TooltipTrigger>
+                  <TooltipContent side="top">Lifecycle: {LIFECYCLE_LABELS[app.lifecycle] ?? app.lifecycle}</TooltipContent>
+                </Tooltip>
               </td>
               <td className="px-4 py-3">
-                <StatusPill color={BV_COLORS[app.businessValue]} label={BV_LABELS[app.businessValue]} />
+                <Tooltip>
+                  <TooltipTrigger ><span className="cursor-help"><StatusPill color={BV_COLORS[app.businessValue]} label={BV_LABELS[app.businessValue]} /></span></TooltipTrigger>
+                  <TooltipContent side="top">Business Value — revenue and strategic impact of this application</TooltipContent>
+                </Tooltip>
               </td>
               <td className="px-4 py-3">
-                <StatusPill color={TH_COLORS[app.technicalHealth]} label={TH_LABELS[app.technicalHealth]} />
+                <Tooltip>
+                  <TooltipTrigger ><span className="cursor-help"><StatusPill color={TH_COLORS[app.technicalHealth]} label={TH_LABELS[app.technicalHealth]} /></span></TooltipTrigger>
+                  <TooltipContent side="top">Technical Health — code quality, architecture fitness, and maintainability</TooltipContent>
+                </Tooltip>
               </td>
               <td className="px-4 py-3">
-                <StatusPill color={RAT_COLORS[app.rationalizationStatus]} label={RAT_LABELS[app.rationalizationStatus]} />
+                <Tooltip>
+                  <TooltipTrigger ><span className="cursor-help"><StatusPill color={RAT_COLORS[app.rationalizationStatus]} label={RAT_LABELS[app.rationalizationStatus]} /></span></TooltipTrigger>
+                  <TooltipContent side="top">Rationalization — recommended disposition: Keep, Migrate, Consolidate, or Retire</TooltipContent>
+                </Tooltip>
               </td>
               <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                {app.annualCostUsd
-                  ? `$${Number(app.annualCostUsd).toLocaleString()}`
-                  : "—"}
+                <Tooltip>
+                  <TooltipTrigger >
+                    <span className="cursor-help">
+                      {app.annualCostUsd ? `$${Number(app.annualCostUsd).toLocaleString()}` : "—"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Annual operating cost in USD</TooltipContent>
+                </Tooltip>
               </td>
               <td className="px-4 py-3 text-center">
-                <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-0.5 rounded-full">
-                  {app.capabilities?.length ?? 0}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger >
+                    <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-0.5 rounded-full cursor-help">
+                      {app.capabilities?.length ?? 0}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Linked business capabilities</TooltipContent>
+                </Tooltip>
+              </td>
+              <td className="px-2 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                {pendingDeleteId === app.id ? (
+                  <div className="flex items-center gap-1 justify-end">
+                    <button
+                      onClick={() => deleteMutation.mutate({ id: app.id })}
+                      disabled={deleteMutation.isPending}
+                      className="text-xs text-white bg-rose-500 hover:bg-rose-600 px-2 py-0.5 rounded font-medium disabled:opacity-50"
+                    >
+                      {deleteMutation.isPending ? "…" : "Delete"}
+                    </button>
+                    <button
+                      onClick={() => setPendingDeleteId(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground px-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger >
+                      <button
+                        onClick={() => setPendingDeleteId(app.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">Delete application</TooltipContent>
+                  </Tooltip>
+                )}
               </td>
             </tr>
           ))}

@@ -27,6 +27,25 @@ export const tagRouter = router({
       });
     }),
 
+  update: workspaceProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).max(50).optional(),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tag = await ctx.db.capabilityTag.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+      });
+      if (!tag) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const { id, ...data } = input;
+      return ctx.db.capabilityTag.update({ where: { id }, data });
+    }),
+
   delete: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

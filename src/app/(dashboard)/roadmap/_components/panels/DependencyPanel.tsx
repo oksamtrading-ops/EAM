@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -9,6 +9,8 @@ import {
   Handle,
   Position,
   MarkerType,
+  useNodesState,
+  type Node,
   type Connection,
   type Edge,
 } from "@xyflow/react";
@@ -86,7 +88,9 @@ export function DependencyPanel() {
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
-      const nameMap = new Map((initiatives ?? []).map((i) => [i.id, i.name]));
+      const nameMap = new Map(
+        (initiatives ?? []).filter((i) => i.status !== "CANCELLED").map((i) => [i.id, i.name])
+      );
       setSelectedEdge({
         id: edge.id,
         source: edge.source,
@@ -98,35 +102,49 @@ export function DependencyPanel() {
     [initiatives]
   );
 
-  const { nodes, edges } = useMemo(() => {
-    const nodes = (initiatives ?? []).map((initiative, i) => ({
-      id: initiative.id,
-      type: "initiativeNode",
-      position: { x: (i % 4) * 240, y: Math.floor(i / 4) * 130 },
-      data: { initiative },
-    }));
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<{ initiative: any }>>([]);
 
-    const edges = (initiatives ?? []).flatMap((initiative) =>
-      initiative.dependsOn.map((dep) => ({
-        id: `${dep.blockingId}-${initiative.id}`,
-        source: dep.blockingId,
-        target: initiative.id,
-        type: "smoothstep",
-        markerEnd: { type: MarkerType.ArrowClosed },
-        style: { stroke: "#94a3b8", strokeWidth: 2, cursor: "pointer" },
-      }))
+  useEffect(() => {
+    const active = (initiatives ?? []).filter((i) => i.status !== "CANCELLED");
+    setNodes((prev) => {
+      const prevPositions = new Map(prev.map((n) => [n.id, n.position]));
+      return active.map((initiative, i) => ({
+        id: initiative.id,
+        type: "initiativeNode",
+        position: prevPositions.get(initiative.id) ?? {
+          x: (i % 3) * 300,
+          y: Math.floor(i / 3) * 160,
+        },
+        data: { initiative },
+      }));
+    });
+  }, [initiatives]);
+
+  const edges = useMemo(() => {
+    const active = (initiatives ?? []).filter((i) => i.status !== "CANCELLED");
+    const activeIds = new Set(active.map((i) => i.id));
+    return active.flatMap((initiative) =>
+      initiative.dependsOn
+        .filter((dep) => activeIds.has(dep.blockingId))
+        .map((dep) => ({
+          id: `${dep.blockingId}-${initiative.id}`,
+          source: dep.blockingId,
+          target: initiative.id,
+          type: "smoothstep",
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: "#94a3b8", strokeWidth: 2, cursor: "pointer" },
+        }))
     );
-
-    return { nodes, edges };
   }, [initiatives]);
 
   return (
     <div className="mt-4 space-y-2">
-      <div className="h-[400px] rounded-lg border overflow-hidden">
+      <div className="h-[520px] rounded-lg border overflow-hidden">
         <ReactFlow
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
           onConnect={onConnect}
           onEdgeClick={onEdgeClick}
           fitView
@@ -143,7 +161,7 @@ export function DependencyPanel() {
       </div>
 
       <p className="text-[10px] text-muted-foreground text-center">
-        Drag from a node's right handle to another's left handle to add a dependency. Click an edge to delete it.
+        Drag nodes to rearrange. Drag from a node's right handle to another's left handle to add a dependency. Click an edge to delete it.
       </p>
 
       {/* Edge action bar */}

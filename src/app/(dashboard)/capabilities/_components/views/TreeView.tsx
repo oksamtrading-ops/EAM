@@ -15,11 +15,12 @@ import {
   Position,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { MATURITY_COLORS, IMPORTANCE_COLORS, MATURITY_LABELS } from "@/lib/constants/maturity-colors";
+import { MATURITY_COLORS, IMPORTANCE_COLORS, MATURITY_LABELS, getGapColor, getOwnerColor } from "@/lib/constants/maturity-colors";
+import type { ColorByMode } from "../CapabilityPageClient";
 
 type Props = {
   tree: any[];
-  colorBy: "maturity" | "importance";
+  colorBy: ColorByMode;
   onSelect: (id: string) => void;
   selectedId: string | null;
 };
@@ -180,7 +181,7 @@ const nodeTypes: NodeTypes = {
 
 function buildNodesAndEdges(
   tree: any[],
-  colorBy: string,
+  colorBy: ColorByMode,
   selectedId: string | null
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
@@ -288,9 +289,9 @@ function buildNodesAndEdges(
   return { nodes, edges };
 }
 
-function getColor(node: any, colorBy: string): string {
-  if (colorBy === "maturity") {
-    return MATURITY_COLORS[node.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED;
-  }
-  return IMPORTANCE_COLORS[node.strategicImportance] ?? IMPORTANCE_COLORS.NOT_ASSESSED;
+function getColor(node: any, colorBy: ColorByMode): string {
+  if (colorBy === "maturity") return MATURITY_COLORS[node.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED;
+  if (colorBy === "importance") return IMPORTANCE_COLORS[node.strategicImportance] ?? IMPORTANCE_COLORS.NOT_ASSESSED;
+  if (colorBy === "gap") return getGapColor(node);
+  return getOwnerColor(node.owner?.id);
 }

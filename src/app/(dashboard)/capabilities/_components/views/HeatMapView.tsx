@@ -6,6 +6,10 @@ import {
   MATURITY_LABELS,
   IMPORTANCE_LABELS,
   MATURITY_NUMERIC,
+  GAP_COLORS,
+  GAP_LABELS,
+  getGapColor,
+  getOwnerColor,
 } from "@/lib/constants/maturity-colors";
 import { cn } from "@/lib/utils";
 import {
@@ -13,42 +17,60 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { ColorByMode } from "../CapabilityPageClient";
 
 type Props = {
   tree: any[];
-  colorBy: "maturity" | "importance";
+  colorBy: ColorByMode;
   onSelect: (id: string) => void;
   selectedId: string | null;
 };
 
-export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
-  const colorMap = colorBy === "maturity" ? MATURITY_COLORS : IMPORTANCE_COLORS;
-  const labelMap = colorBy === "maturity" ? MATURITY_LABELS : IMPORTANCE_LABELS;
+const LEGEND_TITLE: Record<ColorByMode, string> = {
+  maturity:   "Maturity Levels",
+  importance: "Strategic Importance",
+  gap:        "Maturity Gap",
+  owner:      "Capability Owner",
+};
 
-  // Filter out NOT_ASSESSED from legend
-  const legendEntries = Object.entries(colorMap).filter(
-    ([key]) => key !== "NOT_ASSESSED"
-  );
+export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
+  const colorMap =
+    colorBy === "maturity"   ? MATURITY_COLORS :
+    colorBy === "importance" ? IMPORTANCE_COLORS :
+    colorBy === "gap"        ? GAP_COLORS : null;
+
+  const labelMap =
+    colorBy === "maturity"   ? MATURITY_LABELS :
+    colorBy === "importance" ? IMPORTANCE_LABELS :
+    colorBy === "gap"        ? GAP_LABELS : null;
+
+  const legendEntries = colorMap
+    ? Object.entries(colorMap).filter(([key]) => key !== "NOT_ASSESSED")
+    : [];
 
   return (
     <div className="space-y-5">
       {/* Legend */}
       <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
         <span className="text-sm font-medium text-[#1a1f2e]">
-          {colorBy === "maturity" ? "Maturity Levels" : "Strategic Importance"}
+          {LEGEND_TITLE[colorBy]}
         </span>
         <div className="flex items-center gap-4">
-          {legendEntries.map(([key, color]) => (
-            <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="w-3.5 h-3.5 rounded"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-xs text-muted-foreground">
-                {labelMap[key] ?? key}
-              </span>
-            </div>
-          ))}
+          {colorBy === "owner" ? (
+            <span className="text-xs text-muted-foreground italic">Each colour represents a unique owner</span>
+          ) : (
+            legendEntries.map(([key, color]) => (
+              <div key={key} className="flex items-center gap-1.5">
+                <div
+                  className="w-3.5 h-3.5 rounded"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {labelMap?.[key] ?? key}
+                </span>
+              </div>
+            ))
+          )}
           <div className="flex items-center gap-1.5">
             <div
               className="w-3.5 h-3.5 rounded border-2 border-dashed border-[#cbd5e1]"
@@ -92,7 +114,8 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
                 const color = getColor(l2, colorBy);
                 const isNotAssessed =
                   (colorBy === "maturity" && l2.currentMaturity === "NOT_ASSESSED") ||
-                  (colorBy === "importance" && l2.strategicImportance === "NOT_ASSESSED");
+                  (colorBy === "importance" && l2.strategicImportance === "NOT_ASSESSED") ||
+                  (colorBy === "gap" && (l2.currentMaturity === "NOT_ASSESSED" || l2.targetMaturity === "NOT_ASSESSED"));
                 const gap =
                   MATURITY_NUMERIC[l2.targetMaturity] -
                   MATURITY_NUMERIC[l2.currentMaturity];
@@ -168,6 +191,59 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
                 </p>
               )}
             </div>
+
+            {/* L3 tiles — shown for any L2 that has children */}
+            {(l1.children ?? []).some((l2: any) => l2.children?.length > 0) && (
+              <div className="px-2.5 pb-2.5 space-y-1.5 bg-[#fafbfc] border-t border-dashed border-[#e9ecef]">
+                <p className="text-[9px] font-semibold text-muted-foreground pt-2 px-0.5 uppercase tracking-wide">
+                  L3 Capabilities
+                </p>
+                {(l1.children ?? []).flatMap((l2: any) =>
+                  (l2.children ?? []).map((l3: any) => {
+                    const l3Color = getColor(l3, colorBy);
+                    const isNotAssessed =
+                      (colorBy === "maturity" && l3.currentMaturity === "NOT_ASSESSED") ||
+                      (colorBy === "importance" && l3.strategicImportance === "NOT_ASSESSED");
+                    return (
+                      <Tooltip key={l3.id}>
+                        <TooltipTrigger className="w-full">
+                          <button
+                            onClick={() => onSelect(l3.id)}
+                            className={cn(
+                              "w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                              selectedId === l3.id
+                                ? "bg-[#86BC25]/10 ring-1 ring-[#86BC25]/40"
+                                : "hover:bg-[#f1f3f5]"
+                            )}
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{
+                                backgroundColor: isNotAssessed ? "#cbd5e1" : l3Color,
+                                border: isNotAssessed ? "2px dashed #94a3b8" : "none",
+                              }}
+                            />
+                            <span className="text-[10px] text-muted-foreground text-left truncate">
+                              <span className="font-medium text-[#495057]">{l3.name}</span>
+                              <span className="ml-1 opacity-60">— {l2.name}</span>
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs max-w-[200px] p-2">
+                          <p className="font-semibold">{l3.name}</p>
+                          <p className="text-muted-foreground text-[11px]">
+                            {MATURITY_LABELS[l3.currentMaturity] ?? "Not Assessed"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 opacity-70">
+                            Click to view &amp; assess
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -175,14 +251,10 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
   );
 }
 
-function getColor(node: any, colorBy: "maturity" | "importance"): string {
-  if (colorBy === "maturity") {
-    return (
-      MATURITY_COLORS[node.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED
-    );
-  }
-  return (
-    IMPORTANCE_COLORS[node.strategicImportance] ??
-    IMPORTANCE_COLORS.NOT_ASSESSED
-  );
+function getColor(node: any, colorBy: ColorByMode): string {
+  if (colorBy === "maturity") return MATURITY_COLORS[node.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED;
+  if (colorBy === "importance") return IMPORTANCE_COLORS[node.strategicImportance] ?? IMPORTANCE_COLORS.NOT_ASSESSED;
+  if (colorBy === "gap") return getGapColor(node);
+  return getOwnerColor(node.owner?.id);
 }
+

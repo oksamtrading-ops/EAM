@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const utils = trpc.useUtils();
   const { data: app, isLoading } = trpc.application.getById.useQuery({ id: applicationId });
 
@@ -138,80 +140,162 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
 
           <Separator />
 
+          {/* Cost Details */}
+          <section>
+            <h3 className="text-sm font-medium mb-3">Cost Details</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cost Model</label>
+                <Select
+                  value={app.costModel ?? ""}
+                  onValueChange={(v) => updateMutation.mutate({ id: app.id, costModel: (v || null) as any })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LICENSE_PER_USER">License (Per User)</SelectItem>
+                    <SelectItem value="LICENSE_FLAT">License (Flat)</SelectItem>
+                    <SelectItem value="SUBSCRIPTION">Subscription</SelectItem>
+                    <SelectItem value="USAGE_BASED">Usage Based</SelectItem>
+                    <SelectItem value="OPEN_SOURCE">Open Source</SelectItem>
+                    <SelectItem value="INTERNAL">Internal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Currency</label>
+                <Select
+                  value={app.costCurrency ?? "USD"}
+                  onValueChange={(v) => v && updateMutation.mutate({ id: app.id, costCurrency: v })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                    <SelectItem value="CAD">CAD</SelectItem>
+                    <SelectItem value="AUD">AUD</SelectItem>
+                    <SelectItem value="ZAR">ZAR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Licensed Users</label>
+                <Input
+                  type="number"
+                  defaultValue={app.licensedUsers ?? ""}
+                  placeholder="0"
+                  className="h-8 text-xs"
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value);
+                    updateMutation.mutate({ id: app.id, licensedUsers: isNaN(val) ? null : val });
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Renewal Date</label>
+                <Input
+                  type="date"
+                  defaultValue={app.costRenewalDate ? new Date(app.costRenewalDate).toISOString().split("T")[0] : ""}
+                  className="h-8 text-xs"
+                  onBlur={(e) => {
+                    updateMutation.mutate({ id: app.id, costRenewalDate: e.target.value || null });
+                  }}
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-xs text-muted-foreground mb-1 block">Cost Notes</label>
+              <Textarea
+                defaultValue={app.costNotes ?? ""}
+                placeholder="Contract details, license terms..."
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (app.costNotes ?? "")) {
+                    updateMutation.mutate({ id: app.id, costNotes: e.target.value || null });
+                  }
+                }}
+              />
+            </div>
+          </section>
+
+          <Separator />
+
           {/* Assessment */}
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium">Assessment</h3>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Business Value</label>
-              <Select
-                value={app.businessValue}
-                onValueChange={(v) => assessMutation.mutate({
-                  applicationId: app.id,
-                  businessValue: v as any,
-                  technicalHealth: app.technicalHealth as any,
-                  rationalizationStatus: app.rationalizationStatus as any,
-                })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(BV_LABELS).map(([k, l]) => (
-                    <SelectItem key={k} value={k}>
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: BV_COLORS[k] }} />
-                        {l}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Technical Health</label>
-              <Select
-                value={app.technicalHealth}
-                onValueChange={(v) => assessMutation.mutate({
-                  applicationId: app.id,
-                  businessValue: app.businessValue as any,
-                  technicalHealth: v as any,
-                  rationalizationStatus: app.rationalizationStatus as any,
-                })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TH_LABELS).map(([k, l]) => (
-                    <SelectItem key={k} value={k}>
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TH_COLORS[k] }} />
-                        {l}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Rationalization</label>
-              <Select
-                value={app.rationalizationStatus}
-                onValueChange={(v) => assessMutation.mutate({
-                  applicationId: app.id,
-                  businessValue: app.businessValue as any,
-                  technicalHealth: app.technicalHealth as any,
-                  rationalizationStatus: v as any,
-                })}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(RAT_LABELS).map(([k, l]) => (
-                    <SelectItem key={k} value={k}>
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RAT_COLORS[k] }} />
-                        {l}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <section>
+            <h3 className="text-sm font-medium mb-3">Assessment</h3>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Biz Value</label>
+                <Select
+                  value={app.businessValue}
+                  onValueChange={(v) => assessMutation.mutate({
+                    applicationId: app.id,
+                    businessValue: v as any,
+                    technicalHealth: app.technicalHealth as any,
+                    rationalizationStatus: app.rationalizationStatus as any,
+                  })}
+                >
+                  <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(BV_LABELS).map(([k, l]) => (
+                      <SelectItem key={k} value={k}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: BV_COLORS[k] }} />
+                          {l}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Tech Health</label>
+                <Select
+                  value={app.technicalHealth}
+                  onValueChange={(v) => assessMutation.mutate({
+                    applicationId: app.id,
+                    businessValue: app.businessValue as any,
+                    technicalHealth: v as any,
+                    rationalizationStatus: app.rationalizationStatus as any,
+                  })}
+                >
+                  <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TH_LABELS).map(([k, l]) => (
+                      <SelectItem key={k} value={k}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TH_COLORS[k] }} />
+                          {l}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Rationalization</label>
+                <Select
+                  value={app.rationalizationStatus}
+                  onValueChange={(v) => assessMutation.mutate({
+                    applicationId: app.id,
+                    businessValue: app.businessValue as any,
+                    technicalHealth: app.technicalHealth as any,
+                    rationalizationStatus: v as any,
+                  })}
+                >
+                  <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(RAT_LABELS).map(([k, l]) => (
+                      <SelectItem key={k} value={k}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: RAT_COLORS[k] }} />
+                          {l}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </section>
 
@@ -264,17 +348,35 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
 
       {/* Footer */}
       <div className="p-4 border-t">
-        <Button
-          variant="destructive"
-          size="sm"
-          className="w-full"
-          onClick={() => {
-            if (confirm(`Delete "${app.name}"?`)) deleteMutation.mutate({ id: app.id });
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-          Delete Application
-        </Button>
+        {confirmDelete ? (
+          <div className="space-y-2">
+            <p className="text-xs text-rose-600 text-center font-medium">Delete &ldquo;{app.name}&rdquo;? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 px-3 py-2 text-sm border rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate({ id: app.id })}
+                disabled={deleteMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded-md font-medium transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deleteMutation.isPending ? "Deleting…" : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-md transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete Application
+          </button>
+        )}
       </div>
     </aside>
   );

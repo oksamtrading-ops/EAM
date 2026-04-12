@@ -40,3 +40,48 @@ export const IMPORTANCE_LABELS: Record<string, string> = {
   LOW: "Low",
   NOT_ASSESSED: "Not Assessed",
 };
+
+// ── Maturity Gap (target − current) ──────────────────────────────────────────
+export const GAP_COLORS: Record<string, string> = {
+  AHEAD:        "#16a34a",  // on target or ahead
+  GAP_1:        "#ca8a04",  // 1 level behind
+  GAP_2:        "#ea580c",  // 2 levels behind
+  GAP_3:        "#dc2626",  // 3+ levels behind
+  NOT_ASSESSED: "#94a3b8",
+};
+
+export const GAP_LABELS: Record<string, string> = {
+  AHEAD:        "On / Ahead of target",
+  GAP_1:        "1 level behind",
+  GAP_2:        "2 levels behind",
+  GAP_3:        "3+ levels behind",
+  NOT_ASSESSED: "Not assessed",
+};
+
+export function getGapColor(node: { currentMaturity: string; targetMaturity: string }): string {
+  if (node.currentMaturity === "NOT_ASSESSED" || node.targetMaturity === "NOT_ASSESSED") {
+    return GAP_COLORS.NOT_ASSESSED;
+  }
+  const gap =
+    (MATURITY_NUMERIC[node.targetMaturity] ?? 0) -
+    (MATURITY_NUMERIC[node.currentMaturity] ?? 0);
+  if (gap <= 0) return GAP_COLORS.AHEAD;
+  if (gap === 1) return GAP_COLORS.GAP_1;
+  if (gap === 2) return GAP_COLORS.GAP_2;
+  return GAP_COLORS.GAP_3;
+}
+
+// ── Owner (deterministic colour from ownerId) ─────────────────────────────────
+const OWNER_PALETTE = [
+  "#6366f1", "#8b5cf6", "#ec4899", "#f59e0b",
+  "#10b981", "#0ea5e9", "#f97316", "#14b8a6",
+];
+
+export function getOwnerColor(ownerId: string | null | undefined): string {
+  if (!ownerId) return "#94a3b8";
+  let h = 0;
+  for (let i = 0; i < ownerId.length; i++) {
+    h = (h * 31 + ownerId.charCodeAt(i)) & 0xffff;
+  }
+  return OWNER_PALETTE[h % OWNER_PALETTE.length];
+}

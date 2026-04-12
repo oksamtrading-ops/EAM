@@ -2,20 +2,11 @@
 
 import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { ViewMode } from "./CapabilityPageClient";
 
 type Props = {
   view: ViewMode;
   onViewChange: (v: ViewMode) => void;
-  colorBy: "maturity" | "importance";
-  onColorByChange: (v: "maturity" | "importance") => void;
   onCreateNew: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -29,8 +20,6 @@ type Props = {
 export function CapabilityToolbar({
   view,
   onViewChange,
-  colorBy,
-  onColorByChange,
   onCreateNew,
   onImport,
   onExport,
@@ -54,20 +43,6 @@ export function CapabilityToolbar({
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Color mode */}
-        <Select
-          value={colorBy}
-          onValueChange={(v) => onColorByChange(v as any)}
-        >
-          <SelectTrigger className="w-[160px] h-9 text-xs bg-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="maturity">Color by Maturity</SelectItem>
-            <SelectItem value="importance">Color by Importance</SelectItem>
-          </SelectContent>
-        </Select>
-
         {/* View toggle */}
         <div className="flex bg-[#f1f3f5] rounded-lg p-0.5">
           <button

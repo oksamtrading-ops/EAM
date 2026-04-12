@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2, Sparkles } from "lucide-react";
+import { X, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { DatePicker } from "../shared/DatePicker";
@@ -16,18 +16,10 @@ const EMPTY_FORM = {
   startDate: "",
   endDate: "",
   budgetUsd: "",
-  budgetCurrency: "USD",
+  budgetCurrency: "CAD",
   businessSponsor: "",
   ragStatus: "GREEN",
 };
-
-const CURRENCIES = [
-  { code: "USD", label: "USD — US Dollar" },
-  { code: "EUR", label: "EUR — Euro" },
-  { code: "GBP", label: "GBP — British Pound" },
-  { code: "JPY", label: "JPY — Japanese Yen" },
-  { code: "CAD", label: "CAD — Canadian Dollar" },
-];
 
 const CATEGORIES = [
   "MODERNISATION",
@@ -60,10 +52,12 @@ type InitiativeData = {
 export function InitiativeFormModal({
   open,
   onClose,
+  onDeleted,
   initiative,
 }: {
   open: boolean;
   onClose: () => void;
+  onDeleted?: () => void;
   initiative?: InitiativeData;
 }) {
   const isEdit = !!initiative;
@@ -81,11 +75,12 @@ export function InitiativeFormModal({
       ? new Date(initiative.endDate).toISOString().split("T")[0]
       : "",
     budgetUsd: initiative?.budgetUsd ? String(Number(initiative.budgetUsd)) : "",
-    budgetCurrency: (initiative as any)?.budgetCurrency ?? "USD",
+    budgetCurrency: "CAD",
     businessSponsor: initiative?.businessSponsor ?? "",
     ragStatus: initiative?.ragStatus ?? "GREEN",
   });
   const [loadingAI, setLoadingAI] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: roadmap } = trpc.initiative.getRoadmapData.useQuery();
@@ -106,6 +101,16 @@ export function InitiativeFormModal({
       utils.initiative.getRoadmapData.invalidate();
       utils.initiative.getById.invalidate({ id: initiative!.id });
       onClose();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteInitiative = trpc.initiative.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Initiative deleted");
+      utils.initiative.getRoadmapData.invalidate();
+      onClose();
+      onDeleted?.();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -154,18 +159,24 @@ export function InitiativeFormModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.description.trim()) { toast.error("Description is required"); return; }
+    if (!form.startDate) { toast.error("Start date is required"); return; }
+    if (!form.endDate) { toast.error("End date is required"); return; }
+    if (!form.budgetUsd) { toast.error("Budget is required"); return; }
+    if (!form.businessSponsor.trim()) { toast.error("Business sponsor is required"); return; }
+
     const payload = {
       name: form.name,
-      description: form.description || undefined,
+      description: form.description,
       category: form.category as any,
       status: form.status as any,
       priority: form.priority as any,
       horizon: form.horizon as any,
-      startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
-      endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
-      budgetUsd: form.budgetUsd ? Number(form.budgetUsd) : undefined,
-      budgetCurrency: form.budgetCurrency,
-      businessSponsor: form.businessSponsor || undefined,
+      startDate: new Date(form.startDate).toISOString(),
+      endDate: new Date(form.endDate).toISOString(),
+      budgetUsd: Number(form.budgetUsd),
+      budgetCurrency: "CAD",
+      businessSponsor: form.businessSponsor,
     };
     if (isEdit) {
       update.mutate({ id: initiative!.id, ...payload, ragStatus: form.ragStatus as any });
@@ -175,7 +186,7 @@ export function InitiativeFormModal({
   }
 
   if (!open) return null;
-  const isPending = create.isPending || update.isPending;
+  const isPending = create.isPending || update.isPending || deleteInitiative.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -225,7 +236,7 @@ export function InitiativeFormModal({
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Description
+              Description *
             </label>
             <textarea
               value={form.description}
@@ -325,7 +336,7 @@ export function InitiativeFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Start Date
+                Start Date *
               </label>
               <DatePicker
                 value={form.startDate}
@@ -335,7 +346,7 @@ export function InitiativeFormModal({
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                End Date
+                End Date *
               </label>
               <DatePicker
                 value={form.endDate}
@@ -348,36 +359,25 @@ export function InitiativeFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Budget
+                Budget (CAD) *
               </label>
-              <div className="flex gap-1.5">
-                <select
-                  value={form.budgetCurrency}
-                  onChange={(e) => setForm((f) => ({ ...f, budgetCurrency: e.target.value }))}
-                  className="h-10 border rounded-md px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25] w-24 shrink-0"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.code}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.budgetUsd}
-                  onChange={(e) => setForm((f) => ({ ...f, budgetUsd: e.target.value }))}
-                  className="flex-1 h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
-                  placeholder="e.g. 500000"
-                />
-              </div>
+              <input
+                type="number"
+                min={0}
+                value={form.budgetUsd}
+                onChange={(e) => setForm((f) => ({ ...f, budgetUsd: e.target.value }))}
+                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                placeholder="e.g. 500000"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Business Sponsor
+                Business Sponsor *
               </label>
               <input
                 value={form.businessSponsor}
                 onChange={(e) => setForm((f) => ({ ...f, businessSponsor: e.target.value }))}
-                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none"
+                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
                 placeholder="Sponsor name"
               />
             </div>
@@ -386,6 +386,40 @@ export function InitiativeFormModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 p-4 border-t shrink-0">
+          {isEdit && (
+            <div className="mr-auto">
+              {confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-rose-600">Are you sure?</span>
+                  <button
+                    type="button"
+                    onClick={() => deleteInitiative.mutate({ id: initiative!.id })}
+                    disabled={deleteInitiative.isPending}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {deleteInitiative.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Confirm Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -400,7 +434,7 @@ export function InitiativeFormModal({
             disabled={isPending || !form.name}
             className="flex items-center gap-2 px-4 py-2 bg-[#86BC25] text-white text-sm font-semibold rounded-md hover:bg-[#76a820] disabled:opacity-50 transition-colors"
           >
-            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {(create.isPending || update.isPending) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {isEdit ? "Save Changes" : "Create Initiative"}
           </button>
         </div>

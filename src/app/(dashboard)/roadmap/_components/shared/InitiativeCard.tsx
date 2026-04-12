@@ -3,7 +3,30 @@
 import { HorizonBadge } from "./HorizonBadge";
 import { RAGStatusDot } from "./RAGStatusDot";
 import { ProgressBar } from "./ProgressBar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+const RAG_LABELS: Record<string, string> = {
+  GREEN: "On track — no issues",
+  AMBER: "At risk — minor issues requiring attention",
+  RED: "Off track — critical issues requiring immediate action",
+};
+
+const HORIZON_LABELS: Record<string, string> = {
+  H1_NOW: "H1 Now — current quarter delivery",
+  H2_NEXT: "H2 Next — next 6–12 months",
+  H3_LATER: "H3 Later — 1–3 year horizon",
+  BEYOND: "Beyond — strategic, 3+ years out",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft — not yet approved for execution",
+  PLANNED: "Planned — approved and scheduled",
+  IN_PROGRESS: "In Progress — actively being delivered",
+  ON_HOLD: "On Hold — paused, pending decision",
+  COMPLETE: "Complete — delivered and closed",
+  CANCELLED: "Cancelled — no longer proceeding",
+};
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-slate-50 border-slate-200 text-slate-700",
@@ -32,15 +55,6 @@ type Initiative = {
   _count?: { milestones: number };
 };
 
-function timeProgressPct(start: Date | string | null | undefined, end: Date | string | null | undefined): number | null {
-  if (!start || !end) return null;
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  if (e <= s) return null;
-  const now = Date.now();
-  return Math.min(100, Math.max(0, Math.round(((now - s) / (e - s)) * 100)));
-}
-
 export function InitiativeCard({
   initiative,
   onClick,
@@ -48,28 +62,54 @@ export function InitiativeCard({
   initiative: Initiative;
   onClick?: () => void;
 }) {
-  const timePct = timeProgressPct(initiative.startDate, initiative.endDate);
   const isCancelled = initiative.status === "CANCELLED";
 
   return (
     <div
-      className={`rounded-lg border p-3 cursor-pointer hover:shadow-sm transition-shadow ${STATUS_STYLES[initiative.status] ?? "bg-white border-gray-200"}`}
+      data-slot="card"
+      className={`rounded-lg border p-3 cursor-pointer ${STATUS_STYLES[initiative.status] ?? "bg-white border-gray-200"}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <RAGStatusDot status={initiative.ragStatus} />
-          <p className={cn("text-xs font-semibold truncate", isCancelled && "line-through text-muted-foreground")}>
-            {initiative.name}
-          </p>
+          <Tooltip>
+            <TooltipTrigger>
+              <span className="shrink-0 cursor-help">
+                <RAGStatusDot status={initiative.ragStatus} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">{RAG_LABELS[initiative.ragStatus] ?? initiative.ragStatus}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger>
+              <p className={cn("text-xs font-semibold truncate cursor-default", isCancelled && "line-through text-muted-foreground")}>
+                {initiative.name}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[240px]">
+              <span className="font-medium">{STATUS_LABELS[initiative.status] ?? initiative.status}</span>
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <HorizonBadge horizon={initiative.horizon} className="shrink-0" />
+        <Tooltip>
+          <TooltipTrigger>
+            <span className="shrink-0 cursor-help">
+              <HorizonBadge horizon={initiative.horizon} className="shrink-0" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">{HORIZON_LABELS[initiative.horizon] ?? initiative.horizon}</TooltipContent>
+        </Tooltip>
       </div>
 
       {isCancelled && initiative.cancellationReason && (
-        <p className="text-[10px] text-rose-500 italic line-clamp-1 mb-2">
-          {initiative.cancellationReason}
-        </p>
+        <Tooltip>
+          <TooltipTrigger>
+            <p className="text-[10px] text-rose-500 italic line-clamp-1 mb-2 cursor-help">
+              {initiative.cancellationReason}
+            </p>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[280px]">{initiative.cancellationReason}</TooltipContent>
+        </Tooltip>
       )}
 
       {!isCancelled && initiative.description && (
@@ -79,28 +119,24 @@ export function InitiativeCard({
       )}
 
       {/* Milestone progress */}
-      <ProgressBar value={initiative.progressPct} showLabel className="mb-2" />
-
-      {/* Time progress */}
-      {timePct !== null && !isCancelled && (
-        <>
-          <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden mb-1">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                timePct >= 90 ? "bg-rose-400" : timePct >= 60 ? "bg-amber-400" : "bg-sky-400"
-              )}
-              style={{ width: `${timePct}%` }}
-            />
+      <Tooltip>
+        <TooltipTrigger>
+          <div className="mb-2 cursor-help">
+            <ProgressBar value={initiative.progressPct} showLabel />
           </div>
-          <p className="text-[9px] text-muted-foreground mb-2">Time elapsed {timePct}%</p>
-        </>
-      )}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{initiative.progressPct}% of milestones complete</TooltipContent>
+      </Tooltip>
 
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span className="uppercase tracking-wide">{initiative.category}</span>
         {initiative._count && (
-          <span>{initiative._count.milestones} milestones</span>
+          <Tooltip>
+            <TooltipTrigger>
+              <span className="cursor-help">{initiative._count.milestones} milestones</span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Number of milestones defined for this initiative</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>

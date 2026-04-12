@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
@@ -15,15 +16,24 @@ import { CreateCapabilityDialog } from "./modals/CreateCapabilityDialog";
 import { TemplateImportDialog } from "./modals/TemplateImportDialog";
 
 export type ViewMode = "grid" | "heatmap" | "tree";
+export type ColorByMode = "maturity" | "importance" | "gap" | "owner";
+
+const COLOR_BY_OPTIONS: { value: ColorByMode; label: string }[] = [
+  { value: "maturity",   label: "Maturity" },
+  { value: "importance", label: "Importance" },
+  { value: "gap",        label: "Maturity Gap" },
+  { value: "owner",      label: "Owner" },
+];
 
 export function CapabilityPageClient() {
+  const searchParams = useSearchParams();
   const [view, setView] = useState<ViewMode>("grid");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("id"));
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showAI, setShowAI] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
-  const [colorBy, setColorBy] = useState<"maturity" | "importance">("maturity");
+  const [colorBy, setColorBy] = useState<ColorByMode>("maturity");
 
   const { workspaceId } = useWorkspace();
   const { data: tree, isLoading, error } = trpc.capability.getTree.useQuery();
@@ -58,8 +68,6 @@ export function CapabilityPageClient() {
         <CapabilityToolbar
           view={view}
           onViewChange={setView}
-          colorBy={colorBy}
-          onColorByChange={setColorBy}
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
@@ -69,6 +77,26 @@ export function CapabilityPageClient() {
           showVersions={showVersions}
           capabilityCount={countCapabilities(tree ?? [])}
         />
+
+        {/* Color-by sub-bar */}
+        <div className="border-b bg-background px-6 py-2 flex items-center gap-3 shrink-0">
+          <span className="text-xs font-medium text-muted-foreground">Color by</span>
+          <div className="flex items-center gap-1.5">
+            {COLOR_BY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setColorBy(opt.value)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  colorBy === opt.value
+                    ? "bg-[#86BC25] text-white shadow-sm"
+                    : "bg-[#f1f3f5] text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className={`flex-1 overflow-auto ${view === "tree" ? "p-2" : "p-6"}`}>
           {error ? (

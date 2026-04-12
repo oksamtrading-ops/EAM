@@ -7,13 +7,16 @@ import {
   MATURITY_LABELS,
   MATURITY_NUMERIC,
   IMPORTANCE_LABELS,
+  getGapColor,
+  getOwnerColor,
 } from "@/lib/constants/maturity-colors";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, TrendingUp, AlertCircle } from "lucide-react";
+import type { ColorByMode } from "../CapabilityPageClient";
 
 type Props = {
   tree: any[];
-  colorBy: "maturity" | "importance";
+  colorBy: ColorByMode;
   onSelect: (id: string) => void;
   selectedId: string | null;
 };
@@ -103,33 +106,41 @@ export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <MaturityChip value={l2.currentMaturity} />
-                      {l2.children && l2.children.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {l2.children.length} L3
-                        </span>
-                      )}
                     </div>
 
-                    {/* L3 preview */}
+                    {/* L3 sub-capabilities — all shown, each clickable */}
                     {l2.children && l2.children.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2.5 pt-2.5 border-t border-dashed border-[#e9ecef]">
-                        {l2.children.slice(0, 3).map((l3: any) => (
-                          <span
-                            key={l3.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelect(l3.id);
-                            }}
-                            className="text-[10px] px-2 py-0.5 bg-[#f1f3f5] rounded-full cursor-pointer hover:bg-[#e9ecef] truncate max-w-[110px] text-muted-foreground"
-                          >
-                            {l3.name}
-                          </span>
-                        ))}
-                        {l2.children.length > 3 && (
-                          <span className="text-[10px] text-muted-foreground px-1">
-                            +{l2.children.length - 3}
-                          </span>
-                        )}
+                      <div className="mt-2.5 pt-2.5 border-t border-dashed border-[#e9ecef] space-y-1">
+                        {l2.children.map((l3: any) => {
+                          const l3Color = getColor(l3, colorBy);
+                          return (
+                            <button
+                              key={l3.id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelect(l3.id);
+                              }}
+                              className={cn(
+                                "w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] transition-colors group/l3",
+                                selectedId === l3.id
+                                  ? "bg-[#86BC25]/10 text-[#1a1f2e]"
+                                  : "hover:bg-[#f1f3f5] text-muted-foreground"
+                              )}
+                            >
+                              <span className="text-[7px] font-bold text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">
+                                L3
+                              </span>
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: l3Color }}
+                              />
+                              <span className="truncate group-hover/l3:text-[#1a1f2e] transition-colors">
+                                {l3.name}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </button>
@@ -143,16 +154,11 @@ export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
   );
 }
 
-function getColor(node: any, colorBy: "maturity" | "importance"): string {
-  if (colorBy === "maturity") {
-    return (
-      MATURITY_COLORS[node.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED
-    );
-  }
-  return (
-    IMPORTANCE_COLORS[node.strategicImportance] ??
-    IMPORTANCE_COLORS.NOT_ASSESSED
-  );
+function getColor(node: any, colorBy: ColorByMode): string {
+  if (colorBy === "maturity") return MATURITY_COLORS[node.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED;
+  if (colorBy === "importance") return IMPORTANCE_COLORS[node.strategicImportance] ?? IMPORTANCE_COLORS.NOT_ASSESSED;
+  if (colorBy === "gap") return getGapColor(node);
+  return getOwnerColor(node.owner?.id);
 }
 
 function getGap(node: any): number {

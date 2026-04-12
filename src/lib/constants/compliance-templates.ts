@@ -1,0 +1,135 @@
+export type ControlTemplate = {
+  controlId: string;
+  title: string;
+  description: string;
+  category: string;
+  isMandatory: boolean;
+  sortOrder: number;
+};
+
+export const COMPLIANCE_TEMPLATES: Record<string, ControlTemplate[]> = {
+  SOC2_TYPE2: [
+    { controlId: "CC1.1", title: "COSO Principle 1 — Integrity & Ethics", description: "The entity demonstrates a commitment to integrity and ethical values.", category: "Control Environment", isMandatory: true, sortOrder: 10 },
+    { controlId: "CC1.2", title: "COSO Principle 2 — Board Oversight", description: "The board of directors demonstrates independence from management.", category: "Control Environment", isMandatory: true, sortOrder: 20 },
+    { controlId: "CC1.3", title: "COSO Principle 3 — Structures & Reporting", description: "Management establishes structures, reporting lines, and appropriate authorities.", category: "Control Environment", isMandatory: true, sortOrder: 30 },
+    { controlId: "CC2.1", title: "COSO Principle 13 — Information Quality", description: "The entity obtains or generates and uses relevant, quality information.", category: "Information & Communication", isMandatory: true, sortOrder: 40 },
+    { controlId: "CC2.2", title: "COSO Principle 14 — Internal Communication", description: "The entity internally communicates information to support functioning of internal control.", category: "Information & Communication", isMandatory: true, sortOrder: 50 },
+    { controlId: "CC6.1", title: "Logical Access — Access Controls", description: "The entity implements logical access security to protect against threats from sources outside its system boundaries.", category: "Logical & Physical Access", isMandatory: true, sortOrder: 60 },
+    { controlId: "CC6.2", title: "Logical Access — Authentication", description: "Prior to issuing system credentials and granting access, the entity registers and authorizes new users.", category: "Logical & Physical Access", isMandatory: true, sortOrder: 70 },
+    { controlId: "CC6.3", title: "Logical Access — Role-Based Access", description: "The entity authorizes, modifies, or removes access to systems based on roles.", category: "Logical & Physical Access", isMandatory: true, sortOrder: 80 },
+    { controlId: "CC6.6", title: "Logical Access — Transmission Encryption", description: "The entity implements controls to prevent unauthorized access during data transmission.", category: "Logical & Physical Access", isMandatory: true, sortOrder: 90 },
+    { controlId: "CC6.7", title: "Logical Access — Authorized Removal", description: "The entity restricts the transmission, movement, and removal of information to authorized users.", category: "Logical & Physical Access", isMandatory: true, sortOrder: 100 },
+    { controlId: "CC7.1", title: "System Operations — Configuration Management", description: "The entity uses detection and monitoring procedures to identify changes to configurations.", category: "System Operations", isMandatory: true, sortOrder: 110 },
+    { controlId: "CC7.2", title: "System Operations — Anomaly Detection", description: "The entity monitors system components for anomalies.", category: "System Operations", isMandatory: true, sortOrder: 120 },
+    { controlId: "CC7.3", title: "System Operations — Security Event Evaluation", description: "The entity evaluates security events to determine whether they could or have resulted in a failure.", category: "System Operations", isMandatory: true, sortOrder: 130 },
+    { controlId: "CC8.1", title: "Change Management — Infrastructure Changes", description: "The entity authorizes, designs, develops or acquires, configures, documents, tests, approves, and implements changes.", category: "Change Management", isMandatory: true, sortOrder: 140 },
+    { controlId: "CC9.1", title: "Risk Mitigation — Risk Identification", description: "The entity identifies, selects, and develops risk mitigation activities.", category: "Risk Mitigation", isMandatory: true, sortOrder: 150 },
+    { controlId: "A1.1", title: "Availability — Performance Monitoring", description: "The entity maintains, monitors, and evaluates current processing capacity.", category: "Availability", isMandatory: false, sortOrder: 160 },
+    { controlId: "A1.2", title: "Availability — Environmental Threats", description: "The entity authorizes, designs, develops or acquires, implements, operates, approves, maintains, and monitors environmental protections.", category: "Availability", isMandatory: false, sortOrder: 170 },
+  ],
+
+  ISO_27001: [
+    { controlId: "A.5.1", title: "Information Security Policies", description: "Policies for information security shall be defined, approved by management, published and communicated.", category: "Information Security Policies", isMandatory: true, sortOrder: 10 },
+    { controlId: "A.6.1", title: "Internal Organization", description: "Management shall actively support security within the organization through clear direction, demonstrated commitment.", category: "Organization of Information Security", isMandatory: true, sortOrder: 20 },
+    { controlId: "A.7.2", title: "During Employment", description: "Management shall require all employees and contractors to apply information security in accordance with established policies.", category: "Human Resource Security", isMandatory: true, sortOrder: 30 },
+    { controlId: "A.8.1", title: "Responsibility for Assets", description: "Assets associated with information and information processing facilities shall be identified and an inventory maintained.", category: "Asset Management", isMandatory: true, sortOrder: 40 },
+    { controlId: "A.9.1", title: "Business Requirements of Access Control", description: "Access control policy shall be established, documented and reviewed based on business and information security requirements.", category: "Access Control", isMandatory: true, sortOrder: 50 },
+    { controlId: "A.9.2", title: "User Access Management", description: "A formal user registration and de-registration process shall be implemented to enable assignment of access rights.", category: "Access Control", isMandatory: true, sortOrder: 60 },
+    { controlId: "A.9.4", title: "System and Application Access Control", description: "Access to systems and applications shall be controlled by a secure log-on procedure.", category: "Access Control", isMandatory: true, sortOrder: 70 },
+    { controlId: "A.10.1", title: "Cryptographic Controls", description: "A policy on the use of cryptographic controls for protection of information shall be developed and implemented.", category: "Cryptography", isMandatory: true, sortOrder: 80 },
+    { controlId: "A.12.1", title: "Operational Procedures and Responsibilities", description: "Operating procedures shall be documented and made available to all users who need them.", category: "Operations Security", isMandatory: true, sortOrder: 90 },
+    { controlId: "A.12.6", title: "Technical Vulnerability Management", description: "Information about technical vulnerabilities of information systems shall be obtained in a timely fashion.", category: "Operations Security", isMandatory: true, sortOrder: 100 },
+    { controlId: "A.13.1", title: "Network Security Management", description: "Networks shall be managed and controlled to protect information in systems and applications.", category: "Communications Security", isMandatory: true, sortOrder: 110 },
+    { controlId: "A.14.1", title: "Security Requirements of Information Systems", description: "Information security requirements shall be included in the requirements for new systems.", category: "System Acquisition, Development and Maintenance", isMandatory: true, sortOrder: 120 },
+    { controlId: "A.16.1", title: "Management of Information Security Incidents", description: "Management responsibilities and procedures shall be established to ensure a quick, effective, and orderly response to information security incidents.", category: "Information Security Incident Management", isMandatory: true, sortOrder: 130 },
+    { controlId: "A.17.1", title: "Information Security Continuity", description: "The organization shall determine its requirements for information security and continuity of information security management.", category: "Business Continuity Management", isMandatory: true, sortOrder: 140 },
+    { controlId: "A.18.1", title: "Compliance with Legal and Contractual Requirements", description: "All relevant legal, statutory, regulatory, contractual requirements shall be explicitly identified, documented and kept up to date.", category: "Compliance", isMandatory: true, sortOrder: 150 },
+  ],
+
+  GDPR: [
+    { controlId: "ART5", title: "Principles Relating to Processing", description: "Personal data shall be processed lawfully, fairly and in a transparent manner (lawfulness, fairness and transparency).", category: "Core Principles", isMandatory: true, sortOrder: 10 },
+    { controlId: "ART6", title: "Lawfulness of Processing", description: "Processing shall be lawful only if and to the extent that at least one of the legal bases applies.", category: "Core Principles", isMandatory: true, sortOrder: 20 },
+    { controlId: "ART7", title: "Conditions for Consent", description: "Where processing is based on consent, the controller shall demonstrate that consent was given.", category: "Consent", isMandatory: true, sortOrder: 30 },
+    { controlId: "ART13", title: "Information to be Provided (Direct Collection)", description: "The data subject shall be informed about data processing at the time of collection.", category: "Transparency", isMandatory: true, sortOrder: 40 },
+    { controlId: "ART17", title: "Right to Erasure", description: "The data subject shall have the right to obtain from the controller the erasure of personal data concerning them.", category: "Data Subject Rights", isMandatory: true, sortOrder: 50 },
+    { controlId: "ART20", title: "Right to Data Portability", description: "The data subject shall have the right to receive personal data in a structured, commonly used, machine-readable format.", category: "Data Subject Rights", isMandatory: true, sortOrder: 60 },
+    { controlId: "ART25", title: "Data Protection by Design and Default", description: "Appropriate technical and organisational measures shall be implemented.", category: "Security", isMandatory: true, sortOrder: 70 },
+    { controlId: "ART28", title: "Processor Requirements", description: "Processing shall be governed by a binding contract between controller and processor.", category: "Processors", isMandatory: true, sortOrder: 80 },
+    { controlId: "ART30", title: "Records of Processing Activities", description: "Each controller shall maintain a record of processing activities.", category: "Accountability", isMandatory: true, sortOrder: 90 },
+    { controlId: "ART32", title: "Security of Processing", description: "Appropriate technical and organisational measures to ensure a level of security appropriate to the risk.", category: "Security", isMandatory: true, sortOrder: 100 },
+    { controlId: "ART33", title: "Notification of Personal Data Breach", description: "In the case of a personal data breach, the controller shall notify the supervisory authority within 72 hours.", category: "Breach Notification", isMandatory: true, sortOrder: 110 },
+    { controlId: "ART35", title: "Data Protection Impact Assessment", description: "Where processing is likely to result in a high risk, the controller shall carry out an assessment.", category: "Impact Assessment", isMandatory: true, sortOrder: 120 },
+  ],
+
+  PIPEDA: [
+    { controlId: "P1", title: "Accountability", description: "An organization is responsible for personal information under its control and shall designate an individual or individuals accountable for compliance.", category: "Accountability", isMandatory: true, sortOrder: 10 },
+    { controlId: "P2", title: "Identifying Purposes", description: "The purposes for which personal information is collected shall be identified by the organization at or before the time the information is collected.", category: "Transparency", isMandatory: true, sortOrder: 20 },
+    { controlId: "P3", title: "Consent", description: "The knowledge and consent of the individual are required for the collection, use, or disclosure of personal information.", category: "Consent", isMandatory: true, sortOrder: 30 },
+    { controlId: "P4", title: "Limiting Collection", description: "The collection of personal information shall be limited to that which is necessary for the purposes identified.", category: "Data Minimisation", isMandatory: true, sortOrder: 40 },
+    { controlId: "P5", title: "Limiting Use, Disclosure, and Retention", description: "Personal information shall not be used or disclosed for purposes other than those for which it was collected.", category: "Data Use", isMandatory: true, sortOrder: 50 },
+    { controlId: "P6", title: "Accuracy", description: "Personal information shall be as accurate, complete, and up-to-date as is necessary for the purposes for which it is to be used.", category: "Data Quality", isMandatory: true, sortOrder: 60 },
+    { controlId: "P7", title: "Safeguards", description: "Personal information shall be protected by security safeguards appropriate to the sensitivity of the information.", category: "Security", isMandatory: true, sortOrder: 70 },
+    { controlId: "P8", title: "Openness", description: "An organization shall make readily available to individuals specific information about its policies and practices relating to personal information.", category: "Transparency", isMandatory: true, sortOrder: 80 },
+    { controlId: "P9", title: "Individual Access", description: "Upon request, an individual shall be informed of the existence, use, and disclosure of personal information.", category: "Data Subject Rights", isMandatory: true, sortOrder: 90 },
+    { controlId: "P10", title: "Challenging Compliance", description: "An individual shall be able to address a challenge concerning compliance with the above principles to the designated individual or individuals accountable.", category: "Accountability", isMandatory: true, sortOrder: 100 },
+  ],
+
+  PCI_DSS: [
+    { controlId: "1.1", title: "Network Security Controls — Install and Maintain", description: "Processes and mechanisms for installing and maintaining network security controls are defined and understood.", category: "Network Access Controls", isMandatory: true, sortOrder: 10 },
+    { controlId: "2.1", title: "Secure Configurations — Apply to All Components", description: "Processes and mechanisms for applying secure configurations to all system components are defined and understood.", category: "Secure Configurations", isMandatory: true, sortOrder: 20 },
+    { controlId: "3.1", title: "Protect Stored Account Data", description: "Processes and mechanisms for protecting stored account data are defined and understood.", category: "Account Data Protection", isMandatory: true, sortOrder: 30 },
+    { controlId: "4.1", title: "Protect Data in Transit", description: "Processes and mechanisms for protecting cardholder data with strong cryptography during transmission are defined.", category: "Data Transmission", isMandatory: true, sortOrder: 40 },
+    { controlId: "5.1", title: "Protect Against Malicious Software", description: "Processes and mechanisms for protecting all systems and networks from malicious software are defined.", category: "Vulnerability Management", isMandatory: true, sortOrder: 50 },
+    { controlId: "6.1", title: "Develop and Maintain Secure Systems", description: "Processes and mechanisms for developing and maintaining secure systems and software are defined.", category: "Secure Development", isMandatory: true, sortOrder: 60 },
+    { controlId: "7.1", title: "Restrict Access by Business Need to Know", description: "Processes and mechanisms for restricting access to system components and cardholder data by business need-to-know are defined.", category: "Access Control", isMandatory: true, sortOrder: 70 },
+    { controlId: "8.1", title: "User Identification and Authentication", description: "Processes and mechanisms for defining and managing identification and authentication of all users are defined.", category: "Identity Management", isMandatory: true, sortOrder: 80 },
+    { controlId: "10.1", title: "Log and Monitor All Access", description: "Processes and mechanisms for logging and monitoring all access to system components and cardholder data are defined.", category: "Logging & Monitoring", isMandatory: true, sortOrder: 90 },
+    { controlId: "12.1", title: "Support Information Security with Organizational Policies", description: "A comprehensive information security policy that governs and provides direction for protection of the entity's information assets is defined.", category: "Security Policy", isMandatory: true, sortOrder: 100 },
+  ],
+
+  HIPAA: [
+    { controlId: "164.308.a.1", title: "Security Management Process", description: "Implement policies and procedures to prevent, detect, contain, and correct security violations.", category: "Administrative Safeguards", isMandatory: true, sortOrder: 10 },
+    { controlId: "164.308.a.3", title: "Workforce Security", description: "Implement policies and procedures to ensure that all members of its workforce have appropriate access.", category: "Administrative Safeguards", isMandatory: true, sortOrder: 20 },
+    { controlId: "164.308.a.4", title: "Information Access Management", description: "Implement policies and procedures for authorizing access to electronic protected health information.", category: "Administrative Safeguards", isMandatory: true, sortOrder: 30 },
+    { controlId: "164.308.a.5", title: "Security Awareness and Training", description: "Implement a security awareness and training program for all members of workforce.", category: "Administrative Safeguards", isMandatory: true, sortOrder: 40 },
+    { controlId: "164.310.a.1", title: "Facility Access Controls", description: "Implement policies and procedures to limit physical access to electronic information systems.", category: "Physical Safeguards", isMandatory: true, sortOrder: 50 },
+    { controlId: "164.312.a.1", title: "Access Control", description: "Implement technical policies and procedures for electronic information systems that maintain ePHI.", category: "Technical Safeguards", isMandatory: true, sortOrder: 60 },
+    { controlId: "164.312.b", title: "Audit Controls", description: "Implement hardware, software, and/or procedural mechanisms that record and examine activity.", category: "Technical Safeguards", isMandatory: true, sortOrder: 70 },
+    { controlId: "164.312.c.1", title: "Integrity Controls", description: "Implement policies and procedures to protect ePHI from improper alteration or destruction.", category: "Technical Safeguards", isMandatory: true, sortOrder: 80 },
+    { controlId: "164.312.e.1", title: "Transmission Security", description: "Implement technical security measures to guard against unauthorized access to ePHI in transit.", category: "Technical Safeguards", isMandatory: true, sortOrder: 90 },
+  ],
+
+  NIST_CSF: [
+    { controlId: "ID.AM-1", title: "Asset Management — Physical Devices", description: "Physical devices and systems within the organization are inventoried.", category: "Identify", isMandatory: true, sortOrder: 10 },
+    { controlId: "ID.AM-2", title: "Asset Management — Software Platforms", description: "Software platforms and applications within the organization are inventoried.", category: "Identify", isMandatory: true, sortOrder: 20 },
+    { controlId: "ID.RA-1", title: "Risk Assessment — Vulnerabilities", description: "Asset vulnerabilities are identified and documented.", category: "Identify", isMandatory: true, sortOrder: 30 },
+    { controlId: "PR.AC-1", title: "Access Control — Credentials", description: "Identities and credentials are issued, managed, verified, revoked, and audited.", category: "Protect", isMandatory: true, sortOrder: 40 },
+    { controlId: "PR.DS-1", title: "Data Security — At Rest", description: "Data-at-rest is protected.", category: "Protect", isMandatory: true, sortOrder: 50 },
+    { controlId: "PR.DS-2", title: "Data Security — In Transit", description: "Data-in-transit is protected.", category: "Protect", isMandatory: true, sortOrder: 60 },
+    { controlId: "DE.CM-1", title: "Security Continuous Monitoring — Network", description: "The network is monitored to detect potential cybersecurity events.", category: "Detect", isMandatory: true, sortOrder: 70 },
+    { controlId: "DE.CM-7", title: "Security Continuous Monitoring — Unauthorized Personnel", description: "Monitoring for unauthorized personnel, connections, devices, and software is performed.", category: "Detect", isMandatory: true, sortOrder: 80 },
+    { controlId: "RS.RP-1", title: "Response Planning", description: "Response plan is executed during or after an incident.", category: "Respond", isMandatory: true, sortOrder: 90 },
+    { controlId: "RC.RP-1", title: "Recovery Planning", description: "Recovery plan is executed during or after a cybersecurity incident.", category: "Recover", isMandatory: true, sortOrder: 100 },
+  ],
+
+  CIS_CONTROLS: [
+    { controlId: "CIS-1", title: "Inventory and Control of Enterprise Assets", description: "Actively manage (inventory, track, and correct) all enterprise assets connected to the infrastructure.", category: "Basic Hygiene", isMandatory: true, sortOrder: 10 },
+    { controlId: "CIS-2", title: "Inventory and Control of Software Assets", description: "Actively manage (inventory, track, and correct) all software on the network.", category: "Basic Hygiene", isMandatory: true, sortOrder: 20 },
+    { controlId: "CIS-3", title: "Data Protection", description: "Develop processes and technical controls to identify, classify, securely handle, retain, and dispose of data.", category: "Basic Hygiene", isMandatory: true, sortOrder: 30 },
+    { controlId: "CIS-4", title: "Secure Configuration of Enterprise Assets and Software", description: "Establish and maintain the secure configuration of enterprise assets and software.", category: "Basic Hygiene", isMandatory: true, sortOrder: 40 },
+    { controlId: "CIS-5", title: "Account Management", description: "Use processes and tools to assign and manage authorization to credentials for user accounts.", category: "Basic Hygiene", isMandatory: true, sortOrder: 50 },
+    { controlId: "CIS-6", title: "Access Control Management", description: "Use processes and tools to create, assign, manage, and revoke access credentials and privileges.", category: "Basic Hygiene", isMandatory: true, sortOrder: 60 },
+    { controlId: "CIS-7", title: "Continuous Vulnerability Management", description: "Develop a plan to continuously assess and track vulnerabilities on all enterprise assets.", category: "Foundational", isMandatory: true, sortOrder: 70 },
+    { controlId: "CIS-8", title: "Audit Log Management", description: "Collect, alert, review, and retain audit logs of events that could help detect, understand, or recover from an attack.", category: "Foundational", isMandatory: true, sortOrder: 80 },
+    { controlId: "CIS-12", title: "Network Infrastructure Management", description: "Establish and maintain the secure configuration of network infrastructure devices.", category: "Foundational", isMandatory: false, sortOrder: 90 },
+    { controlId: "CIS-16", title: "Application Software Security", description: "Manage the security life cycle of in-house developed, hosted, or acquired software.", category: "Organizational", isMandatory: false, sortOrder: 100 },
+  ],
+
+  SOX: [
+    { controlId: "SOX-IT-1", title: "IT General Controls — Access Management", description: "Controls over logical access to applications, databases, and operating systems.", category: "IT General Controls", isMandatory: true, sortOrder: 10 },
+    { controlId: "SOX-IT-2", title: "IT General Controls — Change Management", description: "Controls over changes to applications, databases, and operating systems.", category: "IT General Controls", isMandatory: true, sortOrder: 20 },
+    { controlId: "SOX-IT-3", title: "IT General Controls — Computer Operations", description: "Controls over computer operations including job scheduling, backup, and recovery.", category: "IT General Controls", isMandatory: true, sortOrder: 30 },
+    { controlId: "SOX-302", title: "Certifications — Principal Officers", description: "Principal executive and financial officers must certify the accuracy of financial reports.", category: "Management Assessment", isMandatory: true, sortOrder: 40 },
+    { controlId: "SOX-404", title: "Management Assessment of Internal Controls", description: "Management must assess the effectiveness of internal controls over financial reporting.", category: "Management Assessment", isMandatory: true, sortOrder: 50 },
+  ],
+};

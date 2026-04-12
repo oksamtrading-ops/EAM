@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { syncUser } from "@/lib/auth/sync-user";
 import { TRPCProvider } from "@/lib/trpc/provider";
 import { WorkspaceProvider } from "@/hooks/useWorkspace";
 import { DashboardShell } from "./_components/DashboardShell";
+import { ActiveWorkspaceResolver } from "./_components/ActiveWorkspaceResolver";
 
 export default async function DashboardLayout({
   children,
@@ -15,19 +17,32 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
-  const { workspace } = result;
+  const { workspaces, defaultWorkspace } = result;
+
+  const workspaceInfos = workspaces.map((w) => ({
+    id: w.id,
+    name: w.name,
+    industry: w.industry,
+    clientName: w.clientName,
+    isDefault: w.isDefault,
+    isActive: w.isActive,
+  }));
 
   return (
-    <TRPCProvider workspaceId={workspace.id}>
-      <WorkspaceProvider
-        value={{
-          workspaceId: workspace.id,
-          workspaceName: workspace.name,
-          industry: workspace.industry,
-        }}
-      >
-        <DashboardShell>{children}</DashboardShell>
-      </WorkspaceProvider>
-    </TRPCProvider>
+    <ActiveWorkspaceResolver
+      workspaces={workspaceInfos}
+      defaultWorkspaceId={defaultWorkspace.id}
+    >
+      {(activeWorkspaceId) => (
+        <TRPCProvider workspaceId={activeWorkspaceId}>
+          <WorkspaceProvider
+            workspaces={workspaceInfos}
+            defaultWorkspaceId={defaultWorkspace.id}
+          >
+            <DashboardShell>{children}</DashboardShell>
+          </WorkspaceProvider>
+        </TRPCProvider>
+      )}
+    </ActiveWorkspaceResolver>
   );
 }
