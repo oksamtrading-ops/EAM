@@ -6,6 +6,13 @@ import { rateLimit } from "@/lib/rate-limit";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = "claude-opus-4-6";
 
+/** Strip markdown code-block fences (```json ... ```) from AI responses */
+function stripCodeBlock(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  return match ? match[1]!.trim() : trimmed;
+}
+
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -107,7 +114,7 @@ OUTPUT FORMAT (JSON only, no markdown):
 
   try {
     const text = (message.content[0] as any).text;
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(stripCodeBlock(text));
     return Response.json(parsed);
   } catch {
     return Response.json(
@@ -241,7 +248,7 @@ OUTPUT FORMAT (JSON only, no markdown):
 
   try {
     const text = (message.content[0] as any).text;
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(stripCodeBlock(text));
     return Response.json(parsed);
   } catch {
     return Response.json(

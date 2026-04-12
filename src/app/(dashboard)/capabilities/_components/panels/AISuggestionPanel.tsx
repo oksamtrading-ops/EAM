@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -83,8 +82,8 @@ export function AISuggestionPanel({ open, onClose, tree }: Props) {
         />
       </div>
 
-      {/* Content */}
-      <ScrollArea className="flex-1">
+      {/* Content — min-h-0 lets flex child shrink; overflow-y-auto enables scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === "suggest" && (
           <SuggestTab tree={tree} workspaceId={workspaceId} industry={industry} />
         )}
@@ -94,7 +93,7 @@ export function AISuggestionPanel({ open, onClose, tree }: Props) {
         {tab === "investment" && (
           <InvestmentTab tree={tree} workspaceId={workspaceId} />
         )}
-      </ScrollArea>
+      </div>
     </aside>
   );
 }

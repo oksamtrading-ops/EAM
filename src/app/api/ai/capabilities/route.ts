@@ -89,7 +89,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 
   try {
     const text = (message.content[0] as any).text;
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(stripCodeBlock(text));
     return Response.json(parsed);
   } catch {
     return Response.json(
@@ -97,6 +97,13 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
       { status: 200 }
     );
   }
+}
+
+/** Strip markdown code-block fences (```json ... ```) from AI responses */
+function stripCodeBlock(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  return match ? match[1]!.trim() : trimmed;
 }
 
 async function generateGapAnalysis(
@@ -195,7 +202,7 @@ OUTPUT FORMAT (JSON only):
 
   try {
     const text = (message.content[0] as any).text;
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(stripCodeBlock(text));
     return Response.json(parsed);
   } catch {
     return Response.json(
