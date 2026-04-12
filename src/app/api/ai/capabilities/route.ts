@@ -251,44 +251,120 @@ async function generateInvestmentPriorities(
     timeHorizon: "6_MONTHS" | "1_YEAR" | "2_YEARS" | "3_PLUS_YEARS";
     capabilities: Array<{
       name: string;
+      level?: string;
       strategicImportance: string;
       currentMaturity: string;
       targetMaturity: string;
     }>;
   }
 ) {
-  const prompt = `You are an enterprise architecture advisor recommending technology investment priorities.
+  const assessedCount = payload.capabilities.filter(
+    (c) => c.currentMaturity !== "NOT_ASSESSED"
+  ).length;
+  const totalCount = payload.capabilities.length;
 
-CLIENT: ${workspace.clientName || workspace.name}
-INDUSTRY: ${workspace.industry}
-INVESTMENT BUDGET: ${payload.budget}
-PLANNING HORIZON: ${payload.timeHorizon.replace(/_/g, " ")}
+  const capabilityList = payload.capabilities
+    .map(
+      (c) =>
+        `- ${c.name} (${c.level ?? "?"}) | Importance: ${c.strategicImportance} | Current: ${c.currentMaturity} → Target: ${c.targetMaturity}`
+    )
+    .join("\n");
 
-CAPABILITY SCORES:
-${payload.capabilities.map((c) => `- ${c.name}: Importance=${c.strategicImportance}, Current=${c.currentMaturity}, Target=${c.targetMaturity}`).join("\n")}
+  const prompt = `ROLE
+You are a senior Enterprise Architect and Technology Investment Advisor with deep expertise in capability-based planning, trained on industry-standard frameworks including:
+- APQC Process Classification Framework (PCF) — cross-industry and industry-specific
+- BIAN (Banking), eTOM (Telecom), ACORD (Insurance), SCOR (Supply Chain), ITIL/COBIT (IT), HL7/HIMSS (Healthcare), or the relevant industry equivalent
+- TOGAF Architecture Development Method (ADM) — Phase E (Opportunities & Solutions) and Phase F (Migration Planning)
+- BIZBOK capability-based investment planning
+- CMM/CMMI maturity progression models
 
-TASK:
-Produce a prioritized investment roadmap in JSON format. Rank capabilities by: (strategic importance x maturity gap).
-Account for budget constraints — constrained budgets should focus only on CRITICAL + HIGH importance gaps.
+OBJECTIVE
+Produce a comprehensive, structured investment prioritization roadmap that sequences capability maturity improvements based on strategic value, interdependencies, budget constraints, and implementation feasibility. Every capability with a maturity gap MUST be addressed — either as a funded initiative or explicitly deferred with rationale.
 
-OUTPUT FORMAT (JSON only):
+INPUTS
+- Client: ${workspace.clientName || workspace.name}
+- Industry: ${workspace.industry}
+- Investment budget: ${payload.budget}
+- Planning horizon: ${payload.timeHorizon.replace(/_/g, " ")}
+- Assessment coverage: ${assessedCount} of ${totalCount} capabilities assessed
+- Maturity scale: INITIAL (1) → DEVELOPING (2) → DEFINED (3) → MANAGED (4) → OPTIMIZING (5)
+- Capability assessment data:
+${capabilityList}
+
+METHOD (follow in order)
+1. Identify the reference framework(s) most applicable to this industry. Name them explicitly.
+2. For each capability, compute the maturity gap (target − current) using numeric mapping: INITIAL=1, DEVELOPING=2, DEFINED=3, MANAGED=4, OPTIMIZING=5. NOT_ASSESSED = null (exclude from scoring but flag separately).
+3. Compute a priority score using: (importance weight × gap size) + dependency bonus.
+   - Importance weights: CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1, NOT_ASSESSED=0
+   - Dependency bonus: +1 if the capability is a prerequisite for 2+ other gap capabilities
+4. Apply budget filter:
+   - CONSTRAINED: Fund only CRITICAL and HIGH importance gaps; defer the rest with rationale
+   - MODERATE: Fund CRITICAL, HIGH, and MEDIUM importance gaps; defer LOW
+   - EXPANSIVE: Fund all gaps
+5. Sequence funded initiatives into waves based on:
+   - Dependencies (prerequisites first)
+   - Quick wins (high value, low effort) in early waves
+   - Foundation capabilities (data, governance, security) before domain-specific capabilities
+   - Planning horizon constraints (shorter horizons = fewer waves)
+6. For each initiative, assess implementation approach and estimated effort based on the gap size and capability complexity.
+7. Identify capabilities that are NOT_ASSESSED as a data quality concern — they cannot be prioritized until assessed.
+
+CONSTRAINTS
+- Address ALL capabilities with a gap — either as a funded initiative or an explicitly deferred item.
+- Do NOT invent data. Work strictly from the assessment data provided.
+- Do NOT cite frameworks you are not confident exist.
+- Dependencies must reference specific capabilities from the input data, not generic concepts.
+- Wave timelines must fit within the stated planning horizon.
+- Each initiative's rationale must connect to business outcomes, not just maturity scores.
+
+OUTPUT FORMAT (JSON only, no markdown, no explanation):
 {
-  "prioritized": [
+  "referenceFrameworks": ["string — name of each framework used"],
+  "executiveSummary": "string (4-6 sentences: overall investment posture, total gaps to address, budget fit assessment, key themes, and expected outcome if roadmap is executed)",
+  "totalInvestmentGaps": 0,
+  "fundedCount": 0,
+  "deferredCount": 0,
+  "waves": [
     {
-      "capabilityName": "string",
-      "priority": 1,
-      "investmentRationale": "string (1 sentence)",
-      "estimatedEffort": "LOW" | "MEDIUM" | "HIGH",
-      "suggestedTimeline": "string (e.g. Q1 2026)",
-      "dependencies": ["string"]
+      "wave": 1,
+      "name": "string (e.g. 'Foundation & Quick Wins')",
+      "timeline": "string (e.g. 'Q1–Q2 2026')",
+      "theme": "string (1 sentence: what this wave achieves)",
+      "initiatives": [
+        {
+          "priority": 1,
+          "capabilityName": "string",
+          "level": "string",
+          "currentMaturity": "string",
+          "targetMaturity": "string",
+          "gapSize": 0,
+          "strategicImportance": "string",
+          "investmentRationale": "string (2-3 sentences: why invest now, business risk of delay, expected business outcome)",
+          "implementationApproach": "string (1-2 sentences: how to close the gap — e.g. process redesign, technology platform, hire expertise, partner engagement)",
+          "estimatedEffort": "LOW | MEDIUM | HIGH",
+          "riskIfDeferred": "string (1 sentence: what happens if this is not funded)",
+          "dependencies": ["string — other capability names that must be addressed first or in parallel"]
+        }
+      ]
     }
   ],
-  "executiveSummary": "string (2-3 sentences)"
+  "deferred": [
+    {
+      "capabilityName": "string",
+      "level": "string",
+      "strategicImportance": "string",
+      "gapSize": 0,
+      "deferralReason": "string (1-2 sentences: why deferred — budget constraint, low priority, dependency on funded items, etc.)",
+      "prerequisiteWave": "string | null (e.g. 'Wave 1' if this should follow a funded wave)"
+    }
+  ],
+  "notAssessed": ["string — capability names excluded due to missing assessment data"],
+  "budgetGuidance": "string (2-3 sentences: whether the budget level is adequate for the gap profile, what trade-offs were made, and what additional funding would unlock)"
 }`;
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 2000,
+    max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -298,7 +374,7 @@ OUTPUT FORMAT (JSON only):
     return Response.json(parsed);
   } catch {
     return Response.json(
-      { prioritized: [], error: "Failed to parse AI response" },
+      { waves: [], error: "Failed to parse AI response" },
       { status: 200 }
     );
   }

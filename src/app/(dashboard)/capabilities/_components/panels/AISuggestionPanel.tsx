@@ -825,6 +825,63 @@ function formatGapAnalysisAsText(r: GapAnalysisResult): string {
 
 // ─── Investment Priorities Tab ───────────────────────────
 
+type InvestmentInitiative = {
+  priority: number;
+  capabilityName: string;
+  level: string;
+  currentMaturity: string;
+  targetMaturity: string;
+  gapSize: number;
+  strategicImportance: string;
+  investmentRationale: string;
+  implementationApproach: string;
+  estimatedEffort: string;
+  riskIfDeferred: string;
+  dependencies: string[];
+};
+
+type InvestmentWave = {
+  wave: number;
+  name: string;
+  timeline: string;
+  theme: string;
+  initiatives: InvestmentInitiative[];
+};
+
+type DeferredItem = {
+  capabilityName: string;
+  level: string;
+  strategicImportance: string;
+  gapSize: number;
+  deferralReason: string;
+  prerequisiteWave: string | null;
+};
+
+type InvestmentResult = {
+  referenceFrameworks: string[];
+  executiveSummary: string;
+  totalInvestmentGaps: number;
+  fundedCount: number;
+  deferredCount: number;
+  waves: InvestmentWave[];
+  deferred: DeferredItem[];
+  notAssessed: string[];
+  budgetGuidance: string;
+};
+
+const EFFORT_CONFIG: Record<string, { color: string; bg: string }> = {
+  LOW: { color: "text-green-700", bg: "bg-green-50 border-green-200" },
+  MEDIUM: { color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200" },
+  HIGH: { color: "text-red-700", bg: "bg-red-50 border-red-200" },
+};
+
+const WAVE_COLORS = [
+  "border-[#86BC25]/40 bg-[#86BC25]/5",
+  "border-blue-300 bg-blue-50/50",
+  "border-purple-300 bg-purple-50/50",
+  "border-amber-300 bg-amber-50/50",
+];
+
 function InvestmentTab({
   tree,
   workspaceId,
@@ -835,20 +892,21 @@ function InvestmentTab({
   const [loading, setLoading] = useState(false);
   const [budget, setBudget] = useState<string>("MODERATE");
   const [horizon, setHorizon] = useState<string>("1_YEAR");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<InvestmentResult | null>(null);
 
   function flattenCapabilities(nodes: any[]): any[] {
-    const result: any[] = [];
+    const flat: any[] = [];
     for (const n of nodes) {
-      result.push({
+      flat.push({
         name: n.name,
+        level: n.level,
         strategicImportance: n.strategicImportance,
         currentMaturity: n.currentMaturity,
         targetMaturity: n.targetMaturity,
       });
-      if (n.children) result.push(...flattenCapabilities(n.children));
+      if (n.children) flat.push(...flattenCapabilities(n.children));
     }
-    return result;
+    return flat;
   }
 
   async function runPriorities() {
@@ -866,7 +924,11 @@ function InvestmentTab({
         }),
       });
       const data = await res.json();
-      setResult(data);
+      if (data.error) {
+        toast.error(data.error);
+      } else {
+        setResult(data);
+      }
     } catch {
       toast.error("AI request failed");
     } finally {
@@ -877,8 +939,8 @@ function InvestmentTab({
   return (
     <div className="p-5">
       <p className="text-sm text-muted-foreground mb-4">
-        Get AI-recommended investment priorities based on capability gaps and
-        strategic importance.
+        Generate a wave-based investment roadmap that sequences capability
+        improvements by strategic value, dependencies, and budget constraints.
       </p>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -923,54 +985,299 @@ function InvestmentTab({
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Analyzing...
+            Building roadmap...
           </>
         ) : (
           <>
             <TrendingUp className="h-4 w-4 mr-2" />
-            Generate Priorities
+            Generate Investment Roadmap
           </>
         )}
       </Button>
 
       {result && (
         <div className="space-y-4">
-          {result.executiveSummary && (
-            <div className="p-3 rounded-lg bg-[#86BC25]/5 border border-[#86BC25]/20 text-xs leading-relaxed text-[#1a1f2e]">
-              {result.executiveSummary}
+          {/* Reference Frameworks */}
+          {result.referenceFrameworks?.length > 0 && (
+            <div className="p-2.5 rounded-lg bg-[#f8f9fa] border border-[#e9ecef]">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                Reference Frameworks
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {result.referenceFrameworks.map((f, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#dee2e6] text-[#495057] font-medium"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
-          {(result.prioritized ?? []).map((p: any, i: number) => (
-            <div
-              key={i}
-              className="p-3.5 rounded-lg border border-[#e9ecef] flex gap-3"
-            >
-              <div className="h-7 w-7 rounded-full bg-[#1a1f2e] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                {p.priority}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-[#1a1f2e]">
-                  {p.capabilityName}
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {p.investmentRationale}
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="secondary" className="text-[10px]">
-                    Effort: {p.estimatedEffort}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px]">
-                    {p.suggestedTimeline}
-                  </Badge>
+          {/* Executive Summary */}
+          <div className="p-3.5 rounded-lg bg-[#1a1f2e] text-white">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1.5">
+              Executive Summary
+            </p>
+            <p className="text-xs leading-relaxed text-white/90">
+              {result.executiveSummary}
+            </p>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2.5 rounded-lg border text-center bg-[#f8f9fa]">
+              <p className="text-lg font-bold text-[#1a1f2e]">{result.totalInvestmentGaps ?? 0}</p>
+              <p className="text-[9px] font-medium text-muted-foreground">Total Gaps</p>
+            </div>
+            <div className="p-2.5 rounded-lg border text-center bg-green-50 border-green-200">
+              <p className="text-lg font-bold text-green-700">{result.fundedCount ?? 0}</p>
+              <p className="text-[9px] font-medium text-green-700">Funded</p>
+            </div>
+            <div className="p-2.5 rounded-lg border text-center bg-orange-50 border-orange-200">
+              <p className="text-lg font-bold text-orange-700">{result.deferredCount ?? 0}</p>
+              <p className="text-[9px] font-medium text-orange-700">Deferred</p>
+            </div>
+          </div>
+
+          {/* Waves */}
+          {(result.waves ?? []).map((wave, wi) => (
+            <div key={wi}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-6 rounded-full bg-[#1a1f2e] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                  {wave.wave}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[#1a1f2e]">{wave.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{wave.timeline}</p>
+                </div>
+              </div>
+              {wave.theme && (
+                <p className="text-[11px] text-[#495057] italic mb-2 ml-8">
+                  {wave.theme}
+                </p>
+              )}
+              <div className="space-y-2 ml-3 border-l-2 border-[#e9ecef] pl-5">
+                {wave.initiatives.map((init, ii) => {
+                  const effortConf = EFFORT_CONFIG[init.estimatedEffort] ?? EFFORT_CONFIG.MEDIUM;
+                  return (
+                    <div
+                      key={ii}
+                      className={`p-3 rounded-lg border ${WAVE_COLORS[wi % WAVE_COLORS.length]}`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-white bg-[#1a1f2e] rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+                            {init.priority}
+                          </span>
+                          <Badge variant="outline" className="text-[9px] font-bold shrink-0">
+                            {init.level}
+                          </Badge>
+                          <h4 className="text-xs font-semibold text-[#1a1f2e]">
+                            {init.capabilityName}
+                          </h4>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground">
+                          {MATURITY_LABELS[init.currentMaturity] ?? init.currentMaturity} → {MATURITY_LABELS[init.targetMaturity] ?? init.targetMaturity}
+                        </span>
+                        <Badge variant="secondary" className="text-[9px]">
+                          {IMPORTANCE_LABELS[init.strategicImportance] ?? init.strategicImportance}
+                        </Badge>
+                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border ${effortConf.bg} ${effortConf.color}`}>
+                          {init.estimatedEffort} effort
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#495057] leading-relaxed mb-1">
+                        {init.investmentRationale}
+                      </p>
+                      <p className="text-[11px] text-[#86BC25] font-medium leading-relaxed mb-1">
+                        → {init.implementationApproach}
+                      </p>
+                      <p className="text-[10px] text-red-600/70 italic">
+                        Risk if deferred: {init.riskIfDeferred}
+                      </p>
+                      {init.dependencies?.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          <span className="text-[9px] text-muted-foreground">Depends on:</span>
+                          {init.dependencies.map((dep, di) => (
+                            <span
+                              key={di}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#e9ecef] text-[#495057]"
+                            >
+                              {dep}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
+
+          {/* Deferred */}
+          {result.deferred?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700 mb-2 px-2 py-0.5 rounded bg-orange-50 border border-orange-200 inline-block">
+                Deferred ({result.deferred.length})
+              </p>
+              <div className="space-y-1.5">
+                {result.deferred.map((d, i) => (
+                  <div
+                    key={i}
+                    className="p-2.5 rounded-lg border border-orange-200 bg-orange-50/50"
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Badge variant="outline" className="text-[9px] font-bold shrink-0">
+                        {d.level}
+                      </Badge>
+                      <p className="text-xs font-medium text-[#1a1f2e]">{d.capabilityName}</p>
+                      <span className="text-[10px] text-orange-600 ml-auto shrink-0">
+                        Gap: +{d.gapSize}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#495057]">{d.deferralReason}</p>
+                    {d.prerequisiteWave && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Revisit after: {d.prerequisiteWave}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Not Assessed */}
+          {result.notAssessed?.length > 0 && (
+            <div className="p-3 rounded-lg border border-orange-200 bg-orange-50">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700 mb-1.5">
+                Not Assessed ({result.notAssessed.length})
+              </p>
+              <p className="text-[11px] text-orange-600 mb-2">
+                These capabilities have no maturity assessment and could not be prioritized.
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {result.notAssessed.map((name, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-white border border-orange-200 text-orange-700"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Budget Guidance */}
+          {result.budgetGuidance && (
+            <div className="p-3 rounded-lg border border-[#86BC25]/20 bg-[#86BC25]/5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#86BC25] mb-1">
+                Budget Guidance
+              </p>
+              <p className="text-[11px] text-[#495057] leading-relaxed">
+                {result.budgetGuidance}
+              </p>
+            </div>
+          )}
+
+          {/* Copy */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => {
+              navigator.clipboard.writeText(formatInvestmentAsText(result));
+              toast.success("Roadmap copied — paste into Word or email");
+            }}
+          >
+            Copy Full Roadmap
+          </Button>
         </div>
       )}
     </div>
   );
+}
+
+// ─── Investment Text Formatter ───────────────────────────
+
+function formatInvestmentAsText(r: InvestmentResult): string {
+  const lines: string[] = [];
+  const divider = "─".repeat(60);
+
+  lines.push("INVESTMENT PRIORITIZATION ROADMAP");
+  lines.push(divider);
+  lines.push("");
+
+  if (r.referenceFrameworks?.length > 0) {
+    lines.push(`Reference Frameworks: ${r.referenceFrameworks.join(", ")}`);
+    lines.push("");
+  }
+
+  lines.push("EXECUTIVE SUMMARY");
+  lines.push(divider);
+  lines.push(r.executiveSummary);
+  lines.push("");
+
+  lines.push(`Total Gaps: ${r.totalInvestmentGaps}  |  Funded: ${r.fundedCount}  |  Deferred: ${r.deferredCount}`);
+  lines.push("");
+
+  for (const wave of r.waves ?? []) {
+    lines.push(`WAVE ${wave.wave}: ${wave.name.toUpperCase()}`);
+    lines.push(`Timeline: ${wave.timeline}`);
+    lines.push(divider);
+    if (wave.theme) lines.push(`  ${wave.theme}`);
+    lines.push("");
+
+    for (const init of wave.initiatives) {
+      const matFrom = MATURITY_LABELS[init.currentMaturity] ?? init.currentMaturity;
+      const matTo = MATURITY_LABELS[init.targetMaturity] ?? init.targetMaturity;
+      const importance = IMPORTANCE_LABELS[init.strategicImportance] ?? init.strategicImportance;
+
+      lines.push(`  #${init.priority}  ${init.capabilityName} (${init.level})`);
+      lines.push(`    Maturity: ${matFrom} → ${matTo}  |  Gap: +${init.gapSize}  |  Importance: ${importance}  |  Effort: ${init.estimatedEffort}`);
+      lines.push(`    ${init.investmentRationale}`);
+      lines.push(`    Approach: ${init.implementationApproach}`);
+      lines.push(`    Risk if deferred: ${init.riskIfDeferred}`);
+      if (init.dependencies?.length > 0) {
+        lines.push(`    Dependencies: ${init.dependencies.join(", ")}`);
+      }
+      lines.push("");
+    }
+  }
+
+  if (r.deferred?.length > 0) {
+    lines.push("DEFERRED ITEMS");
+    lines.push(divider);
+    for (const d of r.deferred) {
+      lines.push(`  ${d.capabilityName} (${d.level}) — Gap: +${d.gapSize}, ${d.strategicImportance}`);
+      lines.push(`    ${d.deferralReason}`);
+      if (d.prerequisiteWave) lines.push(`    Revisit after: ${d.prerequisiteWave}`);
+    }
+    lines.push("");
+  }
+
+  if (r.notAssessed?.length > 0) {
+    lines.push("NOT ASSESSED");
+    lines.push(divider);
+    lines.push(`  ${r.notAssessed.join(", ")}`);
+    lines.push("");
+  }
+
+  if (r.budgetGuidance) {
+    lines.push("BUDGET GUIDANCE");
+    lines.push(divider);
+    lines.push(r.budgetGuidance);
+    lines.push("");
+  }
+
+  return lines.join("\n");
 }
 
 function ConfidenceDot({ confidence }: { confidence: string }) {
