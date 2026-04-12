@@ -141,31 +141,107 @@ async function generateGapAnalysis(
     )
     .join("\n");
 
-  const prompt = `You are a senior enterprise architect preparing a capability gap analysis for a consulting client.
+  const assessedCount = payload.capabilities.filter(
+    (c) => c.currentMaturity !== "NOT_ASSESSED"
+  ).length;
+  const totalCount = payload.capabilities.length;
 
-CLIENT: ${workspace.clientName || workspace.name}
-INDUSTRY: ${workspace.industry}
+  const prompt = `ROLE
+You are a senior Enterprise Architect with deep expertise in capability maturity assessment, trained on industry-standard reference frameworks including:
+- APQC Process Classification Framework (PCF) — cross-industry and industry-specific
+- BIAN (Banking), eTOM (Telecom), ACORD (Insurance), SCOR (Supply Chain), ITIL/COBIT (IT), HL7/HIMSS (Healthcare), or the relevant industry equivalent
+- TOGAF and Business Architecture Guild (BIZBOK) capability modeling standards
+- CMM/CMMI maturity model methodology
 
-CAPABILITY ASSESSMENT DATA:
+OBJECTIVE
+Produce a comprehensive, structured gap analysis of ALL capability maturity gaps for the client. Every capability with a gap between current and target maturity MUST be included, categorized by severity, and accompanied by actionable analysis. Do NOT limit to a fixed number of gaps — report all of them.
+
+INPUTS
+- Client: ${workspace.clientName || workspace.name}
+- Industry: ${workspace.industry}
+- Assessment coverage: ${assessedCount} of ${totalCount} capabilities assessed
+- Maturity scale: INITIAL (1) → DEVELOPING (2) → DEFINED (3) → MANAGED (4) → OPTIMIZING (5)
+- Capability assessment data:
 ${capabilityList}
 
-TASK:
-Write a professional gap analysis narrative (400-600 words) that:
-1. Opens with a high-level executive summary of the organization's overall capability maturity position
-2. Identifies the 3 most critical capability gaps (highest importance + largest current-to-target delta)
-3. Groups capabilities into: Strengths (Managed/Optimizing), Developing Areas, and Urgent Gaps (Initial + Critical importance)
-4. Closes with a forward-looking paragraph on transformation focus areas
+METHOD (follow in order)
+1. Identify the reference framework(s) most applicable to this industry. Name them explicitly.
+2. For each capability, compute the maturity gap (target − current). Use numeric mapping: INITIAL=1, DEVELOPING=2, DEFINED=3, MANAGED=4, OPTIMIZING=5. NOT_ASSESSED = null (exclude from gap calculations but flag separately).
+3. Classify each gap using a composite score of (gap size × strategic importance weight). Importance weights: CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1, NOT_ASSESSED=0.
+   - CRITICAL_GAP: composite score ≥ 9, or any CRITICAL importance capability with gap ≥ 2
+   - HIGH_GAP: composite score 6–8, or any HIGH importance capability with gap ≥ 2
+   - MODERATE_GAP: composite score 3–5
+   - LOW_GAP: composite score 1–2
+4. Identify strengths: capabilities at MANAGED or OPTIMIZING with no gap or gap ≤ 0.
+5. Flag all NOT_ASSESSED capabilities as a data quality concern.
+6. Derive transformation themes by clustering related gaps into strategic initiatives.
 
-TONE: Objective, data-driven, consultant-grade. Suitable for a C-suite presentation.
-FORMAT: Plain prose with section headers. No bullet points. No markdown tables.`;
+CONSTRAINTS
+- Report ALL gaps, not just the top N. Every capability with gap > 0 must appear.
+- Do NOT invent data. Work strictly from the assessment data provided.
+- Do NOT cite frameworks you are not confident exist.
+- Strengths are only capabilities where current maturity ≥ target maturity OR current is MANAGED/OPTIMIZING.
+- Transformation themes must reference specific capabilities from the gaps list.
+
+OUTPUT FORMAT (JSON only, no markdown, no explanation):
+{
+  "referenceFrameworks": ["string — name of each framework used"],
+  "executiveSummary": "string (3-5 sentences: overall maturity posture, key risk areas, data quality note if many NOT_ASSESSED)",
+  "maturityDistribution": {
+    "INITIAL": 0,
+    "DEVELOPING": 0,
+    "DEFINED": 0,
+    "MANAGED": 0,
+    "OPTIMIZING": 0,
+    "NOT_ASSESSED": 0
+  },
+  "gaps": [
+    {
+      "capabilityName": "string",
+      "level": "L1 | L2 | L3",
+      "category": "CRITICAL_GAP | HIGH_GAP | MODERATE_GAP | LOW_GAP",
+      "currentMaturity": "string",
+      "targetMaturity": "string",
+      "gapSize": 0,
+      "strategicImportance": "string",
+      "analysis": "string (2-3 sentences: why this gap matters, business risk, industry context)",
+      "recommendation": "string (1-2 sentences: specific remediation action)"
+    }
+  ],
+  "strengths": [
+    {
+      "capabilityName": "string",
+      "level": "string",
+      "currentMaturity": "string",
+      "note": "string (1 sentence: why this is a strength, how to leverage it)"
+    }
+  ],
+  "notAssessed": ["string — names of capabilities with NOT_ASSESSED maturity"],
+  "transformationThemes": [
+    {
+      "theme": "string (short name, e.g. 'Digital Operations Modernization')",
+      "description": "string (2-3 sentences: what this initiative addresses and expected outcome)",
+      "relatedCapabilities": ["string — capability names from gaps list"]
+    }
+  ]
+}`;
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 1500,
+    max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   });
 
-  return Response.json({ narrative: (message.content[0] as any).text });
+  try {
+    const text = (message.content[0] as any).text;
+    const parsed = JSON.parse(stripCodeBlock(text));
+    return Response.json(parsed);
+  } catch {
+    return Response.json(
+      { gaps: [], error: "Failed to parse AI response" },
+      { status: 200 }
+    );
+  }
 }
 
 async function generateInvestmentPriorities(
