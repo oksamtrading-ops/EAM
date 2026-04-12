@@ -45,36 +45,52 @@ async function suggestCapabilities(
   workspace: any,
   payload: {
     industry: string;
-    existingL1s: string[];
-    existingL2s: string[];
+    existingCapabilities: string;
+    organizationContext: string;
   }
 ) {
-  const prompt = `You are an enterprise architecture expert specializing in business capability modeling.
+  const prompt = `ROLE
+You are a senior Enterprise Architect with deep expertise in business capability modeling, trained on industry-standard reference frameworks including:
+- APQC Process Classification Framework (PCF) — cross-industry and industry-specific
+- BIAN (Banking), eTOM (Telecom), ACORD (Insurance), SCOR (Supply Chain), ITIL/COBIT (IT), HL7/HIMSS (Healthcare), or the relevant industry equivalent
+- TOGAF and Business Architecture Guild (BIZBOK) capability modeling standards
 
-CONTEXT:
-- Industry: ${payload.industry}
-- Existing Level 1 (L1) capabilities already defined: ${payload.existingL1s.map((n) => `"${n}"`).join(", ") || "None"}
-- Existing Level 2 (L2) capabilities already defined: ${payload.existingL2s.map((n) => `"${n}"`).join(", ") || "None"}
+OBJECTIVE
+Identify business capabilities that are MISSING from the provided capability list, grounded in industry best practices for the specified industry. Produce a comprehensive, deduplicated gap list suitable for an EA capability heatmap review.
 
-TASK:
-Identify business capabilities that are MISSING from this organization's capability map based on industry best practices.
+INPUTS
+- Industry / sub-industry: ${payload.industry}
+- Organization context: ${payload.organizationContext}
+- Existing capabilities (verbatim list):
+${payload.existingCapabilities}
+- Target capability levels: L1 and L2
+- Scope: All domains
 
-RULES:
-- Only suggest capabilities that are genuinely absent — do not duplicate existing ones
-- Capabilities must describe WHAT the business does, not HOW (no process steps, no technology names)
-- Maximum 3 levels deep (L1, L2, L3)
-- Each suggestion must be mutually exclusive from existing capabilities
-- Focus on capabilities that have the highest strategic and operational impact
-- Suggest 5-8 capabilities total
+METHOD (follow in order)
+1. Identify the authoritative reference model(s) most applicable to the stated industry. Name them explicitly in your output.
+2. Derive the expected capability set at L1 and L2 from those reference model(s), covering all major domains: Strategy & Governance, Customer, Product & Service, Operations & Delivery, Supply Chain / Partner, Finance, HR / People, Technology & Data, Risk / Compliance / Security, and industry-specific domains.
+3. Normalize the provided existing capabilities (synonyms, re-wordings, parent/child relationships) before comparing — do NOT flag a capability as missing if it is present under a different but equivalent name.
+4. Compare the reference set against the normalized existing set. Output only the genuine gaps.
+5. For each gap, verify it is not a sub-capability of something already listed.
+
+CONSTRAINTS
+- Do NOT invent frameworks or cite sources you are not confident exist.
+- Do NOT duplicate existing capabilities or list near-synonyms of them as gaps.
+- Do NOT propose processes, applications, or technologies — capabilities only (what the business does, not how).
+- Use noun-phrase naming ("Customer Onboarding Management", not "Onboard Customers").
+- Maintain consistent grammatical level — do not mix Level 1 and Level 2 items in the same suggestion without clearly labeling each.
+- Suggest 5-10 capabilities total, prioritized by strategic and operational impact.
 
 OUTPUT FORMAT (JSON only, no markdown, no explanation):
 {
+  "referenceFrameworks": ["string — name of each framework used"],
   "suggestions": [
     {
       "name": "string",
-      "level": "L1" | "L2" | "L3",
-      "suggestedParent": "string | null",
-      "rationale": "string (1-2 sentences)",
+      "level": "L1" | "L2",
+      "suggestedParent": "string | null (existing L1 name if this is an L2, null if L1)",
+      "domain": "string (which EA domain this falls under)",
+      "rationale": "string (1-2 sentences explaining why this is missing and its strategic relevance)",
       "strategicImportance": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
       "confidence": "HIGH" | "MEDIUM" | "LOW"
     }

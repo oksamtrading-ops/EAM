@@ -29,6 +29,7 @@ type Suggestion = {
   name: string;
   level: string;
   suggestedParent: string | null;
+  domain?: string;
   rationale: string;
   strategicImportance: string;
   confidence: string;
@@ -36,7 +37,7 @@ type Suggestion = {
 
 export function AISuggestionPanel({ open, onClose, tree }: Props) {
   const [tab, setTab] = useState<AITab>("suggest");
-  const { workspaceId, industry } = useWorkspace();
+  const { workspaceId, industry, workspaceName } = useWorkspace();
 
   if (!open) return null;
 
@@ -85,7 +86,7 @@ export function AISuggestionPanel({ open, onClose, tree }: Props) {
       {/* Content — min-h-0 lets flex child shrink; overflow-y-auto enables scroll */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === "suggest" && (
-          <SuggestTab tree={tree} workspaceId={workspaceId} industry={industry} />
+          <SuggestTab tree={tree} workspaceId={workspaceId} industry={industry} workspaceName={workspaceName} />
         )}
         {tab === "gap-analysis" && (
           <GapAnalysisTab tree={tree} workspaceId={workspaceId} />
@@ -130,23 +131,33 @@ function SuggestTab({
   tree,
   workspaceId,
   industry,
+  workspaceName,
 }: {
   tree: any[];
   workspaceId: string;
   industry: string;
+  workspaceName: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [frameworks, setFrameworks] = useState<string[]>([]);
   const [addedNames, setAddedNames] = useState<Set<string>>(new Set());
   const utils = trpc.useUtils();
   const createMutation = trpc.capability.create.useMutation({
     onSuccess: () => utils.capability.getTree.invalidate(),
   });
 
-  const existingL1s = tree.map((n: any) => n.name);
-  const existingL2s = tree.flatMap((n: any) =>
-    (n.children ?? []).map((c: any) => c.name)
-  );
+  // Build a structured capability list for the AI prompt
+  const existingCapabilities = tree.length === 0
+    ? "None"
+    : tree
+        .map((l1: any) => {
+          const l2List = (l1.children ?? [])
+            .map((c: any) => `    - L2: ${c.name}`)
+            .join("\n");
+          return `  - L1: ${l1.name}${l2List ? "\n" + l2List : ""}`;
+        })
+        .join("\n");
 
   async function runSuggestion() {
     setLoading(true);
@@ -158,11 +169,16 @@ function SuggestTab({
         body: JSON.stringify({
           action: "suggest",
           workspaceId,
-          payload: { industry, existingL1s, existingL2s },
+          payload: {
+            industry,
+            existingCapabilities,
+            organizationContext: `Client: ${workspaceName}`,
+          },
         }),
       });
       const data = await res.json();
       setSuggestions(data.suggestions ?? []);
+      setFrameworks(data.referenceFrameworks ?? []);
     } catch (err) {
       toast.error("AI request failed");
     } finally {
@@ -237,6 +253,23 @@ function SuggestTab({
 
       {suggestions.length > 0 && (
         <div className="space-y-3">
+          {frameworks.length > 0 && (
+            <div className="p-2.5 rounded-lg bg-[#f8f9fa] border border-[#e9ecef]">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                Reference Frameworks Used
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {frameworks.map((f, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#dee2e6] text-[#495057] font-medium"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {suggestions.length} suggestions
           </p>
@@ -259,11 +292,18 @@ function SuggestTab({
                 </div>
                 <ConfidenceDot confidence={s.confidence} />
               </div>
-              {s.suggestedParent && (
-                <p className="text-[11px] text-muted-foreground mb-1">
-                  Under: {s.suggestedParent}
-                </p>
-              )}
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                {s.domain && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#86BC25]/10 text-[#86BC25] font-medium">
+                    {s.domain}
+                  </span>
+                )}
+                {s.suggestedParent && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Under: {s.suggestedParent}
+                  </p>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                 {s.rationale}
               </p>
