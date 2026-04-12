@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import {
   MATURITY_COLORS,
   IMPORTANCE_COLORS,
@@ -24,6 +25,7 @@ type Props = {
   colorBy: ColorByMode;
   onSelect: (id: string) => void;
   selectedId: string | null;
+  onMove?: (capabilityId: string, newParentId: string | null, newLevel: "L1" | "L2" | "L3") => void;
 };
 
 const LEGEND_TITLE: Record<ColorByMode, string> = {
@@ -33,7 +35,47 @@ const LEGEND_TITLE: Record<ColorByMode, string> = {
   owner:      "Capability Owner",
 };
 
-export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
+export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Props) {
+  const draggingRef = useRef<{ id: string; level: string; name: string } | null>(null);
+  const [dragOverL1, setDragOverL1] = useState<string | null>(null);
+
+  function handleDragStart(e: React.DragEvent, cap: any) {
+    draggingRef.current = { id: cap.id, level: cap.level, name: cap.name };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", cap.id);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "0.5";
+    }
+  }
+
+  function handleDragEnd(e: React.DragEvent) {
+    draggingRef.current = null;
+    setDragOverL1(null);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "1";
+    }
+  }
+
+  function handleDropOnL1(e: React.DragEvent, targetL1Id: string) {
+    e.preventDefault();
+    setDragOverL1(null);
+    const dragged = draggingRef.current;
+    if (!dragged || !onMove) return;
+    if (dragged.id === targetL1Id) return;
+    if (dragged.level === "L1") return;
+    onMove(dragged.id, targetL1Id, "L2");
+  }
+
+  function handleDropOnRoot(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverL1(null);
+    const dragged = draggingRef.current;
+    if (!dragged || !onMove) return;
+    if (dragged.level === "L2") {
+      onMove(dragged.id, null, "L1");
+    }
+  }
+
   const colorMap =
     colorBy === "maturity"   ? MATURITY_COLORS :
     colorBy === "importance" ? IMPORTANCE_COLORS :
@@ -49,7 +91,16 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
     : [];
 
   return (
-    <div className="space-y-5">
+    <div
+      className="space-y-5"
+      onDragOver={(e) => {
+        if (draggingRef.current?.level === "L2") {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={handleDropOnRoot}
+    >
       {/* Legend */}
       <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
         <span className="text-sm font-medium text-[#1a1f2e]">
@@ -82,13 +133,33 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
 
       {/* Heat map grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {tree.map((l1: any) => (
+        {tree.map((l1: any) => {
+          const isDragOver = dragOverL1 === l1.id;
+          return (
           <div
             key={l1.id}
             className={cn(
               "rounded-xl border bg-white overflow-hidden shadow-sm transition-all hover:shadow-md",
-              selectedId === l1.id && "ring-2 ring-[#86BC25]"
+              selectedId === l1.id && "ring-2 ring-[#86BC25]",
+              isDragOver && "ring-2 ring-[#86BC25] border-[#86BC25]"
             )}
+            onDragOver={(e) => {
+              if (draggingRef.current && draggingRef.current.level !== "L1") {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverL1(l1.id);
+              }
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDragOverL1(null);
+              }
+            }}
+            onDrop={(e) => {
+              e.stopPropagation();
+              handleDropOnL1(e, l1.id);
+            }}
           >
             {/* L1 header */}
             <button
@@ -99,9 +170,16 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
                 <span className="text-[9px] font-bold text-white bg-[#1a1f2e] px-1.5 py-0.5 rounded">
                   L1
                 </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {(l1.children ?? []).length} capabilities
-                </span>
+                <div className="flex items-center gap-2">
+                  {isDragOver && (
+                    <span className="text-[10px] text-[#86BC25] font-medium animate-pulse">
+                      Drop here
+                    </span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground">
+                    {(l1.children ?? []).length} capabilities
+                  </span>
+                </div>
               </div>
               <h3 className="font-semibold text-sm text-[#1a1f2e] leading-tight">
                 {l1.name}
@@ -124,6 +202,9 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
                   <Tooltip key={l2.id}>
                     <TooltipTrigger>
                       <button
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, { ...l2, level: "L2" })}
+                        onDragEnd={handleDragEnd}
                         onClick={() => onSelect(l2.id)}
                         className={cn(
                           "w-full rounded-lg p-2.5 text-left leading-tight transition-all hover:scale-[1.02] hover:shadow-md",
@@ -245,7 +326,8 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId }: Props) {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

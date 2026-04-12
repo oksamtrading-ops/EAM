@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -23,6 +23,7 @@ type Props = {
   colorBy: ColorByMode;
   onSelect: (id: string) => void;
   selectedId: string | null;
+  onMove?: (capabilityId: string, newParentId: string | null, newLevel: "L1" | "L2" | "L3") => void;
 };
 
 // Layout constants
@@ -35,14 +36,55 @@ const L3_HEIGHT = 48;
 const H_GAP = 40;
 const V_GAP = 100;
 
-export function TreeView({ tree, colorBy, onSelect, selectedId }: Props) {
+export function TreeView({ tree, colorBy, onSelect, selectedId, onMove }: Props) {
+  const draggingRef = useRef<{ id: string; level: string; name: string } | null>(null);
+  const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
+
+  const handleDragStart = useCallback((id: string, level: string, name: string) => {
+    draggingRef.current = { id, level, name };
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    draggingRef.current = null;
+    setDragOverNodeId(null);
+  }, []);
+
+  const handleDropOnL1 = useCallback((targetL1Id: string) => {
+    const dragged = draggingRef.current;
+    if (!dragged || !onMove) return;
+    if (dragged.id === targetL1Id) return;
+    if (dragged.level === "L1") return;
+    onMove(dragged.id, targetL1Id, "L2");
+    draggingRef.current = null;
+    setDragOverNodeId(null);
+  }, [onMove]);
+
+  const handleDragOverL1 = useCallback((nodeId: string) => {
+    if (draggingRef.current && draggingRef.current.level !== "L1") {
+      setDragOverNodeId(nodeId);
+    }
+  }, []);
+
+  const handleDragLeaveL1 = useCallback(() => {
+    setDragOverNodeId(null);
+  }, []);
+
+  const dragHandlers = useMemo(() => ({
+    onDragStart: handleDragStart,
+    onDragEnd: handleDragEnd,
+    onDropOnL1: handleDropOnL1,
+    onDragOverL1: handleDragOverL1,
+    onDragLeaveL1: handleDragLeaveL1,
+    dragOverNodeId,
+  }), [handleDragStart, handleDragEnd, handleDropOnL1, handleDragOverL1, handleDragLeaveL1, dragOverNodeId]);
+
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildNodesAndEdges(tree, colorBy, selectedId),
-    [tree, colorBy, selectedId]
+    () => buildNodesAndEdges(tree, colorBy, selectedId, dragHandlers),
+    [tree, colorBy, selectedId, dragHandlers]
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [, , onNodesChange] = useNodesState(initialNodes);
+  const [, , onEdgesChange] = useEdgesState(initialEdges);
 
   const onNodeClick = useCallback(
     (_: any, node: Node) => {
@@ -63,6 +105,7 @@ export function TreeView({ tree, colorBy, onSelect, selectedId }: Props) {
         minZoom={0.2}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
+        nodesDraggable={false}
       >
         <Background color="#e9ecef" gap={20} size={1} />
         <Controls
@@ -89,9 +132,27 @@ function L1Node({ data, selected }: { data: any; selected: boolean }) {
   const color = data.maturityColor;
   return (
     <div
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("text/plain")) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "move";
+          data.onDragOverL1?.(data.id);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as unknown as globalThis.Node)) {
+          data.onDragLeaveL1?.();
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        data.onDropOnL1?.(data.id);
+      }}
       className={`rounded-xl border-2 bg-[#1a1f2e] text-white px-4 py-3 shadow-lg transition-all cursor-pointer ${
         selected ? "ring-2 ring-[#86BC25] ring-offset-2" : ""
-      }`}
+      } ${data.isDragOver ? "ring-2 ring-[#86BC25] border-[#86BC25] scale-[1.02]" : ""}`}
       style={{ width: L1_WIDTH, minHeight: L1_HEIGHT }}
     >
       <Handle type="target" position={Position.Top} className="!bg-[#86BC25] !w-2 !h-2" />
@@ -105,9 +166,16 @@ function L1Node({ data, selected }: { data: any; selected: boolean }) {
         />
       </div>
       <p className="text-sm font-semibold leading-tight">{data.label}</p>
-      <p className="text-[10px] text-white/50 mt-1">
-        {data.childCount} sub-capabilities
-      </p>
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-[10px] text-white/50">
+          {data.childCount} sub-capabilities
+        </p>
+        {data.isDragOver && (
+          <p className="text-[10px] text-[#86BC25] animate-pulse font-medium">
+            Drop here
+          </p>
+        )}
+      </div>
       <Handle type="source" position={Position.Bottom} className="!bg-[#86BC25] !w-2 !h-2" />
     </div>
   );
@@ -117,7 +185,20 @@ function L2Node({ data, selected }: { data: any; selected: boolean }) {
   const color = data.maturityColor;
   return (
     <div
-      className={`rounded-lg border bg-white px-3 py-2.5 shadow-sm transition-all cursor-pointer hover:shadow-md ${
+      draggable
+      onMouseDown={(e) => e.stopPropagation()}
+      onDragStart={(e) => {
+        e.stopPropagation();
+        data.onDragStart?.(data.id, data.level, data.label);
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", data.id);
+        (e.currentTarget as HTMLElement).style.opacity = "0.5";
+      }}
+      onDragEnd={(e) => {
+        data.onDragEnd?.();
+        (e.currentTarget as HTMLElement).style.opacity = "1";
+      }}
+      className={`rounded-lg border bg-white px-3 py-2.5 shadow-sm transition-all cursor-grab active:cursor-grabbing hover:shadow-md ${
         selected ? "ring-2 ring-[#86BC25] ring-offset-1 border-[#86BC25]" : "border-[#e9ecef]"
       }`}
       style={{ width: L2_WIDTH, minHeight: L2_HEIGHT }}
@@ -179,10 +260,20 @@ const nodeTypes: NodeTypes = {
 
 // ─── Layout Builder ──────────────────────────────────────
 
+type DragHandlers = {
+  onDragStart: (id: string, level: string, name: string) => void;
+  onDragEnd: () => void;
+  onDropOnL1: (targetId: string) => void;
+  onDragOverL1: (nodeId: string) => void;
+  onDragLeaveL1: () => void;
+  dragOverNodeId: string | null;
+};
+
 function buildNodesAndEdges(
   tree: any[],
   colorBy: ColorByMode,
-  selectedId: string | null
+  selectedId: string | null,
+  dragHandlers: DragHandlers
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -204,12 +295,18 @@ function buildNodesAndEdges(
     nodes.push({
       id: l1.id,
       type: "l1",
+      draggable: false,
       position: { x: l1CenterX, y: 0 },
       data: {
+        id: l1.id,
         label: l1.name,
         level: "L1",
         maturityColor: l1Color,
         childCount: l2Children.length,
+        isDragOver: dragHandlers.dragOverNodeId === l1.id,
+        onDropOnL1: dragHandlers.onDropOnL1,
+        onDragOverL1: dragHandlers.onDragOverL1,
+        onDragLeaveL1: dragHandlers.onDragLeaveL1,
       },
       selected: selectedId === l1.id,
     });
@@ -229,12 +326,16 @@ function buildNodesAndEdges(
       nodes.push({
         id: l2.id,
         type: "l2",
+        draggable: false,
         position: { x: l2CenterX, y: V_GAP + L1_HEIGHT },
         data: {
+          id: l2.id,
           label: l2.name,
           level: "L2",
           maturityColor: l2Color,
           maturityLabel: MATURITY_LABELS[l2.currentMaturity] ?? null,
+          onDragStart: dragHandlers.onDragStart,
+          onDragEnd: dragHandlers.onDragEnd,
         },
         selected: selectedId === l2.id,
       });
@@ -256,6 +357,7 @@ function buildNodesAndEdges(
         nodes.push({
           id: l3.id,
           type: "l3",
+          draggable: false,
           position: {
             x: l3X,
             y: 2 * V_GAP + L1_HEIGHT + L2_HEIGHT,

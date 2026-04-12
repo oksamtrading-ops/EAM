@@ -149,6 +149,7 @@ export function CapabilityPageClient() {
                   colorBy={colorBy}
                   onSelect={setSelectedId}
                   selectedId={selectedId}
+                  onMove={handleMove}
                 />
               )}
               {view === "tree" && (
@@ -157,6 +158,7 @@ export function CapabilityPageClient() {
                   colorBy={colorBy}
                   onSelect={setSelectedId}
                   selectedId={selectedId}
+                  onMove={handleMove}
                 />
               )}
             </>
