@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   MATURITY_COLORS,
@@ -11,7 +12,7 @@ import {
   getOwnerColor,
 } from "@/lib/constants/maturity-colors";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, TrendingUp, AlertCircle } from "lucide-react";
+import { ChevronRight, TrendingUp, GripVertical } from "lucide-react";
 import type { ColorByMode } from "../CapabilityPageClient";
 
 type Props = {
@@ -19,17 +20,102 @@ type Props = {
   colorBy: ColorByMode;
   onSelect: (id: string) => void;
   selectedId: string | null;
+  onMove?: (capabilityId: string, newParentId: string | null, newLevel: "L1" | "L2" | "L3") => void;
 };
 
-export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
+export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props) {
+  const draggingRef = useRef<{ id: string; level: string; name: string } | null>(null);
+  const [dragOverL1, setDragOverL1] = useState<string | null>(null);
+
+  function handleDragStart(e: React.DragEvent, cap: any) {
+    draggingRef.current = { id: cap.id, level: cap.level, name: cap.name };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", cap.id);
+    // Semi-transparent drag image
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "0.5";
+    }
+  }
+
+  function handleDragEnd(e: React.DragEvent) {
+    draggingRef.current = null;
+    setDragOverL1(null);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "1";
+    }
+  }
+
+  function handleDropOnL1(e: React.DragEvent, targetL1Id: string) {
+    e.preventDefault();
+    setDragOverL1(null);
+    const dragged = draggingRef.current;
+    if (!dragged || !onMove) return;
+
+    // Don't drop on self
+    if (dragged.id === targetL1Id) return;
+
+    // Only allow L2 (or L1 being reparented as L2) to be dropped onto an L1
+    if (dragged.level === "L1") {
+      // L1 dropped onto another L1 — not allowed (would need explicit UI confirmation)
+      return;
+    }
+
+    // Move L2 to new L1 parent
+    onMove(dragged.id, targetL1Id, "L2");
+  }
+
+  function handleDropOnRoot(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverL1(null);
+    const dragged = draggingRef.current;
+    if (!dragged || !onMove) return;
+
+    // Promote L2 to L1 (remove parent)
+    if (dragged.level === "L2") {
+      onMove(dragged.id, null, "L1");
+    }
+  }
+
   return (
-    <div className="space-y-5">
+    <div
+      className="space-y-5"
+      onDragOver={(e) => {
+        // Allow dropping on root area (between L1 groups) to promote to L1
+        if (draggingRef.current?.level === "L2") {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={handleDropOnRoot}
+    >
       {tree.map((l1: any) => {
         const gap = getGap(l1);
+        const isDragOver = dragOverL1 === l1.id;
         return (
           <div
             key={l1.id}
-            className="bg-white rounded-xl border shadow-sm overflow-hidden"
+            className={cn(
+              "bg-white rounded-xl border shadow-sm overflow-hidden transition-all",
+              isDragOver && "ring-2 ring-[#86BC25] border-[#86BC25]"
+            )}
+            onDragOver={(e) => {
+              if (draggingRef.current && draggingRef.current.level !== "L1") {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverL1(l1.id);
+              }
+            }}
+            onDragLeave={(e) => {
+              // Only clear if leaving the L1 container entirely
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDragOverL1(null);
+              }
+            }}
+            onDrop={(e) => {
+              e.stopPropagation();
+              handleDropOnL1(e, l1.id);
+            }}
           >
             {/* L1 Header */}
             <button
@@ -62,6 +148,11 @@ export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {isDragOver && (
+                    <span className="text-xs text-[#86BC25] font-medium animate-pulse">
+                      Drop here
+                    </span>
+                  )}
                   {gap > 0 && (
                     <div className="flex items-center gap-1 text-orange-600 text-xs">
                       <TrendingUp className="h-3.5 w-3.5" />
@@ -82,20 +173,26 @@ export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
             {l1.children && l1.children.length > 0 && (
               <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 bg-[#fafbfc]">
                 {l1.children.map((l2: any) => (
-                  <button
+                  <div
                     key={l2.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, l2)}
+                    onDragEnd={handleDragEnd}
                     onClick={() => onSelect(l2.id)}
                     className={cn(
-                      "text-left p-3.5 rounded-lg border bg-white transition-all hover:shadow-md hover:border-[#86BC25]/30 group",
+                      "text-left p-3.5 rounded-lg border bg-white transition-all hover:shadow-md hover:border-[#86BC25]/30 group cursor-grab active:cursor-grabbing",
                       selectedId === l2.id
                         ? "border-[#86BC25] shadow-md ring-1 ring-[#86BC25]/20"
                         : "border-[#e9ecef]"
                     )}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <span className="text-[9px] font-bold text-[#86BC25] bg-[#86BC25]/10 px-1.5 py-0.5 rounded">
-                        L2
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <GripVertical className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                        <span className="text-[9px] font-bold text-[#86BC25] bg-[#86BC25]/10 px-1.5 py-0.5 rounded">
+                          L2
+                        </span>
+                      </div>
                       <div
                         className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
                         style={{ backgroundColor: getColor(l2, colorBy) }}
@@ -108,7 +205,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
                       <MaturityChip value={l2.currentMaturity} />
                     </div>
 
-                    {/* L3 sub-capabilities — all shown, each clickable */}
+                    {/* L3 sub-capabilities */}
                     {l2.children && l2.children.length > 0 && (
                       <div className="mt-2.5 pt-2.5 border-t border-dashed border-[#e9ecef] space-y-1">
                         {l2.children.map((l3: any) => {
@@ -143,7 +240,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId }: Props) {
                         })}
                       </div>
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

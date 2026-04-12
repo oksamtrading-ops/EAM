@@ -40,6 +40,8 @@ const CapabilityUpdateInput = z.object({
   id: z.string(),
   name: z.string().min(1).max(200).optional(),
   description: z.string().nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  level: z.enum(["L1", "L2", "L3"]).optional(),
   organizationId: z.string().nullable().optional(),
   strategicImportance: z
     .enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "NOT_ASSESSED"])

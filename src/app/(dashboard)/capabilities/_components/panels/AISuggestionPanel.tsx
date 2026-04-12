@@ -171,11 +171,35 @@ function SuggestTab({
   }
 
   function addToMap(s: Suggestion) {
+    // Resolve the parent by name so L2/L3 suggestions nest correctly
+    let parentId: string | undefined;
+    if (s.suggestedParent) {
+      const matchL1 = tree.find(
+        (n: any) => n.name.toLowerCase() === s.suggestedParent!.toLowerCase()
+      );
+      if (matchL1) {
+        parentId = matchL1.id;
+      } else {
+        // Search in L2 children
+        for (const l1 of tree) {
+          const matchL2 = (l1.children ?? []).find(
+            (c: any) =>
+              c.name.toLowerCase() === s.suggestedParent!.toLowerCase()
+          );
+          if (matchL2) {
+            parentId = matchL2.id;
+            break;
+          }
+        }
+      }
+    }
+
     createMutation.mutate(
       {
         name: s.name,
         level: s.level as any,
         strategicImportance: s.strategicImportance as any,
+        ...(parentId ? { parentId } : {}),
       },
       {
         onSuccess: () => {

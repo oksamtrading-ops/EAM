@@ -36,7 +36,26 @@ export function CapabilityPageClient() {
   const [colorBy, setColorBy] = useState<ColorByMode>("maturity");
 
   const { workspaceId } = useWorkspace();
+  const utils = trpc.useUtils();
   const { data: tree, isLoading, error } = trpc.capability.getTree.useQuery();
+
+  const moveMutation = trpc.capability.update.useMutation({
+    onSuccess: () => {
+      utils.capability.getTree.invalidate();
+      toast.success("Capability moved successfully");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to move capability");
+    },
+  });
+
+  function handleMove(capabilityId: string, newParentId: string | null, newLevel: "L1" | "L2" | "L3") {
+    moveMutation.mutate({
+      id: capabilityId,
+      parentId: newParentId,
+      level: newLevel,
+    });
+  }
 
   const isEmpty = !isLoading && !error && (!tree || tree.length === 0);
 
@@ -121,6 +140,7 @@ export function CapabilityPageClient() {
                   colorBy={colorBy}
                   onSelect={setSelectedId}
                   selectedId={selectedId}
+                  onMove={handleMove}
                 />
               )}
               {view === "heatmap" && (
