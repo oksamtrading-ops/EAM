@@ -12,21 +12,17 @@ export type WorkspaceInfo = {
 };
 
 type WorkspaceContextValue = {
-  /** Currently active workspace */
   workspaceId: string;
   workspaceName: string;
   industry: string;
-  /** All workspaces the user has access to */
   workspaces: WorkspaceInfo[];
-  /** Switch to a different workspace */
   switchWorkspace: (id: string) => void;
-  /** Refresh the workspace list (call after create/delete/update) */
   setWorkspaces: (ws: WorkspaceInfo[]) => void;
 };
 
 const WorkspaceCtx = createContext<WorkspaceContextValue | null>(null);
 
-const LS_KEY = "eam-active-workspace";
+const COOKIE_KEY = "eam-active-workspace";
 
 export function WorkspaceProvider({
   children,
@@ -38,27 +34,18 @@ export function WorkspaceProvider({
   defaultWorkspaceId: string;
 }) {
   const [workspaces, setWorkspacesState] = useState<WorkspaceInfo[]>(initialWorkspaces);
-
-  // Determine initial workspace: localStorage override > default
-  const [activeId, setActiveId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(LS_KEY);
-      // Only use stored if it exists in the workspace list
-      if (stored && initialWorkspaces.some((w) => w.id === stored && w.isActive)) {
-        return stored;
-      }
-    }
-    return defaultWorkspaceId;
-  });
+  const [activeId] = useState<string>(defaultWorkspaceId);
 
   // If activeId is no longer in the list (deleted/deactivated), fall back
   useEffect(() => {
     const exists = workspaces.some((w) => w.id === activeId && w.isActive);
     if (!exists && workspaces.length > 0) {
-      const fallback = workspaces.find((w) => w.isDefault && w.isActive) ?? workspaces.find((w) => w.isActive);
+      const fallback =
+        workspaces.find((w) => w.isDefault && w.isActive) ??
+        workspaces.find((w) => w.isActive);
       if (fallback) {
-        setActiveId(fallback.id);
-        localStorage.setItem(LS_KEY, fallback.id);
+        document.cookie = `${COOKIE_KEY}=${fallback.id}; path=/; max-age=${60 * 60 * 24 * 365}`;
+        window.location.reload();
       }
     }
   }, [workspaces, activeId]);
@@ -66,9 +53,8 @@ export function WorkspaceProvider({
   const activeWs = workspaces.find((w) => w.id === activeId) ?? workspaces[0];
 
   const switchWorkspace = useCallback((id: string) => {
-    setActiveId(id);
-    localStorage.setItem(LS_KEY, id);
-    // Force a full page reload to reset all tRPC caches cleanly
+    // Write cookie — server layout reads it on next request
+    document.cookie = `${COOKIE_KEY}=${id}; path=/; max-age=${60 * 60 * 24 * 365}`;
     window.location.reload();
   }, []);
 

@@ -20,14 +20,24 @@ export async function syncUser() {
     },
   });
 
-  // Fetch all active workspaces for this user
-  let workspaces = await db.workspace.findMany({
-    where: { userId: user.id, isActive: true },
+  // Fetch ALL workspaces (isActive may be null/false on rows created before migration)
+  let allWorkspaces = await db.workspace.findMany({
+    where: { userId: user.id },
     orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
   });
 
-  // Ensure at least one workspace exists
-  if (workspaces.length === 0) {
+  // Fix any rows where isActive was not set by the migration (null → true)
+  const needsActivation = allWorkspaces.filter((w) => !w.isActive);
+  if (needsActivation.length > 0) {
+    await db.workspace.updateMany({
+      where: { userId: user.id, isActive: false },
+      data: { isActive: true },
+    });
+    allWorkspaces = allWorkspaces.map((w) => ({ ...w, isActive: true }));
+  }
+
+  // Create a default workspace only if none exist at all
+  if (allWorkspaces.length === 0) {
     const ws = await db.workspace.create({
       data: {
         name: "My Workspace",
@@ -37,21 +47,22 @@ export async function syncUser() {
         isActive: true,
       },
     });
-    workspaces = [ws];
+    allWorkspaces = [ws];
   }
 
-  // Ensure exactly one default workspace
-  const hasDefault = workspaces.some((w) => w.isDefault);
+  // Ensure exactly one default
+  const hasDefault = allWorkspaces.some((w) => w.isDefault);
   if (!hasDefault) {
     await db.workspace.update({
-      where: { id: workspaces[0]!.id },
+      where: { id: allWorkspaces[0]!.id },
       data: { isDefault: true },
     });
-    workspaces[0] = { ...workspaces[0]!, isDefault: true };
+    allWorkspaces[0] = { ...allWorkspaces[0]!, isDefault: true };
   }
 
-  // The "default" workspace is the first one (sorted by isDefault desc)
-  const defaultWorkspace = workspaces.find((w) => w.isDefault) ?? workspaces[0]!;
+  const workspaces = allWorkspaces.filter((w) => w.isActive);
+  const defaultWorkspace =
+    workspaces.find((w) => w.isDefault) ?? workspaces[0]!;
 
   return { user, workspaces, defaultWorkspace };
 }
