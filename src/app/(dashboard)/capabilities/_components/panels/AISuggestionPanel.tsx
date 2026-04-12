@@ -720,17 +720,107 @@ function GapAnalysisTab({
             size="sm"
             className="w-full text-xs"
             onClick={() => {
-              const text = JSON.stringify(result, null, 2);
-              navigator.clipboard.writeText(text);
-              toast.success("Full analysis copied to clipboard");
+              navigator.clipboard.writeText(formatGapAnalysisAsText(result));
+              toast.success("Analysis copied — paste into Word or email");
             }}
           >
-            Copy Full Analysis (JSON)
+            Copy Full Analysis
           </Button>
         </div>
       )}
     </div>
   );
+}
+
+// ─── Gap Analysis Text Formatter ─────────────────────────
+
+function formatGapAnalysisAsText(r: GapAnalysisResult): string {
+  const lines: string[] = [];
+  const divider = "─".repeat(60);
+
+  lines.push("CAPABILITY GAP ANALYSIS");
+  lines.push(divider);
+  lines.push("");
+
+  if (r.referenceFrameworks?.length > 0) {
+    lines.push(`Reference Frameworks: ${r.referenceFrameworks.join(", ")}`);
+    lines.push("");
+  }
+
+  lines.push("EXECUTIVE SUMMARY");
+  lines.push(divider);
+  lines.push(r.executiveSummary);
+  lines.push("");
+
+  // Maturity distribution
+  if (r.maturityDistribution) {
+    lines.push("MATURITY DISTRIBUTION");
+    lines.push(divider);
+    for (const [level, count] of Object.entries(r.maturityDistribution)) {
+      if (count > 0) {
+        const label = level === "NOT_ASSESSED" ? "Not Assessed" : level.charAt(0) + level.slice(1).toLowerCase();
+        lines.push(`  ${label}: ${count}`);
+      }
+    }
+    lines.push("");
+  }
+
+  // Gaps by category
+  const categoryOrder = ["CRITICAL_GAP", "HIGH_GAP", "MODERATE_GAP", "LOW_GAP"] as const;
+  for (const cat of categoryOrder) {
+    const items = r.gaps.filter((g) => g.category === cat);
+    if (items.length === 0) continue;
+
+    const label = GAP_CATEGORY_CONFIG[cat].label.toUpperCase();
+    lines.push(`${label} GAPS (${items.length})`);
+    lines.push(divider);
+
+    for (const gap of items) {
+      const matFrom = MATURITY_LABELS[gap.currentMaturity] ?? gap.currentMaturity;
+      const matTo = MATURITY_LABELS[gap.targetMaturity] ?? gap.targetMaturity;
+      const importance = IMPORTANCE_LABELS[gap.strategicImportance] ?? gap.strategicImportance;
+
+      lines.push(`  ${gap.capabilityName} (${gap.level})`);
+      lines.push(`    Maturity: ${matFrom} → ${matTo}  |  Gap: +${gap.gapSize}  |  Importance: ${importance}`);
+      lines.push(`    ${gap.analysis}`);
+      lines.push(`    Recommendation: ${gap.recommendation}`);
+      lines.push("");
+    }
+  }
+
+  // Strengths
+  if (r.strengths?.length > 0) {
+    lines.push("STRENGTHS");
+    lines.push(divider);
+    for (const s of r.strengths) {
+      const mat = MATURITY_LABELS[s.currentMaturity] ?? s.currentMaturity;
+      lines.push(`  ${s.capabilityName} (${s.level}) — ${mat}`);
+      lines.push(`    ${s.note}`);
+    }
+    lines.push("");
+  }
+
+  // Not assessed
+  if (r.notAssessed?.length > 0) {
+    lines.push("NOT ASSESSED");
+    lines.push(divider);
+    lines.push(`  ${r.notAssessed.join(", ")}`);
+    lines.push("");
+  }
+
+  // Transformation themes
+  if (r.transformationThemes?.length > 0) {
+    lines.push("TRANSFORMATION THEMES");
+    lines.push(divider);
+    for (const t of r.transformationThemes) {
+      lines.push(`  ${t.theme}`);
+      lines.push(`    ${t.description}`);
+      lines.push(`    Related: ${t.relatedCapabilities.join(", ")}`);
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
 }
 
 // ─── Investment Priorities Tab ───────────────────────────
