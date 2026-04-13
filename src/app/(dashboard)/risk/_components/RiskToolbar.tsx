@@ -12,6 +12,7 @@ import {
   CheckSquare,
   ScanLine,
   Download,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRiskContext, type ViewMode } from "./RiskContext";
@@ -28,9 +29,10 @@ const VIEWS: { id: ViewMode; label: string; icon: React.ElementType }[] = [
 
 interface Props {
   onNewRisk: () => void;
+  onAI: () => void;
 }
 
-export function RiskToolbar({ onNewRisk }: Props) {
+export function RiskToolbar({ onNewRisk, onAI }: Props) {
   const { view, setView, stats } = useRiskContext();
   const { workspaceId } = useWorkspace();
   const [scanning, setScanning] = useState(false);
@@ -93,6 +95,15 @@ export function RiskToolbar({ onNewRisk }: Props) {
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="h-3.5 w-3.5" />
             Export PPTX
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAI}
+            className="gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            AI Assistant
           </Button>
           <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#86BC25] hover:bg-[#75a821] text-white">
             <Plus className="h-4 w-4" />

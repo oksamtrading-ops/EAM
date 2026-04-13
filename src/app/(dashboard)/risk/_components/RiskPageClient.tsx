@@ -9,12 +9,14 @@ import { RiskHeatMapView } from "./views/RiskHeatMapView";
 import { EolTimelineView } from "./views/EolTimelineView";
 import { ComplianceView } from "./views/ComplianceView";
 import { RiskDetailPanel } from "./panels/RiskDetailPanel";
+import { RiskAIPanel } from "./panels/RiskAIPanel";
 import { RiskFormModal } from "./modals/RiskFormModal";
 
 export function RiskPageClient() {
   const [view, setView] = useState<ViewMode>("radar");
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
   const [showCreateRisk, setShowCreateRisk] = useState(false);
+  const [showAI, setShowAI] = useState(false);
 
   const { data: risks = [] } = trpc.risk.list.useQuery();
   const { data: stats } = trpc.risk.getStats.useQuery();
@@ -37,7 +39,10 @@ export function RiskPageClient() {
       }}
     >
       <div className="h-full flex flex-col min-w-0 overflow-hidden">
-        <RiskToolbar onNewRisk={() => setShowCreateRisk(true)} />
+        <RiskToolbar
+          onNewRisk={() => setShowCreateRisk(true)}
+          onAI={() => { setShowAI((v) => !v); setSelectedRiskId(null); }}
+        />
 
         <div className="flex-1 overflow-hidden">
           {view === "radar" && <TechRadarView />}
@@ -58,6 +63,8 @@ export function RiskPageClient() {
         open={showCreateRisk}
         onClose={() => setShowCreateRisk(false)}
       />
+
+      {showAI && <RiskAIPanel onClose={() => setShowAI(false)} />}
     </RiskContext.Provider>
   );
 }
