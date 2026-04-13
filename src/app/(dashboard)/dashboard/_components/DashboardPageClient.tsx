@@ -14,6 +14,7 @@ import { RecentAchievementsCard } from "./RecentAchievementsCard";
 import { ActivityFeed } from "./ActivityFeed";
 import { PinnedItemsCard } from "./PinnedItemsCard";
 import { CostByDomainChart } from "./CostByDomainChart";
+import { AIInsightsCard } from "./AIInsightsCard";
 
 export function DashboardPageClient() {
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
@@ -48,6 +49,9 @@ export function DashboardPageClient() {
           <DateRangeSelect value={dateRange} onChange={setDateRange} />
         </div>
       </div>
+
+      {/* AI Executive Brief */}
+      <AIInsightsCard />
 
       {/* KPI Strip */}
       <KpiStripV2
