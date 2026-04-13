@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
 import { dateRangeToSince } from "@/lib/utils/dateRange";
 import type { DateRangeKey } from "@/lib/contracts/dashboard";
@@ -14,10 +16,11 @@ import { RecentAchievementsCard } from "./RecentAchievementsCard";
 import { ActivityFeed } from "./ActivityFeed";
 import { PinnedItemsCard } from "./PinnedItemsCard";
 import { CostByDomainChart } from "./CostByDomainChart";
-import { AIInsightsCard } from "./AIInsightsCard";
+import { DashboardAIPanel } from "./DashboardAIPanel";
 
 export function DashboardPageClient() {
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
+  const [showAI, setShowAI] = useState(false);
   const since = dateRangeToSince(dateRange);
 
   // KPI summary — uses the proven getSummary (no date filter, all-time counts)
@@ -36,6 +39,7 @@ export function DashboardPageClient() {
   });
 
   return (
+  <>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -45,13 +49,20 @@ export function DashboardPageClient() {
             Real-time overview of architecture portfolio and health metrics
           </p>
         </div>
-        <div className="flex-shrink-0 pt-0.5">
+        <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAI((v) => !v)}
+            className="gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
+            title="Generate a board-level architecture health assessment covering portfolio economics, capability maturity, risk & compliance posture, and transformation progress"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            AI Executive Brief
+          </Button>
           <DateRangeSelect value={dateRange} onChange={setDateRange} />
         </div>
       </div>
-
-      {/* AI Executive Brief */}
-      <AIInsightsCard />
 
       {/* KPI Strip */}
       <KpiStripV2
@@ -94,5 +105,8 @@ export function DashboardPageClient() {
         />
       </div>
     </div>
+
+    <DashboardAIPanel open={showAI} onClose={() => setShowAI(false)} />
+  </>
   );
 }
