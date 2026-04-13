@@ -207,40 +207,78 @@ USER QUERY: ${query}`;
 
   // Stream Anthropic response, pipe as SSE
   const encoder = new TextEncoder();
+
+  // Classify Anthropic SDK errors into friendly categories
+  function classifyError(err: any): { code: string; friendly: string; retriable: boolean } {
+    const raw = typeof err?.message === "string" ? err.message : String(err ?? "");
+    const status = err?.status;
+    // Anthropic returns a JSON body on errors; detect common types
+    if (/overloaded/i.test(raw) || status === 529) {
+      return {
+        code: "overloaded",
+        friendly: "Claude is temporarily overloaded. Please try again in a moment.",
+        retriable: true,
+      };
+    }
+    if (status === 429 || /rate.?limit/i.test(raw)) {
+      return {
+        code: "rate_limited",
+        friendly: "Claude is rate-limited right now — try again shortly.",
+        retriable: true,
+      };
+    }
+    if (status === 401 || status === 403) {
+      return { code: "auth", friendly: "AI service is not authorized. Contact admin.", retriable: false };
+    }
+    if (status && status >= 500) {
+      return { code: "upstream", friendly: "Claude is having issues. Please retry.", retriable: true };
+    }
+    return { code: "unknown", friendly: "Something went wrong. Please try again.", retriable: false };
+  }
+
+  async function runStream() {
+    return client.messages.stream({
+      model: MODEL,
+      max_tokens: 800,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userMessage }],
+    });
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
-      try {
-        const send = (event: string, data: unknown) => {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-          );
-        };
-
-        const response = await client.messages.stream({
-          model: MODEL,
-          max_tokens: 800,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userMessage }],
-        });
-
-        for await (const event of response) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            send("delta", { text: event.delta.text });
-          }
-        }
-
-        send("done", { promptVersion: PROMPT_VERSION });
-        controller.close();
-      } catch (err: any) {
+      const send = (event: string, data: unknown) => {
         controller.enqueue(
-          encoder.encode(
-            `event: error\ndata: ${JSON.stringify({ error: err?.message ?? String(err) })}\n\n`
-          )
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
         );
-        controller.close();
+      };
+
+      const MAX_ATTEMPTS = 2;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const response = await runStream();
+          for await (const event of response) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              send("delta", { text: event.delta.text });
+            }
+          }
+          send("done", { promptVersion: PROMPT_VERSION });
+          controller.close();
+          return;
+        } catch (err: any) {
+          const info = classifyError(err);
+          if (info.retriable && attempt < MAX_ATTEMPTS) {
+            // brief backoff: 1.2s then retry once
+            await new Promise((r) => setTimeout(r, 1200));
+            continue;
+          }
+          send("error", { code: info.code, message: info.friendly });
+          controller.close();
+          return;
+        }
       }
     },
   });

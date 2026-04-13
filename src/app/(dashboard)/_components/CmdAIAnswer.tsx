@@ -12,6 +12,8 @@ import {
   Map as MapIcon,
   Tags as TagsIcon,
   Building2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { digDeeperLink, paletteDeepLink, quickActionLink, type EntityType } from "@/lib/utils/paletteDeepLinks";
 
@@ -44,14 +46,17 @@ export function CmdAIAnswer({
 }) {
   const [prose, setProse] = useState("");
   const [meta, setMeta] = useState<Metadata | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [done, setDone] = useState(false);
-  const started = useRef(false);
+  const [retryKey, setRetryKey] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
+    // reset state on retry
+    setProse("");
+    setMeta(null);
+    setError(null);
+    setDone(false);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -68,7 +73,13 @@ export function CmdAIAnswer({
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {
-          setError(await res.text().catch(() => "Request failed"));
+          const txt = await res.text().catch(() => "");
+          setError({
+            message:
+              res.status === 429
+                ? "You're asking too quickly — please wait a moment."
+                : txt || "Request failed. Please try again.",
+          });
           setDone(true);
           return;
         }
@@ -98,7 +109,10 @@ export function CmdAIAnswer({
                 setProse(fullText.slice(0, idx).trim());
               }
             } else if (evt === "error") {
-              setError(data.error ?? "Unknown error");
+              setError({
+                code: data.code,
+                message: data.message ?? data.error ?? "Unknown error",
+              });
             }
           }
         }
@@ -121,7 +135,7 @@ export function CmdAIAnswer({
         setDone(true);
       } catch (err: any) {
         if (err?.name === "AbortError") return;
-        setError(err?.message ?? String(err));
+        setError({ message: err?.message ?? "Network error — please retry." });
         setDone(true);
       }
     })();
@@ -130,7 +144,7 @@ export function CmdAIAnswer({
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
 
   return (
     <div className="flex flex-col max-h-[60vh]">
@@ -153,7 +167,29 @@ export function CmdAIAnswer({
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {error ? (
-          <div className="text-sm text-red-600">{error}</div>
+          <div className="flex flex-col gap-3 py-2">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[13.5px] text-[#1d1d1f] leading-relaxed">
+                {error.message}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setRetryKey((k) => k + 1)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Try again
+              </button>
+              <button
+                onClick={onBack}
+                className="px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-[#3a3a3c] hover:bg-black/[0.05] transition"
+              >
+                Back to search
+              </button>
+            </div>
+          </div>
         ) : (
           <>
             {/* Prose answer */}
