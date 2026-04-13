@@ -127,6 +127,38 @@ enum CostModel {
 }
 
 // ============================================================
+// AI MAPPING ENUMS
+// ============================================================
+
+enum MappingSource {
+  MANUAL
+  AI_SUGGESTED
+  AI_ACCEPTED
+  AI_MODIFIED
+  IMPORTED
+}
+
+enum RelationshipType {
+  PRIMARY
+  SUPPORTING
+  ENABLING
+}
+
+enum Region {
+  NA
+  EMEA
+  APAC
+  LATAM
+  GLOBAL
+}
+
+enum FeedbackAction {
+  ACCEPTED
+  REJECTED
+  MODIFIED
+}
+
+// ============================================================
 // USER (synced from Clerk)
 // ============================================================
 
@@ -168,6 +200,10 @@ model Workspace {
   clientName  String?
   description String?
   industry    IndustryType @default(GENERIC)
+  subIndustry       String?
+  region            Region?
+  regulatoryRegime  String?
+  businessModelHint String?
   logoUrl     String?
   isDefault   Boolean      @default(false)
   isActive    Boolean      @default(true)
@@ -192,6 +228,8 @@ model Workspace {
   eolWatchEntries    EolWatchEntry[]
   riskTags           RiskTag[]
   dashboardPins      DashboardPin[]
+  aiMappingFeedback  AIMappingFeedback[]
+  aiMappingRuns      AIMappingRun[]
 
   @@map("workspaces")
 }
@@ -387,12 +425,77 @@ model ApplicationCapabilityMap {
   notes         String?
   assignedAt    DateTime @default(now())
 
+  // AI mapping metadata
+  source            MappingSource     @default(MANUAL)
+  relationshipType  RelationshipType  @default(PRIMARY)
+  aiConfidence      Int?
+  aiRationale       String?
+  aiModel           String?
+  aiPromptVersion   String?
+  createdById       String?
+
   application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   capability  BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
 
   @@id([applicationId, capabilityId])
   @@index([workspaceId, capabilityId])
   @@map("application_capability_maps")
+}
+
+// ============================================================
+// AI MAPPING FEEDBACK (closed-loop learning)
+// ============================================================
+
+model AIMappingFeedback {
+  id                   String           @id @default(cuid())
+  workspaceId          String
+  applicationId        String
+  capabilityId         String
+  aiConfidence         Int
+  aiRationale          String
+  aiRelationshipType   RelationshipType
+  userAction           FeedbackAction
+  userRelationshipType RelationshipType?
+  userCapabilityId     String?
+  userNote             String?
+  promptVersion        String
+  model                String
+  tier                 String
+  createdAt            DateTime         @default(now())
+  createdById          String?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([applicationId])
+  @@index([capabilityId])
+  @@map("ai_mapping_feedback")
+}
+
+// ============================================================
+// AI MAPPING RUN (telemetry + rate limit accounting)
+// ============================================================
+
+model AIMappingRun {
+  id                   String   @id @default(cuid())
+  workspaceId          String
+  mode                 String
+  tier                 String
+  appsProcessed        Int      @default(0)
+  suggestionsGenerated Int      @default(0)
+  tokensUsed           Int      @default(0)
+  durationMs           Int      @default(0)
+  model                String
+  promptVersion        String
+  status               String   @default("completed")
+  errorMessage         String?
+  createdAt            DateTime @default(now())
+  createdById          String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@map("ai_mapping_runs")
 }
 
 // ============================================================

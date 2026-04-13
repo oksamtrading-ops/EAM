@@ -121,6 +121,10 @@ export const workspaceRouter = router({
             "ENTERPRISE_BCM",
           ])
           .optional(),
+        subIndustry: z.string().max(200).nullable().optional(),
+        region: z.enum(["NA", "EMEA", "APAC", "LATAM", "GLOBAL"]).nullable().optional(),
+        regulatoryRegime: z.string().max(200).nullable().optional(),
+        businessModelHint: z.string().max(800).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -246,6 +246,284 @@ export const applicationRouter = router({
     return { redundancies, retireCandidates, orphanedApps, costByStatus, totalApps: apps.length };
   }),
 
+  // ─── AI Mapping: context loader ─────────────────────────
+  getAIMappingContext: workspaceProcedure
+    .input(z.object({ applicationId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [app, capabilities, workspace, rejectedPairs] = await Promise.all([
+        ctx.db.application.findFirst({
+          where: { id: input.applicationId, workspaceId: ctx.workspaceId },
+          include: {
+            capabilities: { select: { capabilityId: true } },
+          },
+        }),
+        ctx.db.businessCapability.findMany({
+          where: { workspaceId: ctx.workspaceId, isActive: true },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            level: true,
+            parentId: true,
+            strategicImportance: true,
+          },
+          orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
+        }),
+        ctx.db.workspace.findFirst({ where: { id: ctx.workspaceId } }),
+        ctx.db.aIMappingFeedback.findMany({
+          where: {
+            workspaceId: ctx.workspaceId,
+            applicationId: input.applicationId,
+            userAction: "REJECTED",
+            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+          select: { capabilityId: true },
+        }),
+      ]);
+
+      if (!app) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return {
+        application: app,
+        capabilities,
+        workspace,
+        existingCapabilityIds: app.capabilities.map((c) => c.capabilityId),
+        recentlyRejectedCapabilityIds: rejectedPairs.map((r) => r.capabilityId),
+      };
+    }),
+
+  bulkGetAIMappingContext: workspaceProcedure
+    .input(z.object({ applicationIds: z.array(z.string()).max(30) }))
+    .query(async ({ ctx, input }) => {
+      const [apps, capabilities, workspace, rejectedPairs] = await Promise.all([
+        ctx.db.application.findMany({
+          where: {
+            id: { in: input.applicationIds },
+            workspaceId: ctx.workspaceId,
+          },
+          include: {
+            capabilities: { select: { capabilityId: true } },
+          },
+        }),
+        ctx.db.businessCapability.findMany({
+          where: { workspaceId: ctx.workspaceId, isActive: true },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            level: true,
+            parentId: true,
+            strategicImportance: true,
+          },
+          orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
+        }),
+        ctx.db.workspace.findFirst({ where: { id: ctx.workspaceId } }),
+        ctx.db.aIMappingFeedback.findMany({
+          where: {
+            workspaceId: ctx.workspaceId,
+            applicationId: { in: input.applicationIds },
+            userAction: "REJECTED",
+            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+          select: { applicationId: true, capabilityId: true },
+        }),
+      ]);
+
+      const rejectedMap: Record<string, string[]> = {};
+      for (const r of rejectedPairs) {
+        (rejectedMap[r.applicationId] ||= []).push(r.capabilityId);
+      }
+
+      return {
+        applications: apps.map((a) => ({
+          ...a,
+          existingCapabilityIds: a.capabilities.map((c) => c.capabilityId),
+          recentlyRejectedCapabilityIds: rejectedMap[a.id] ?? [],
+        })),
+        capabilities,
+        workspace,
+      };
+    }),
+
+  listForMapping: workspaceProcedure.query(async ({ ctx }) => {
+    return ctx.db.application.findMany({
+      where: { workspaceId: ctx.workspaceId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        vendor: true,
+        applicationType: true,
+        lifecycle: true,
+        capabilities: { select: { capabilityId: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+  }),
+
+  // ─── AI Mapping: accept / reject / modify ───────────────
+  acceptAISuggestion: workspaceProcedure
+    .input(
+      z.object({
+        applicationId: z.string(),
+        capabilityId: z.string(),
+        aiConfidence: z.number().int().min(0).max(100),
+        aiRationale: z.string(),
+        aiRelationshipType: z.enum(["PRIMARY", "SUPPORTING", "ENABLING"]),
+        promptVersion: z.string(),
+        model: z.string(),
+        tier: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.applicationCapabilityMap.upsert({
+        where: {
+          applicationId_capabilityId: {
+            applicationId: input.applicationId,
+            capabilityId: input.capabilityId,
+          },
+        },
+        create: {
+          applicationId: input.applicationId,
+          capabilityId: input.capabilityId,
+          workspaceId: ctx.workspaceId,
+          source: "AI_ACCEPTED",
+          relationshipType: input.aiRelationshipType,
+          aiConfidence: input.aiConfidence,
+          aiRationale: input.aiRationale,
+          aiModel: input.model,
+          aiPromptVersion: input.promptVersion,
+          createdById: ctx.dbUserId,
+        },
+        update: {
+          source: "AI_ACCEPTED",
+          relationshipType: input.aiRelationshipType,
+          aiConfidence: input.aiConfidence,
+          aiRationale: input.aiRationale,
+          aiModel: input.model,
+          aiPromptVersion: input.promptVersion,
+        },
+      });
+
+      await ctx.db.aIMappingFeedback.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          applicationId: input.applicationId,
+          capabilityId: input.capabilityId,
+          aiConfidence: input.aiConfidence,
+          aiRationale: input.aiRationale,
+          aiRelationshipType: input.aiRelationshipType,
+          userAction: "ACCEPTED",
+          promptVersion: input.promptVersion,
+          model: input.model,
+          tier: input.tier,
+          createdById: ctx.dbUserId,
+        },
+      });
+
+      return { success: true };
+    }),
+
+  rejectAISuggestion: workspaceProcedure
+    .input(
+      z.object({
+        applicationId: z.string(),
+        capabilityId: z.string(),
+        aiConfidence: z.number().int().min(0).max(100),
+        aiRationale: z.string(),
+        aiRelationshipType: z.enum(["PRIMARY", "SUPPORTING", "ENABLING"]),
+        userNote: z.string().optional(),
+        promptVersion: z.string(),
+        model: z.string(),
+        tier: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.aIMappingFeedback.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          applicationId: input.applicationId,
+          capabilityId: input.capabilityId,
+          aiConfidence: input.aiConfidence,
+          aiRationale: input.aiRationale,
+          aiRelationshipType: input.aiRelationshipType,
+          userAction: "REJECTED",
+          userNote: input.userNote,
+          promptVersion: input.promptVersion,
+          model: input.model,
+          tier: input.tier,
+          createdById: ctx.dbUserId,
+        },
+      });
+      return { success: true };
+    }),
+
+  modifyAISuggestion: workspaceProcedure
+    .input(
+      z.object({
+        applicationId: z.string(),
+        originalCapabilityId: z.string(),
+        finalCapabilityId: z.string(),
+        aiConfidence: z.number().int().min(0).max(100),
+        aiRationale: z.string(),
+        aiRelationshipType: z.enum(["PRIMARY", "SUPPORTING", "ENABLING"]),
+        userRelationshipType: z.enum(["PRIMARY", "SUPPORTING", "ENABLING"]),
+        userNote: z.string().optional(),
+        promptVersion: z.string(),
+        model: z.string(),
+        tier: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.applicationCapabilityMap.upsert({
+        where: {
+          applicationId_capabilityId: {
+            applicationId: input.applicationId,
+            capabilityId: input.finalCapabilityId,
+          },
+        },
+        create: {
+          applicationId: input.applicationId,
+          capabilityId: input.finalCapabilityId,
+          workspaceId: ctx.workspaceId,
+          source: "AI_MODIFIED",
+          relationshipType: input.userRelationshipType,
+          aiConfidence: input.aiConfidence,
+          aiRationale: input.aiRationale,
+          aiModel: input.model,
+          aiPromptVersion: input.promptVersion,
+          createdById: ctx.dbUserId,
+        },
+        update: {
+          source: "AI_MODIFIED",
+          relationshipType: input.userRelationshipType,
+        },
+      });
+
+      await ctx.db.aIMappingFeedback.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          applicationId: input.applicationId,
+          capabilityId: input.originalCapabilityId,
+          userCapabilityId:
+            input.finalCapabilityId !== input.originalCapabilityId
+              ? input.finalCapabilityId
+              : null,
+          aiConfidence: input.aiConfidence,
+          aiRationale: input.aiRationale,
+          aiRelationshipType: input.aiRelationshipType,
+          userAction: "MODIFIED",
+          userRelationshipType: input.userRelationshipType,
+          userNote: input.userNote,
+          promptVersion: input.promptVersion,
+          model: input.model,
+          tier: input.tier,
+          createdById: ctx.dbUserId,
+        },
+      });
+
+      return { success: true };
+    }),
+
   getStats: workspaceProcedure.query(async ({ ctx }) => {
     const apps = await ctx.db.application.findMany({
       where: { workspaceId: ctx.workspaceId, isActive: true },

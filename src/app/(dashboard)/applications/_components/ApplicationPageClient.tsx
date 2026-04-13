@@ -11,6 +11,7 @@ import { RationalizationMatrix } from "./views/RationalizationMatrix";
 import { ApplicationDetailPanel } from "./panels/ApplicationDetailPanel";
 import { RationalizationPanel } from "./panels/RationalizationPanel";
 import { AppAIPanel } from "./panels/AppAIPanel";
+import { AppMappingPanel } from "./panels/AppMappingPanel";
 import { CreateApplicationDialog } from "./modals/CreateApplicationDialog";
 import { ImportExcelDialog } from "./modals/ImportExcelDialog";
 import { AppWindow } from "lucide-react";
@@ -24,6 +25,8 @@ export function ApplicationPageClient() {
   const [showImport, setShowImport] = useState(false);
   const [showRationalization, setShowRationalization] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [showAutoMap, setShowAutoMap] = useState(false);
+  const [autoMapAppId, setAutoMapAppId] = useState<string | null>(null);
 
   const { workspaceId } = useWorkspace();
   const { data: apps, isLoading, error } = trpc.application.list.useQuery();
@@ -62,10 +65,12 @@ export function ApplicationPageClient() {
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
-          onRationalization={() => { setShowRationalization(!showRationalization); setShowAI(false); }}
+          onRationalization={() => { setShowRationalization(!showRationalization); setShowAI(false); setShowAutoMap(false); }}
           showRationalization={showRationalization}
-          onAI={() => { setShowAI(!showAI); setShowRationalization(false); }}
+          onAI={() => { setShowAI(!showAI); setShowRationalization(false); setShowAutoMap(false); }}
           showAI={showAI}
+          onAutoMap={() => { setShowAutoMap(!showAutoMap); setAutoMapAppId(null); setShowAI(false); setShowRationalization(false); }}
+          showAutoMap={showAutoMap && !autoMapAppId}
           appCount={apps?.length ?? 0}
         />
 
@@ -110,12 +115,21 @@ export function ApplicationPageClient() {
         </div>
       </div>
 
-      {selectedId && !showRationalization && !showAI && (
+      {selectedId && !showRationalization && !showAI && !showAutoMap && (
         <ApplicationDetailPanel
           applicationId={selectedId}
           onClose={() => setSelectedId(null)}
+          onAutoMap={(id) => { setAutoMapAppId(id); setShowAutoMap(true); }}
         />
       )}
+
+      <AppMappingPanel
+        open={showAutoMap}
+        onClose={() => { setShowAutoMap(false); setAutoMapAppId(null); }}
+        mode={autoMapAppId ? "single" : "batch"}
+        applicationId={autoMapAppId}
+        apps={apps ?? []}
+      />
 
       <RationalizationPanel
         open={showRationalization}

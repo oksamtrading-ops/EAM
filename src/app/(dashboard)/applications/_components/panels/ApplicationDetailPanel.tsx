@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,10 @@ import {
 type Props = {
   applicationId: string;
   onClose: () => void;
+  onAutoMap?: (applicationId: string) => void;
 };
 
-export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
+export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const utils = trpc.useUtils();
   const { data: app, isLoading } = trpc.application.getById.useQuery({ id: applicationId });
@@ -70,9 +71,23 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
           {app.alias && <p className="text-xs text-muted-foreground">{app.alias}</p>}
           {app.vendor && <p className="text-xs text-muted-foreground">{app.vendor}</p>}
         </div>
-        <Button size="icon" variant="ghost" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onAutoMap && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onAutoMap(applicationId)}
+              title="AI suggests capabilities this app supports"
+              className="h-7 text-[10px] text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5 px-2"
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              Auto-Map
+            </Button>
+          )}
+          <Button size="icon" variant="ghost" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">

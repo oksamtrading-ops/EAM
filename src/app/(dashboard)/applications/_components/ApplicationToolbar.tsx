@@ -1,6 +1,6 @@
 "use client";
 
-import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3, Sparkles } from "lucide-react";
+import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3, Sparkles, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppViewMode } from "./ApplicationPageClient";
 
@@ -14,6 +14,8 @@ type Props = {
   showRationalization: boolean;
   onAI: () => void;
   showAI: boolean;
+  onAutoMap: () => void;
+  showAutoMap: boolean;
   appCount: number;
 };
 
@@ -27,6 +29,8 @@ export function ApplicationToolbar({
   showRationalization,
   onAI,
   showAI,
+  onAutoMap,
+  showAutoMap,
   appCount,
 }: Props) {
   return (
@@ -58,6 +62,17 @@ export function ApplicationToolbar({
         >
           <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
           Rationalize
+        </Button>
+
+        <Button
+          size="sm"
+          variant={showAutoMap ? "default" : "outline"}
+          onClick={onAutoMap}
+          title="AI suggests which capabilities each app supports"
+          className={`h-9 text-xs ${showAutoMap ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
+        >
+          <Network className="h-3.5 w-3.5 mr-1.5" />
+          AI Auto-Map
         </Button>
 
         <Button
