@@ -18,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
+import { CmdPaletteProvider } from "./CmdPaletteProvider";
+import { CmdSearchPill } from "./CmdSearchPill";
 
 const navItems = [
   {
@@ -72,6 +74,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
+    <CmdPaletteProvider>
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar — glass panel */}
       <aside
@@ -132,7 +135,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto flex flex-col">
+        <div className="flex items-center justify-end gap-3 px-6 py-3 border-b border-black/[0.05] bg-white/40 backdrop-blur-sm">
+          <CmdSearchPill />
+        </div>
+        <div className="flex-1 overflow-auto">{children}</div>
+      </main>
 
       {/* Create workspace dialog */}
       <CreateWorkspaceDialog
@@ -140,5 +148,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         onClose={() => setShowCreate(false)}
       />
     </div>
+    </CmdPaletteProvider>
   );
 }

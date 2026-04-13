@@ -13,9 +13,11 @@ import { techRadarRouter } from "./techRadar";
 import { complianceRouter } from "./compliance";
 import { eolRouter } from "./eol";
 import { dashboardRouter } from "./dashboard";
+import { searchRouter } from "./search";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
+  search: searchRouter,
   capability: capabilityRouter,
   workspace: workspaceRouter,
   tag: tagRouter,
