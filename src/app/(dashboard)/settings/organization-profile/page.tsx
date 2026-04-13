@@ -19,20 +19,30 @@ import { Save, Sparkles, Building2, Globe, Scale, Lightbulb } from "lucide-react
 
 const INDUSTRIES = [
   { value: "BANKING", label: "Banking & Financial Services" },
+  { value: "INSURANCE", label: "Insurance" },
   { value: "RETAIL", label: "Retail & Consumer" },
   { value: "LOGISTICS", label: "Logistics & Supply Chain" },
   { value: "MANUFACTURING", label: "Manufacturing" },
   { value: "HEALTHCARE", label: "Healthcare" },
+  { value: "PHARMA_LIFESCIENCES", label: "Pharma & Life Sciences" },
+  { value: "TELECOM", label: "Telecommunications" },
+  { value: "ENERGY_UTILITIES", label: "Energy & Utilities" },
+  { value: "PUBLIC_SECTOR", label: "Public Sector" },
   { value: "GENERIC", label: "Generic / Cross-Industry" },
   { value: "ENTERPRISE_BCM", label: "Enterprise BCM" },
 ];
 
 const SUB_INDUSTRY_HINTS: Record<string, string[]> = {
   BANKING: ["Retail Banking", "Commercial Banking", "Investment Banking", "Private Banking", "Neobank", "Credit Union"],
+  INSURANCE: ["Property & Casualty", "Life", "Health", "Reinsurance", "Insurtech", "Specialty Lines"],
   RETAIL: ["Grocery", "Apparel", "Electronics", "E-commerce Pure-Play", "Omnichannel", "Luxury"],
   LOGISTICS: ["Freight Forwarding", "Last-Mile Delivery", "3PL", "Maritime Shipping", "Rail Logistics"],
   MANUFACTURING: ["Automotive", "Aerospace", "Chemicals", "Industrial Equipment", "Consumer Goods"],
-  HEALTHCARE: ["Provider", "Payer", "Pharma", "MedTech", "Digital Health", "Academic Medical Center"],
+  HEALTHCARE: ["Provider", "Payer", "MedTech", "Digital Health", "Academic Medical Center"],
+  PHARMA_LIFESCIENCES: ["Big Pharma", "Biotech", "Medical Devices", "CRO/CDMO", "Diagnostics"],
+  TELECOM: ["Mobile Operator", "Fixed-line", "Cable/Broadband", "MVNO", "Satellite", "Tower Infrastructure"],
+  ENERGY_UTILITIES: ["Power Generation", "Transmission & Distribution", "Natural Gas", "Water", "Renewables", "Oil & Gas"],
+  PUBLIC_SECTOR: ["Federal Government", "State & Local", "Defense", "Public Healthcare", "Education (Gov)", "Tax & Social Services"],
   GENERIC: ["Technology", "Professional Services", "Media", "Education", "Non-Profit"],
   ENTERPRISE_BCM: ["Business Continuity", "Crisis Management", "Operational Resilience"],
 };

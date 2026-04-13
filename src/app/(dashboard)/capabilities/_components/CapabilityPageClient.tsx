@@ -29,6 +29,7 @@ export function CapabilityPageClient() {
   const searchParams = useSearchParams();
   const [view, setView] = useState<ViewMode>("grid");
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("id"));
+  const autoOpenAI = searchParams.get("ai") === "1";
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showAI, setShowAI] = useState(false);
@@ -170,6 +171,7 @@ export function CapabilityPageClient() {
         <CapabilityDetailPanel
           capabilityId={selectedId}
           onClose={() => setSelectedId(null)}
+          autoOpenAI={autoOpenAI}
         />
       )}
 

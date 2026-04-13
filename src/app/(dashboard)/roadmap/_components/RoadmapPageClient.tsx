@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { RoadmapContext } from "./RoadmapContext";
 import { RoadmapToolbar, type ViewMode } from "./RoadmapToolbar";
@@ -27,10 +28,18 @@ function formatBudget(amount: any, currency = "USD") {
 }
 
 export function RoadmapPageClient() {
+  const searchParams = useSearchParams();
   const [view, setView] = useState<ViewMode>("gantt");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("id"));
   const [showCreate, setShowCreate] = useState(false);
   const [showArchState, setShowArchState] = useState(false);
+  const autoOpenAI = searchParams.get("ai") === "1";
+
+  // If ?id is present in URL, make sure it's selected
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id) setSelectedId(id);
+  }, [searchParams]);
 
   const { data: roadmap } = trpc.initiative.getRoadmapData.useQuery();
   const { data: objectives } = trpc.objective.list.useQuery();
@@ -96,6 +105,7 @@ export function RoadmapPageClient() {
         <InitiativeDetailPanel
           initiativeId={selectedId}
           onClose={() => setSelectedId(null)}
+          autoOpenAI={autoOpenAI}
         />
       )}
 

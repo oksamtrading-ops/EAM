@@ -26,10 +26,15 @@ import {
 
 const INDUSTRIES = [
   { value: "BANKING", label: "Banking & Financial Services" },
+  { value: "INSURANCE", label: "Insurance" },
   { value: "RETAIL", label: "Retail & Consumer" },
   { value: "LOGISTICS", label: "Logistics & Supply Chain" },
   { value: "MANUFACTURING", label: "Manufacturing" },
   { value: "HEALTHCARE", label: "Healthcare" },
+  { value: "PHARMA_LIFESCIENCES", label: "Pharma & Life Sciences" },
+  { value: "TELECOM", label: "Telecommunications" },
+  { value: "ENERGY_UTILITIES", label: "Energy & Utilities" },
+  { value: "PUBLIC_SECTOR", label: "Public Sector" },
   { value: "GENERIC", label: "Generic / Cross-Industry" },
   { value: "ENTERPRISE_BCM", label: "Enterprise BCM" },
 ];

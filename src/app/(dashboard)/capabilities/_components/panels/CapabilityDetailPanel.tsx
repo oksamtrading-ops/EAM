@@ -22,10 +22,12 @@ import {
   MATURITY_NUMERIC,
 } from "@/lib/constants/maturity-colors";
 import { toast } from "sonner";
+import { CapabilityAIInsights } from "./CapabilityAIInsights";
 
 type Props = {
   capabilityId: string;
   onClose: () => void;
+  autoOpenAI?: boolean;
 };
 
 const MATURITY_OPTIONS = [
@@ -45,7 +47,7 @@ const IMPORTANCE_OPTIONS = [
   "CRITICAL",
 ] as const;
 
-export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
+export function CapabilityDetailPanel({ capabilityId, onClose, autoOpenAI }: Props) {
   const utils = trpc.useUtils();
   const { data: cap, isLoading } = trpc.capability.getById.useQuery({
     id: capabilityId,
@@ -253,6 +255,13 @@ export function CapabilityDetailPanel({ capabilityId, onClose }: Props) {
               </SelectContent>
             </Select>
           </div>
+        </section>
+
+        <Separator />
+
+        {/* AI Insights */}
+        <section>
+          <CapabilityAIInsights capabilityId={cap.id} autoOpen={autoOpenAI} />
         </section>
 
         <Separator />

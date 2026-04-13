@@ -14,8 +14,11 @@ import {
   Building2,
   AlertCircle,
   RefreshCw,
+  Star,
 } from "lucide-react";
 import { digDeeperLink, paletteDeepLink, quickActionLink, type EntityType } from "@/lib/utils/paletteDeepLinks";
+import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
 
 type Metadata = {
   filters: { label: string; url: string }[];
@@ -49,7 +52,24 @@ export function CmdAIAnswer({
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [done, setDone] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [saved, setSaved] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  const utils = trpc.useUtils();
+  const saveQuery = trpc.paletteQuery.save.useMutation({
+    onSuccess: () => {
+      utils.paletteQuery.list.invalidate();
+      setSaved(true);
+      toast.success("Saved to palette");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to save"),
+  });
+
+  function handleStar() {
+    if (saved) return;
+    const label = query.slice(0, 30).trim() || "Saved query";
+    saveQuery.mutate({ label, queryText: query });
+  }
 
   useEffect(() => {
     // reset state on retry
@@ -158,10 +178,21 @@ export function CmdAIAnswer({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <Sparkles className="h-4 w-4 text-[#7c3aed]" />
-        <span className="text-[13px] font-medium text-[#1d1d1f] truncate">{query}</span>
+        <span className="text-[13px] font-medium text-[#1d1d1f] truncate flex-1">{query}</span>
         {!done && (
-          <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin text-[#86868b]" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-[#86868b]" />
         )}
+        <button
+          onClick={handleStar}
+          disabled={saveQuery.isPending || saved}
+          aria-label={saved ? "Saved" : "Save this query"}
+          title={saved ? "Saved" : "Save this query"}
+          className={`h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/[0.05] transition ${
+            saved ? "text-[#f59e0b]" : "text-[#86868b]"
+          }`}
+        >
+          <Star className={`h-4 w-4 ${saved ? "fill-[#f59e0b]" : ""}`} />
+        </button>
       </div>
 
       {/* Body */}

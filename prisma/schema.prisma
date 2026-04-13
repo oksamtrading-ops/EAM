@@ -27,6 +27,11 @@ enum IndustryType {
   HEALTHCARE
   GENERIC
   ENTERPRISE_BCM
+  INSURANCE
+  TELECOM
+  ENERGY_UTILITIES
+  PUBLIC_SECTOR
+  PHARMA_LIFESCIENCES
 }
 
 enum CapabilityLevel {
@@ -230,6 +235,7 @@ model Workspace {
   dashboardPins      DashboardPin[]
   aiMappingFeedback  AIMappingFeedback[]
   aiMappingRuns      AIMappingRun[]
+  savedPaletteQueries SavedPaletteQuery[]
 
   @@map("workspaces")
 }
@@ -899,6 +905,10 @@ enum ComplianceFramework {
   CIS_CONTROLS
   SOX
   PIPEDA
+  DORA
+  NIS2
+  ISO_27701
+  FEDRAMP_MODERATE
   CUSTOM
 }
 
@@ -1161,6 +1171,26 @@ model DashboardPin {
   @@unique([workspaceId, entityType, entityId])
   @@index([workspaceId])
   @@map("dashboard_pins")
+}
+
+// ============================================================
+// SAVED PALETTE QUERIES (Cmd+K favorites)
+// ============================================================
+
+model SavedPaletteQuery {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  label       String
+  queryText   String
+  useCount    Int       @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, userId])
+  @@map("saved_palette_queries")
 }
 
 // ============================================================

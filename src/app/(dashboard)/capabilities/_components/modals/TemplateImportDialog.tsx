@@ -37,14 +37,22 @@ const IMPORTANCE_LABELS: Record<string, string> = {
 };
 
 // ── Industry list ────────────────────────────────────────────────────────────
+// NOTE: industries marked "templatesAvailable: false" do not yet have L1/L2
+// capability templates seeded. They appear in the list but with a disabled
+// state and a "Templates coming soon" badge.
 const INDUSTRIES = [
-  { value: "BANKING",        label: "Banking & Financial Services", icon: "🏦" },
-  { value: "RETAIL",         label: "Retail & Consumer",            icon: "🛒" },
-  { value: "LOGISTICS",      label: "Logistics & Supply Chain",     icon: "🚚" },
-  { value: "MANUFACTURING",  label: "Manufacturing",                icon: "🏭" },
-  { value: "HEALTHCARE",     label: "Healthcare",                   icon: "🏥" },
-  { value: "GENERIC",        label: "Generic / Cross-Industry",     icon: "🔲" },
-  { value: "ENTERPRISE_BCM", label: "Enterprise BCM (Comprehensive)", icon: "🌐" },
+  { value: "BANKING",              label: "Banking & Financial Services",  icon: "🏦", templatesAvailable: true },
+  { value: "INSURANCE",            label: "Insurance",                     icon: "🛡️", templatesAvailable: false },
+  { value: "RETAIL",               label: "Retail & Consumer",             icon: "🛒", templatesAvailable: true },
+  { value: "LOGISTICS",            label: "Logistics & Supply Chain",      icon: "🚚", templatesAvailable: true },
+  { value: "MANUFACTURING",        label: "Manufacturing",                 icon: "🏭", templatesAvailable: true },
+  { value: "HEALTHCARE",           label: "Healthcare",                    icon: "🏥", templatesAvailable: true },
+  { value: "PHARMA_LIFESCIENCES",  label: "Pharma & Life Sciences",        icon: "💊", templatesAvailable: false },
+  { value: "TELECOM",              label: "Telecommunications",            icon: "📡", templatesAvailable: false },
+  { value: "ENERGY_UTILITIES",     label: "Energy & Utilities",            icon: "⚡", templatesAvailable: false },
+  { value: "PUBLIC_SECTOR",        label: "Public Sector",                 icon: "🏛️", templatesAvailable: false },
+  { value: "GENERIC",              label: "Generic / Cross-Industry",      icon: "🔲", templatesAvailable: true },
+  { value: "ENTERPRISE_BCM",       label: "Enterprise BCM (Comprehensive)", icon: "🌐", templatesAvailable: true },
 ] as const;
 
 type Props = {
@@ -198,30 +206,43 @@ export function TemplateImportDialog({ open, onClose }: Props) {
         {step === 1 && (
           <>
             <div className="grid grid-cols-2 gap-3 my-4">
-              {INDUSTRIES.map((ind) => (
-                <button
-                  key={ind.value}
-                  onClick={() => setSelectedIndustry(ind.value)}
-                  className={`relative p-4 border rounded-lg text-left transition-all hover:border-primary/50 ${
-                    selectedIndustry === ind.value
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
-                  } ${ind.value === "ENTERPRISE_BCM" ? "col-span-2" : ""}`}
-                >
-                  {ind.value === "ENTERPRISE_BCM" && (
-                    <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">
-                      18 domains · 600+ capabilities
-                    </span>
-                  )}
-                  <span className="text-2xl">{ind.icon}</span>
-                  <p className="text-sm font-medium mt-2">{ind.label}</p>
-                  {ind.value === "ENTERPRISE_BCM" && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Full L1/L2 + selective L3 · Grow / Run / Protect bands · strategic importance pre-set
-                    </p>
-                  )}
-                </button>
-              ))}
+              {INDUSTRIES.map((ind) => {
+                const disabled = !ind.templatesAvailable;
+                return (
+                  <button
+                    key={ind.value}
+                    onClick={() => !disabled && setSelectedIndustry(ind.value)}
+                    disabled={disabled}
+                    className={`relative p-4 border rounded-lg text-left transition-all ${
+                      disabled
+                        ? "opacity-60 cursor-not-allowed"
+                        : "hover:border-primary/50"
+                    } ${
+                      selectedIndustry === ind.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border"
+                    } ${ind.value === "ENTERPRISE_BCM" ? "col-span-2" : ""}`}
+                  >
+                    {ind.value === "ENTERPRISE_BCM" && (
+                      <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">
+                        18 domains · 600+ capabilities
+                      </span>
+                    )}
+                    {disabled && (
+                      <span className="absolute top-2 right-2 text-[10px] bg-[#f2f2f7] text-[#86868b] font-semibold px-2 py-0.5 rounded-full">
+                        Coming soon
+                      </span>
+                    )}
+                    <span className="text-2xl">{ind.icon}</span>
+                    <p className="text-sm font-medium mt-2">{ind.label}</p>
+                    {ind.value === "ENTERPRISE_BCM" && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Full L1/L2 + selective L3 · Grow / Run / Protect bands · strategic importance pre-set
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="space-y-2">

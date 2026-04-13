@@ -14,10 +14,12 @@ import { complianceRouter } from "./compliance";
 import { eolRouter } from "./eol";
 import { dashboardRouter } from "./dashboard";
 import { searchRouter } from "./search";
+import { paletteQueryRouter } from "./paletteQuery";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
   search: searchRouter,
+  paletteQuery: paletteQueryRouter,
   capability: capabilityRouter,
   workspace: workspaceRouter,
   tag: tagRouter,

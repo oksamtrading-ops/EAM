@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { RiskContext, type ViewMode } from "./RiskContext";
 import { RiskToolbar } from "./RiskToolbar";
@@ -13,10 +14,19 @@ import { RiskAIPanel } from "./panels/RiskAIPanel";
 import { RiskFormModal } from "./modals/RiskFormModal";
 
 export function RiskPageClient() {
+  const searchParams = useSearchParams();
   const [view, setView] = useState<ViewMode>("radar");
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
   const [showCreateRisk, setShowCreateRisk] = useState(false);
   const [showAI, setShowAI] = useState(false);
+
+  // Auto-open AI panel when ?ai=1 is in URL (deep-link from palette)
+  useEffect(() => {
+    if (searchParams.get("ai") === "1") {
+      setShowAI(true);
+      setSelectedRiskId(null);
+    }
+  }, [searchParams]);
 
   const { data: risks = [] } = trpc.risk.list.useQuery();
   const { data: stats } = trpc.risk.getStats.useQuery();

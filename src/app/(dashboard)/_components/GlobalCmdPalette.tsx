@@ -16,6 +16,8 @@ import {
   Briefcase,
   ArrowRight,
   Loader2,
+  Star,
+  Trash2,
 } from "lucide-react";
 import {
   Command,
@@ -31,6 +33,7 @@ import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { paletteDeepLink, quickActionLink } from "@/lib/utils/paletteDeepLinks";
 import { CmdAIAnswer } from "./CmdAIAnswer";
+import { PalettePeekPane } from "./PalettePeekPane";
 
 type SearchableItem = {
   id: string;
@@ -61,7 +64,20 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
   const { workspaceId } = useWorkspace();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"search" | "ai">("search");
+  const [activeValue, setActiveValue] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Saved AI queries (workspace + user scoped)
+  const utils = trpc.useUtils();
+  const { data: savedQueries = [] } = trpc.paletteQuery.list.useQuery(undefined, {
+    enabled: open,
+  });
+  const markUsed = trpc.paletteQuery.markUsed.useMutation({
+    onSuccess: () => utils.paletteQuery.list.invalidate(),
+  });
+  const deleteSaved = trpc.paletteQuery.delete.useMutation({
+    onSuccess: () => utils.paletteQuery.list.invalidate(),
+  });
 
   // Lazy fetch the index when palette first opens
   const { data: index } = trpc.search.index.useQuery(undefined, {
@@ -206,12 +222,18 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
     <CommandDialog
       open={open}
       onOpenChange={(v) => !v && onClose()}
-      className="max-w-[640px]!"
+      className="max-w-[960px]! sm:max-w-[960px]!"
       title="Search"
       description="Search apps, capabilities, risks, or ask AI"
     >
       {mode === "search" ? (
-        <Command shouldFilter={false}>
+        <div className="flex w-full">
+          <div className="flex-1 min-w-0 border-r border-[#e5e5e7]">
+        <Command
+          shouldFilter={false}
+          value={activeValue}
+          onValueChange={setActiveValue}
+        >
           <CommandInput
             ref={inputRef}
             value={query}
@@ -225,6 +247,44 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
             }}
           />
           <CommandList>
+            {!query.trim() && savedQueries.length > 0 && (
+              <>
+                <CommandGroup heading="Saved AI queries">
+                  {savedQueries.slice(0, 5).map((q) => (
+                    <CommandItem
+                      key={q.id}
+                      value={`saved-${q.id}`}
+                      onSelect={() => {
+                        markUsed.mutate({ id: q.id });
+                        setQuery(q.queryText);
+                        setMode("ai");
+                      }}
+                      className="group"
+                    >
+                      <Star className="h-4 w-4 fill-[#f59e0b] text-[#f59e0b]" />
+                      <span className="truncate">{q.label}</span>
+                      {q.useCount > 0 && (
+                        <span className="ml-auto text-[10px] text-[#86868b] px-1.5 py-0.5 rounded-full bg-[#f2f2f7]">
+                          {q.useCount}×
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Delete saved query"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSaved.mutate({ id: q.id });
+                        }}
+                        className="opacity-0 group-hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-black/[0.08] text-[#86868b]"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
             {showAiRow && (
               <>
                 <CommandGroup>
@@ -323,6 +383,11 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
             )}
           </CommandList>
         </Command>
+          </div>
+          <aside className="w-[320px] shrink-0 bg-[#fafafa] hidden md:block">
+            <PalettePeekPane activeValue={activeValue} index={index} />
+          </aside>
+        </div>
       ) : (
         <CmdAIAnswer
           query={query}

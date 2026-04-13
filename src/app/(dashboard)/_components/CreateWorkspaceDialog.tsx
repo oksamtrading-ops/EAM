@@ -17,10 +17,15 @@ import { toast } from "sonner";
 const INDUSTRIES = [
   { value: "GENERIC", label: "Generic" },
   { value: "BANKING", label: "Banking" },
+  { value: "INSURANCE", label: "Insurance" },
   { value: "RETAIL", label: "Retail" },
   { value: "LOGISTICS", label: "Logistics" },
   { value: "MANUFACTURING", label: "Manufacturing" },
   { value: "HEALTHCARE", label: "Healthcare" },
+  { value: "PHARMA_LIFESCIENCES", label: "Pharma & Life Sciences" },
+  { value: "TELECOM", label: "Telecommunications" },
+  { value: "ENERGY_UTILITIES", label: "Energy & Utilities" },
+  { value: "PUBLIC_SECTOR", label: "Public Sector" },
   { value: "ENTERPRISE_BCM", label: "Enterprise BCM" },
 ] as const;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Pencil, AlertTriangle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { trpc } from "@/lib/trpc/client";
@@ -18,18 +18,31 @@ type Tab = (typeof TAB_OPTIONS)[number];
 export function InitiativeDetailPanel({
   initiativeId,
   onClose,
+  autoOpenAI,
 }: {
   initiativeId: string;
   onClose: () => void;
+  autoOpenAI?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [showEdit, setShowEdit] = useState(false);
   const [loadingRisk, setLoadingRisk] = useState(false);
   const [riskResult, setRiskResult] = useState<any>(null);
+  const autoTriggeredRef = useRef(false);
 
   const { data: initiative, isLoading } = trpc.initiative.getById.useQuery({
     id: initiativeId,
   });
+
+  // Auto-trigger AI risk assessment when ?ai=1 and initiative is loaded
+  useEffect(() => {
+    if (autoOpenAI && initiative && !autoTriggeredRef.current && !loadingRisk && !riskResult) {
+      autoTriggeredRef.current = true;
+      setTab("overview");
+      void handleAssessRisks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenAI, initiative]);
 
   async function handleAssessRisks() {
     if (!initiative) return;
