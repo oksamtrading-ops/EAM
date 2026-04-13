@@ -36,8 +36,12 @@ async function suggestInitiatives(payload: {
   clientName: string;
   industry: string;
   planningHorizon: string;
+  assessedCapCount: number;
+  totalCapCount: number;
+  appCount: number;
   capabilities: Array<{
     name: string;
+    level: string;
     currentMaturity: string;
     targetMaturity: string;
     strategicImportance: string;
@@ -46,91 +50,144 @@ async function suggestInitiatives(payload: {
     name: string;
     annualCostUsd?: number;
     technicalHealth: string;
+    lifecycle: string;
   }>;
-  redundancies: Array<{ capabilityName: string; appCount: number }>;
-  capabilityGaps: Array<{ capabilityName: string }>;
+  redundancies: Array<{ capabilityName: string; appCount: number; apps: string[] }>;
+  capabilityGaps: Array<{ capabilityName: string; level: string; strategicImportance: string }>;
 }) {
-  const prompt = `You are an enterprise architecture consultant generating a transformation roadmap.
-
-CLIENT: ${payload.clientName}
-INDUSTRY: ${payload.industry}
-PLANNING HORIZON: ${payload.planningHorizon}
-
-CAPABILITY GAPS (no application support):
-${payload.capabilityGaps.map((g) => `- ${g.capabilityName}`).join("\n") || "None identified"}
-
-CAPABILITY MATURITY IMPROVEMENTS NEEDED:
-${
-  payload.capabilities
+  const maturityImprovements = payload.capabilities
     .filter(
       (c) =>
         c.currentMaturity !== c.targetMaturity &&
+        c.currentMaturity !== "NOT_ASSESSED" &&
+        c.targetMaturity !== "NOT_ASSESSED" &&
         c.strategicImportance !== "NOT_ASSESSED"
     )
     .map(
       (c) =>
-        `- ${c.name}: ${c.currentMaturity} → ${c.targetMaturity} (${c.strategicImportance})`
+        `- ${c.name} (${c.level}): ${c.currentMaturity} → ${c.targetMaturity} | Importance: ${c.strategicImportance}`
     )
-    .join("\n") || "None identified"
-}
+    .join("\n") || "None identified";
 
-RETIRE CANDIDATES:
-${
-  payload.retireCandidates
+  const retireCandidatesList = payload.retireCandidates
     .map(
       (a) =>
-        `- ${a.name}: Health=${a.technicalHealth}${a.annualCostUsd ? `, Cost=$${a.annualCostUsd}/yr` : ""}`
+        `- ${a.name}: Health=${a.technicalHealth}, Lifecycle=${a.lifecycle}${a.annualCostUsd ? `, Cost=$${a.annualCostUsd.toLocaleString()}/yr` : ""}`
     )
-    .join("\n") || "None identified"
-}
+    .join("\n") || "None identified";
 
-REDUNDANCIES:
-${
-  payload.redundancies
-    .map((r) => `- ${r.capabilityName}: ${r.appCount} overlapping applications`)
-    .join("\n") || "None identified"
-}
+  const redundanciesList = payload.redundancies
+    .map((r) => `- ${r.capabilityName}: ${r.appCount} overlapping apps (${r.apps.join(", ")})`)
+    .join("\n") || "None identified";
 
-TASK:
-Propose 4–8 transformation initiatives addressing the above findings.
-Group them into H1 (0–6 months), H2 (6–18 months), H3 (18–36 months) horizons.
-Each initiative should be concrete, actionable, and business-outcome oriented.
+  const capGapsList = payload.capabilityGaps
+    .map((g) => `- ${g.capabilityName} (${g.level}) | Importance: ${g.strategicImportance}`)
+    .join("\n") || "None identified";
 
-OUTPUT FORMAT (JSON only, no markdown):
+  const prompt = `ROLE
+You are a senior Enterprise Architect and Transformation Planner with deep expertise in capability-based planning, trained on industry-standard frameworks including:
+- TOGAF Architecture Development Method (ADM) — Phase E (Opportunities & Solutions) and Phase F (Migration Planning)
+- Business Architecture Guild (BIZBOK) capability-based investment planning
+- APQC Process Classification Framework (PCF) — cross-industry and industry-specific
+- BIAN (Banking), eTOM (Telecom), ACORD (Insurance), SCOR (Supply Chain), ITIL/COBIT (IT), HL7/HIMSS (Healthcare), or the relevant industry equivalent
+- CMM/CMMI maturity progression models
+- Gartner TIME Model for application rationalization
+
+Before generating initiatives, perform deep research by cross-referencing the input data against the applicable reference framework(s) for this industry. Validate that proposed initiatives are grounded in established EA transformation patterns, not invented generically.
+
+OBJECTIVE
+Propose a comprehensive, sequenced transformation roadmap of 4–10 initiatives that address ALL identified findings — capability maturity gaps, application retire candidates, redundancies, and unsupported capabilities. Every finding must be addressed by at least one initiative. Group initiatives into planning horizons and sequence them by dependency, strategic urgency, and feasibility.
+
+INPUTS
+- Client: ${payload.clientName}
+- Industry: ${payload.industry}
+- Planning Horizon: ${payload.planningHorizon}
+- Assessment Coverage: ${payload.assessedCapCount} of ${payload.totalCapCount} capabilities assessed, ${payload.appCount} applications catalogued
+
+Capability Gaps (no application support):
+${capGapsList}
+
+Capability Maturity Improvements Needed:
+${maturityImprovements}
+
+Application Retire Candidates:
+${retireCandidatesList}
+
+Application Redundancies (multiple apps supporting same capability):
+${redundanciesList}
+
+METHOD (follow in order)
+1. Identify the reference framework(s) most applicable to this industry. Name them explicitly.
+2. Cluster related findings into logical transformation themes (e.g., "Digital Operations Modernization", "Legacy Decommission & Consolidation", "Data & Analytics Foundation").
+3. For each theme, define one or more initiatives with clear business outcomes.
+4. Sequence initiatives across horizons:
+   - H1_NOW (0–6 months): Quick wins, critical risk mitigation, foundation capabilities
+   - H2_NEXT (6–18 months): Core transformation, major capability uplift
+   - H3_LATER (18–36 months): Optimization, innovation, advanced maturity targets
+5. Identify dependencies between initiatives (e.g., data governance must precede analytics modernization).
+6. For each initiative, propose 2–4 concrete milestones.
+7. Assess confidence in each initiative based on data quality and completeness of inputs.
+
+CONSTRAINTS
+- Every capability gap, maturity delta, retire candidate, and redundancy must be addressed by at least one initiative.
+- Do NOT invent findings. Work strictly from the input data provided.
+- Do NOT cite frameworks you are not confident exist.
+- Initiative names must be concise and business-outcome oriented (e.g., "Legacy CRM Decommission & Migration" not "Fix CRM").
+- Dependencies must reference specific initiative names from your output, not generic concepts.
+- Milestones must be concrete and measurable (e.g., "Complete data migration UAT" not "Make progress").
+- If input data is sparse (many NOT_ASSESSED, few apps), flag this and adjust confidence accordingly.
+
+OUTPUT FORMAT (JSON only, no markdown, no explanation):
 {
+  "referenceFrameworks": ["string — name of each framework used"],
   "initiatives": [
     {
       "name": "string",
-      "description": "string",
-      "category": "MODERNISATION" | "CONSOLIDATION" | "DIGITALISATION" | "COMPLIANCE" | "OPTIMISATION" | "INNOVATION" | "DECOMMISSION",
-      "horizon": "H1_NOW" | "H2_NEXT" | "H3_LATER",
-      "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-      "estimatedBenefits": "string (1 sentence)",
-      "addressesCapabilities": ["string"],
-      "addressesApplications": ["string"],
-      "suggestedMilestones": ["string"],
-      "dependencies": ["string (initiative name)"]
+      "description": "string (2-3 sentences: what this initiative delivers and why it matters)",
+      "category": "MODERNISATION | CONSOLIDATION | DIGITALISATION | COMPLIANCE | OPTIMISATION | INNOVATION | DECOMMISSION",
+      "horizon": "H1_NOW | H2_NEXT | H3_LATER",
+      "priority": "CRITICAL | HIGH | MEDIUM | LOW",
+      "confidence": "HIGH | MEDIUM | LOW",
+      "estimatedBenefits": "string (1-2 sentences: expected business outcome)",
+      "addressesCapabilities": ["string — capability names from input"],
+      "addressesApplications": ["string — application names from input"],
+      "suggestedMilestones": ["string — 2-4 concrete milestones"],
+      "dependencies": ["string — other initiative names that must precede or run in parallel"],
+      "riskIfDeferred": "string (1 sentence: what happens if this is not executed)"
     }
   ],
-  "narrativeSummary": "string (3-4 sentences executive summary)"
+  "narrativeSummary": "string (4-6 sentences: executive summary of the transformation roadmap, key themes, sequencing rationale, and expected overall outcome)",
+  "dataQualityNotes": ["string — any data gaps or assumptions that affect confidence"],
+  "findingsCoverage": {
+    "capabilityGapsAddressed": 0,
+    "maturityDeltasAddressed": 0,
+    "retireCandidatesAddressed": 0,
+    "redundanciesAddressed": 0,
+    "unaddressedFindings": ["string — any findings not covered, with reason"]
+  }
 }`;
 
   try {
     const message = await client.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 3000,
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 
     const text = (message.content[0] as any).text as string;
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in response");
-
-    return Response.json(JSON.parse(jsonMatch[0]));
+    const parsed = JSON.parse(stripCodeBlock(text));
+    return Response.json(parsed);
   } catch (err) {
     console.error("[AI/roadmap/suggest]", err);
     return Response.json({ error: "AI generation failed" }, { status: 500 });
   }
+}
+
+/** Strip markdown code-block fences (```json ... ```) from AI responses */
+function stripCodeBlock(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  return match ? match[1]!.trim() : trimmed;
 }
 
 // ── Prompt H — As-Is → To-Be Gap Narrative ───────────────────

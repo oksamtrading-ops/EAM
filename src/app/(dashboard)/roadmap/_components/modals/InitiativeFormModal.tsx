@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
 import { DatePicker } from "../shared/DatePicker";
 
@@ -67,12 +68,14 @@ export function InitiativeFormModal({
   onDeleted,
   initiative,
   initialValues,
+  apps,
 }: {
   open: boolean;
   onClose: () => void;
   onDeleted?: () => void;
   initiative?: InitiativeData;
   initialValues?: InitiativeFormDefaults;
+  apps?: any[];
 }) {
   const isEdit = !!initiative;
   const defaults = initialValues ?? {};
@@ -134,27 +137,106 @@ export function InitiativeFormModal({
 
   const { data: capabilities } = trpc.capability.getTree.useQuery();
   const { data: objectives } = trpc.objective.list.useQuery();
+  const { workspaceName, industry } = useWorkspace();
 
   async function handleAISuggest() {
     setLoadingAI(true);
     try {
+      // Flatten capability tree into a flat list
+      const flatCaps: any[] = [];
+      function walkCaps(nodes: any[]) {
+        for (const n of nodes) {
+          flatCaps.push(n);
+          if (n.children) walkCaps(n.children);
+        }
+      }
+      if (capabilities) walkCaps(capabilities);
+
+      // Build capability-app mapping for redundancy detection
+      const capAppMap: Record<string, string[]> = {};
+      for (const app of apps ?? []) {
+        for (const mapping of app.capabilities ?? []) {
+          const capId = mapping.capabilityId ?? mapping.capability?.id;
+          if (!capId) continue;
+          if (!capAppMap[capId]) capAppMap[capId] = [];
+          capAppMap[capId].push(app.name);
+        }
+      }
+
+      // Capabilities with maturity data
+      const capsWithMaturity = flatCaps.map((c) => ({
+        name: c.name,
+        level: c.level ?? "?",
+        currentMaturity: c.currentMaturity ?? "NOT_ASSESSED",
+        targetMaturity: c.targetMaturity ?? "NOT_ASSESSED",
+        strategicImportance: c.strategicImportance ?? "NOT_ASSESSED",
+      }));
+
+      const assessedCount = capsWithMaturity.filter(
+        (c) => c.currentMaturity !== "NOT_ASSESSED"
+      ).length;
+
+      // Capability gaps: capabilities with no app support
+      const capabilityGaps = flatCaps
+        .filter((c) => !capAppMap[c.id] || capAppMap[c.id].length === 0)
+        .filter((c) => c.strategicImportance && c.strategicImportance !== "NOT_ASSESSED")
+        .map((c) => ({
+          capabilityName: c.name,
+          level: c.level ?? "?",
+          strategicImportance: c.strategicImportance ?? "NOT_ASSESSED",
+        }));
+
+      // Retire candidates: apps with poor technical health or END_OF_LIFE lifecycle
+      const retireCandidates = (apps ?? [])
+        .filter((a: any) =>
+          a.technicalHealth === "POOR" ||
+          a.technicalHealth === "VERY_POOR" ||
+          a.lifecycle === "END_OF_LIFE" ||
+          a.lifecycle === "RETIREMENT"
+        )
+        .map((a: any) => ({
+          name: a.name,
+          annualCostUsd: a.annualCostUsd ? Number(a.annualCostUsd) : undefined,
+          technicalHealth: a.technicalHealth ?? "NOT_ASSESSED",
+          lifecycle: a.lifecycle ?? "UNKNOWN",
+        }));
+
+      // Redundancies: capabilities served by 2+ apps
+      const redundancies = Object.entries(capAppMap)
+        .filter(([, appNames]) => appNames.length >= 2)
+        .map(([capId, appNames]) => {
+          const cap = flatCaps.find((c) => c.id === capId);
+          return {
+            capabilityName: cap?.name ?? capId,
+            appCount: appNames.length,
+            apps: appNames,
+          };
+        });
+
       const res = await fetch("/api/ai/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "suggest-initiatives",
           payload: {
-            clientName: "Client",
-            industry: "Enterprise",
+            clientName: workspaceName,
+            industry,
             planningHorizon: "36 months",
-            capabilities: [],
-            retireCandidates: [],
-            redundancies: [],
-            capabilityGaps: [],
+            assessedCapCount: assessedCount,
+            totalCapCount: flatCaps.length,
+            appCount: (apps ?? []).length,
+            capabilities: capsWithMaturity,
+            retireCandidates,
+            redundancies,
+            capabilityGaps,
           },
         }),
       });
       const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
       const first = data.initiatives?.[0];
       if (first) {
         setForm((f) => ({
@@ -165,7 +247,7 @@ export function InitiativeFormModal({
           horizon: first.horizon ?? f.horizon,
           priority: first.priority ?? f.priority,
         }));
-        toast.success("AI suggestion applied");
+        toast.success(`AI suggested ${data.initiatives.length} initiatives — first one applied to form`);
       }
     } catch {
       toast.error("AI suggestion failed");

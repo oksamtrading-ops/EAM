@@ -35,6 +35,7 @@ export function RoadmapPageClient() {
   const { data: roadmap } = trpc.initiative.getRoadmapData.useQuery();
   const { data: objectives } = trpc.objective.list.useQuery();
   const { data: capabilities } = trpc.capability.getTree.useQuery();
+  const { data: apps } = trpc.application.list.useQuery();
 
   const stats = useMemo(() => {
     const all = roadmap?.initiatives ?? [];
@@ -101,6 +102,7 @@ export function RoadmapPageClient() {
       <InitiativeFormModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
+        apps={apps ?? []}
       />
 
       <ArchStatePanel
