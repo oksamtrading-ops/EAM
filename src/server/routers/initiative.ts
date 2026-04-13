@@ -28,6 +28,8 @@ const InitiativeCreateInput = z.object({
   budgetCurrency: z.string().default("USD"),
   ownerId: z.string().optional(),
   businessSponsor: z.string().optional(),
+  sourceType: z.string().optional(),
+  sourceContext: z.string().optional(),
   capabilityMaps: z
     .array(
       z.object({

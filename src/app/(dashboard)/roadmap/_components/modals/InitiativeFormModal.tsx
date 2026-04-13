@@ -19,6 +19,8 @@ const EMPTY_FORM = {
   budgetCurrency: "CAD",
   businessSponsor: "",
   ragStatus: "GREEN",
+  sourceType: "",
+  sourceContext: "",
 };
 
 const CATEGORIES = [
@@ -49,25 +51,38 @@ type InitiativeData = {
   ragStatus: string;
 };
 
+export type InitiativeFormDefaults = {
+  name?: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  horizon?: string;
+  sourceType?: string;
+  sourceContext?: string;
+};
+
 export function InitiativeFormModal({
   open,
   onClose,
   onDeleted,
   initiative,
+  initialValues,
 }: {
   open: boolean;
   onClose: () => void;
   onDeleted?: () => void;
   initiative?: InitiativeData;
+  initialValues?: InitiativeFormDefaults;
 }) {
   const isEdit = !!initiative;
+  const defaults = initialValues ?? {};
   const [form, setForm] = useState({
-    name: initiative?.name ?? "",
-    description: initiative?.description ?? "",
-    category: initiative?.category ?? "MODERNISATION",
+    name: initiative?.name ?? defaults.name ?? "",
+    description: initiative?.description ?? defaults.description ?? "",
+    category: initiative?.category ?? defaults.category ?? "MODERNISATION",
     status: initiative?.status ?? "DRAFT",
-    priority: initiative?.priority ?? "MEDIUM",
-    horizon: initiative?.horizon ?? "H2_NEXT",
+    priority: initiative?.priority ?? defaults.priority ?? "MEDIUM",
+    horizon: initiative?.horizon ?? defaults.horizon ?? "H2_NEXT",
     startDate: initiative?.startDate
       ? new Date(initiative.startDate).toISOString().split("T")[0]
       : "",
@@ -78,6 +93,8 @@ export function InitiativeFormModal({
     budgetCurrency: "CAD",
     businessSponsor: initiative?.businessSponsor ?? "",
     ragStatus: initiative?.ragStatus ?? "GREEN",
+    sourceType: defaults.sourceType ?? "",
+    sourceContext: defaults.sourceContext ?? "",
   });
   const [loadingAI, setLoadingAI] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -181,7 +198,11 @@ export function InitiativeFormModal({
     if (isEdit) {
       update.mutate({ id: initiative!.id, ...payload, ragStatus: form.ragStatus as any });
     } else {
-      create.mutate(payload);
+      create.mutate({
+        ...payload,
+        ...(form.sourceType ? { sourceType: form.sourceType } : {}),
+        ...(form.sourceContext ? { sourceContext: form.sourceContext } : {}),
+      });
     }
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, Target, Cpu, Loader2, AlertTriangle } from "lucide-react";
+import { X, Sparkles, Target, Cpu, Loader2, AlertTriangle, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +20,7 @@ import {
   LIFECYCLE_LABELS,
   APP_TYPE_LABELS,
 } from "@/lib/constants/application-colors";
+import { InitiativeFormModal, type InitiativeFormDefaults } from "@/app/(dashboard)/roadmap/_components/modals/InitiativeFormModal";
 
 type Props = {
   open: boolean;
@@ -32,7 +33,12 @@ type AITab = "rationalization" | "impact" | "tech-recs";
 
 export function AppAIPanel({ open, onClose, apps, capTree }: Props) {
   const [tab, setTab] = useState<AITab>("rationalization");
+  const [roadmapDefaults, setRoadmapDefaults] = useState<InitiativeFormDefaults | null>(null);
   const { workspaceId } = useWorkspace();
+
+  function handleAddToRoadmap(defaults: InitiativeFormDefaults) {
+    setRoadmapDefaults(defaults);
+  }
 
   if (!open) return null;
 
@@ -58,15 +64,22 @@ export function AppAIPanel({ open, onClose, apps, capTree }: Props) {
       <div className="flex border-b px-2">
         <TabBtn active={tab === "rationalization"} onClick={() => setTab("rationalization")} icon={<Sparkles className="h-3.5 w-3.5" />} label="Rationalize" />
         <TabBtn active={tab === "impact"} onClick={() => setTab("impact")} icon={<Target className="h-3.5 w-3.5" />} label="Impact" />
-        <TabBtn active={tab === "tech-recs"} onClick={() => setTab("tech-recs")} icon={<Cpu className="h-3.5 w-3.5" />} label="Tech Recs" />
+        <TabBtn active={tab === "tech-recs"} onClick={() => setTab("tech-recs")} icon={<Cpu className="h-3.5 w-3.5" />} label="Tech Recommendations" />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {tab === "rationalization" && <RationalizationTab apps={apps} workspaceId={workspaceId} />}
-        {tab === "impact" && <ImpactTab apps={apps} workspaceId={workspaceId} />}
-        {tab === "tech-recs" && <TechRecsTab apps={apps} capTree={capTree} workspaceId={workspaceId} />}
+        {tab === "rationalization" && <RationalizationTab apps={apps} workspaceId={workspaceId} onAddToRoadmap={handleAddToRoadmap} />}
+        {tab === "impact" && <ImpactTab apps={apps} workspaceId={workspaceId} onAddToRoadmap={handleAddToRoadmap} />}
+        {tab === "tech-recs" && <TechRecsTab apps={apps} capTree={capTree} workspaceId={workspaceId} onAddToRoadmap={handleAddToRoadmap} />}
       </div>
+
+      {/* Roadmap Initiative Modal */}
+      <InitiativeFormModal
+        open={!!roadmapDefaults}
+        onClose={() => setRoadmapDefaults(null)}
+        initialValues={roadmapDefaults ?? undefined}
+      />
     </aside>
   );
 }
@@ -108,7 +121,7 @@ const TIME_CONFIG: Record<string, { label: string; color: string; bg: string; bo
   CONSOLIDATE: { label: "Consolidate", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
 };
 
-function RationalizationTab({ apps, workspaceId }: { apps: any[]; workspaceId: string }) {
+function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspaceId: string; onAddToRoadmap: (d: InitiativeFormDefaults) => void }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RatResult | null>(null);
 
@@ -208,6 +221,17 @@ function RationalizationTab({ apps, workspaceId }: { apps: any[]; workspaceId: s
                       {rec.savingsIfActioned > 0 && (
                         <p className="text-[10px] text-green-600 mt-1">Potential savings: ${Number(rec.savingsIfActioned).toLocaleString()}/yr</p>
                       )}
+                      {(rec.timeCategory === "MIGRATE" || rec.timeCategory === "ELIMINATE" || rec.timeCategory === "CONSOLIDATE") && (
+                        <AddToRoadmapBtn onClick={() => onAddToRoadmap({
+                          name: `${rec.timeCategory === "ELIMINATE" ? "Decommission" : rec.timeCategory === "MIGRATE" ? "Migrate" : "Consolidate"} ${rec.applicationName}`,
+                          description: `${rec.rationale}\n\nRecommended Action: ${rec.action}${rec.savingsIfActioned > 0 ? `\nEstimated savings: $${Number(rec.savingsIfActioned).toLocaleString()}/yr` : ""}`,
+                          category: rec.timeCategory === "ELIMINATE" ? "DECOMMISSION" : "CONSOLIDATION",
+                          priority: rec.confidence === "HIGH" ? "HIGH" : rec.confidence === "MEDIUM" ? "MEDIUM" : "LOW",
+                          horizon: rec.timeCategory === "ELIMINATE" ? "H1_NOW" : "H2_NEXT",
+                          sourceType: "AI_RATIONALIZATION",
+                          sourceContext: `TIME Category: ${rec.timeCategory} | App: ${rec.applicationName} | Confidence: ${rec.confidence}`,
+                        })} />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -274,7 +298,7 @@ const RISK_CONFIG: Record<string, { label: string; color: string; bg: string; bo
   LOW: { label: "Low", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
 };
 
-function ImpactTab({ apps, workspaceId }: { apps: any[]; workspaceId: string }) {
+function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspaceId: string; onAddToRoadmap: (d: InitiativeFormDefaults) => void }) {
   const [selectedAppId, setSelectedAppId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImpactResult | null>(null);
@@ -457,6 +481,15 @@ function ImpactTab({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
                     <ul className="text-[11px] text-[#495057] space-y-0.5 ml-7">
                       {(phase.actions ?? []).map((a: string, j: number) => <li key={j}>• {a}</li>)}
                     </ul>
+                    <AddToRoadmapBtn onClick={() => onAddToRoadmap({
+                      name: `${result.targetApplication}: ${phase.name}`,
+                      description: `Transition Phase ${phase.phase} — ${phase.name}\nTimeline: ${phase.timeline}\n\nActions:\n${(phase.actions ?? []).map((a: string) => `• ${a}`).join("\n")}`,
+                      category: "MODERNISATION",
+                      priority: i === 0 ? "HIGH" : "MEDIUM",
+                      horizon: i === 0 ? "H1_NOW" : i === 1 ? "H2_NEXT" : "H3_LATER",
+                      sourceType: "AI_IMPACT_ANALYSIS",
+                      sourceContext: `App: ${result.targetApplication} | Phase: ${phase.phase} — ${phase.name} | Risk: ${result.overallRiskLevel}`,
+                    })} />
                   </div>
                 ))}
               </div>
@@ -493,7 +526,7 @@ const COVERAGE_CONFIG: Record<string, { label: string; color: string; bg: string
   UNSERVED: { label: "Unserved", color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
 };
 
-function TechRecsTab({ apps, capTree, workspaceId }: { apps: any[]; capTree: any[]; workspaceId: string }) {
+function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any[]; capTree: any[]; workspaceId: string; onAddToRoadmap: (d: InitiativeFormDefaults) => void }) {
   const [loading, setLoading] = useState(false);
   const [budget, setBudget] = useState("MODERATE");
   const [result, setResult] = useState<TechResult | null>(null);
@@ -652,6 +685,15 @@ function TechRecsTab({ apps, capTree, workspaceId }: { apps: any[]; capTree: any
                     </div>
                     <p className="text-[11px] text-[#495057] leading-relaxed">{rec.fitRationale}</p>
                     <p className="text-[10px] text-muted-foreground mt-1">Integration: {rec.integrationNotes}</p>
+                    <AddToRoadmapBtn onClick={() => onAddToRoadmap({
+                      name: `Implement ${rec.vendorName} ${rec.productName} for ${cap.capabilityName}`,
+                      description: `Deploy ${rec.vendorName} ${rec.productName} to support ${cap.capabilityName} (${cap.level}).\n\nFit: ${rec.fitRationale}\nIntegration: ${rec.integrationNotes}\nCost Tier: ${rec.costTier} | Deployment: ${rec.deploymentModel}${rec.existingVendorExtension ? " | Existing Vendor Extension" : ""}`,
+                      category: cap.coverageStatus === "UNSERVED" ? "INNOVATION" : "MODERNISATION",
+                      priority: rec.confidence === "HIGH" ? "HIGH" : "MEDIUM",
+                      horizon: rec.rank === 1 ? "H1_NOW" : "H2_NEXT",
+                      sourceType: "AI_TECH_RECOMMENDATION",
+                      sourceContext: `Vendor: ${rec.vendorName} ${rec.productName} | Capability: ${cap.capabilityName} | Coverage: ${cap.coverageStatus} | Confidence: ${rec.confidence}`,
+                    })} />
                   </div>
                 ))}
               </div>
@@ -784,6 +826,18 @@ function ConfidenceDot({ confidence }: { confidence?: string }) {
       <span className={`w-2 h-2 rounded-full ${colors[confidence] ?? "bg-gray-400"}`} />
       {confidence}
     </span>
+  );
+}
+
+function AddToRoadmapBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 mt-2 px-2 py-1 rounded-md text-[10px] font-medium text-[#7c3aed] bg-[#7c3aed]/5 border border-[#7c3aed]/20 hover:bg-[#7c3aed]/10 transition-colors"
+    >
+      <CalendarPlus className="h-3 w-3" />
+      Add to Roadmap
+    </button>
   );
 }
 

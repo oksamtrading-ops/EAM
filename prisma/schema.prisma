@@ -535,6 +535,8 @@ model Initiative {
   budgetUsd       Decimal?           @db.Decimal(14, 2)
   budgetCurrency     String             @default("USD")
   cancellationReason String?
+  sourceType         String?
+  sourceContext      String?
   ownerId            String?
   businessSponsor    String?
   progressPct     Int                @default(0)
