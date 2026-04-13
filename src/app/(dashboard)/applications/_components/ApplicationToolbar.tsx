@@ -1,6 +1,6 @@
 "use client";
 
-import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3 } from "lucide-react";
+import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppViewMode } from "./ApplicationPageClient";
 
@@ -12,6 +12,8 @@ type Props = {
   onExport: () => void;
   onRationalization: () => void;
   showRationalization: boolean;
+  onAI: () => void;
+  showAI: boolean;
   appCount: number;
 };
 
@@ -23,6 +25,8 @@ export function ApplicationToolbar({
   onExport,
   onRationalization,
   showRationalization,
+  onAI,
+  showAI,
   appCount,
 }: Props) {
   return (
@@ -54,6 +58,16 @@ export function ApplicationToolbar({
         >
           <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
           Rationalize
+        </Button>
+
+        <Button
+          size="sm"
+          variant={showAI ? "default" : "outline"}
+          onClick={onAI}
+          className={`h-9 text-xs ${showAI ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
+        >
+          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+          AI Assistant
         </Button>
 
         <Button size="sm" variant="outline" onClick={onImport} className="h-9 text-xs">

@@ -10,6 +10,7 @@ import { LandscapeView } from "./views/LandscapeView";
 import { RationalizationMatrix } from "./views/RationalizationMatrix";
 import { ApplicationDetailPanel } from "./panels/ApplicationDetailPanel";
 import { RationalizationPanel } from "./panels/RationalizationPanel";
+import { AppAIPanel } from "./panels/AppAIPanel";
 import { CreateApplicationDialog } from "./modals/CreateApplicationDialog";
 import { ImportExcelDialog } from "./modals/ImportExcelDialog";
 import { AppWindow } from "lucide-react";
@@ -22,6 +23,7 @@ export function ApplicationPageClient() {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showRationalization, setShowRationalization] = useState(false);
+  const [showAI, setShowAI] = useState(false);
 
   const { workspaceId } = useWorkspace();
   const { data: apps, isLoading, error } = trpc.application.list.useQuery();
@@ -60,8 +62,10 @@ export function ApplicationPageClient() {
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
-          onRationalization={() => setShowRationalization(!showRationalization)}
+          onRationalization={() => { setShowRationalization(!showRationalization); setShowAI(false); }}
           showRationalization={showRationalization}
+          onAI={() => { setShowAI(!showAI); setShowRationalization(false); }}
+          showAI={showAI}
           appCount={apps?.length ?? 0}
         />
 
@@ -106,7 +110,7 @@ export function ApplicationPageClient() {
         </div>
       </div>
 
-      {selectedId && !showRationalization && (
+      {selectedId && !showRationalization && !showAI && (
         <ApplicationDetailPanel
           applicationId={selectedId}
           onClose={() => setSelectedId(null)}
@@ -117,6 +121,13 @@ export function ApplicationPageClient() {
         open={showRationalization}
         onClose={() => setShowRationalization(false)}
         apps={apps ?? []}
+      />
+
+      <AppAIPanel
+        open={showAI}
+        onClose={() => setShowAI(false)}
+        apps={apps ?? []}
+        capTree={capTree ?? []}
       />
 
       <CreateApplicationDialog
