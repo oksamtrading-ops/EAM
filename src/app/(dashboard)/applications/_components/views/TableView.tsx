@@ -11,6 +11,8 @@ import {
   TH_LABELS, TH_COLORS,
   RAT_LABELS, RAT_COLORS,
   APP_TYPE_LABELS,
+  FF_LABELS, FF_COLORS,
+  DC_LABELS, DC_COLORS,
 } from "@/lib/constants/application-colors";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
@@ -45,9 +47,12 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Lifecycle</th>
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Business Value</th>
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Tech Health</th>
+            <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Func. Fit</th>
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Rationalization</th>
+            <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Data Class.</th>
             <th className="text-right px-4 py-3 font-medium text-xs text-muted-foreground">Cost/yr</th>
             <th className="text-center px-4 py-3 font-medium text-xs text-muted-foreground">Caps</th>
+            <th className="text-center px-4 py-3 font-medium text-xs text-muted-foreground">Ifaces</th>
             <th className="w-8 px-2 py-3" />
           </tr>
         </thead>
@@ -95,8 +100,20 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
               </td>
               <td className="px-4 py-3">
                 <Tooltip>
+                  <TooltipTrigger ><span className="cursor-help"><StatusPill color={FF_COLORS[app.functionalFit]} label={FF_LABELS[app.functionalFit]} /></span></TooltipTrigger>
+                  <TooltipContent side="top">Functional Fit — how well the app serves its intended business purpose</TooltipContent>
+                </Tooltip>
+              </td>
+              <td className="px-4 py-3">
+                <Tooltip>
                   <TooltipTrigger ><span className="cursor-help"><StatusPill color={RAT_COLORS[app.rationalizationStatus]} label={RAT_LABELS[app.rationalizationStatus]} /></span></TooltipTrigger>
                   <TooltipContent side="top">Rationalization — recommended disposition: Keep, Migrate, Consolidate, or Retire</TooltipContent>
+                </Tooltip>
+              </td>
+              <td className="px-4 py-3">
+                <Tooltip>
+                  <TooltipTrigger ><span className="cursor-help"><StatusPill color={DC_COLORS[app.dataClassification]} label={DC_LABELS[app.dataClassification]} /></span></TooltipTrigger>
+                  <TooltipContent side="top">Data Classification — sensitivity of data this application handles</TooltipContent>
                 </Tooltip>
               </td>
               <td className="px-4 py-3 text-right text-xs text-muted-foreground">
@@ -117,6 +134,16 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top">Linked business capabilities</TooltipContent>
+                </Tooltip>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <Tooltip>
+                  <TooltipTrigger >
+                    <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-0.5 rounded-full cursor-help">
+                      {(app._count?.interfacesFrom ?? 0) + (app._count?.interfacesTo ?? 0)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Application interfaces (integrations)</TooltipContent>
                 </Tooltip>
               </td>
               <td className="px-2 py-3 text-right" onClick={(e) => e.stopPropagation()}>

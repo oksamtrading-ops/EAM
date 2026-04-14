@@ -2,7 +2,14 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { auditLog } from "@/server/services/audit";
-import type { ApplicationLifecycle, RationalizationStatus, CostModel } from "@/generated/prisma/client";
+import type { ApplicationLifecycle, RationalizationStatus, CostModel, FunctionalFitScore } from "@/generated/prisma/client";
+
+const FUNCTIONAL_FIT_VALUES = ["EXCELLENT", "GOOD", "ADEQUATE", "POOR", "UNFIT", "FF_UNKNOWN"] as const;
+const DATA_CLASSIFICATION_VALUES = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "DC_UNKNOWN"] as const;
+const INTERFACE_PROTOCOL_VALUES = ["REST_API", "SOAP", "GRAPHQL", "FILE_TRANSFER", "DATABASE_LINK", "MESSAGE_QUEUE", "EVENT_STREAM", "ETL", "SFTP", "CUSTOM"] as const;
+const INTERFACE_DIRECTION_VALUES = ["INBOUND", "OUTBOUND", "BIDIRECTIONAL"] as const;
+const INTERFACE_STATUS_VALUES = ["INT_ACTIVE", "INT_PLANNED", "INT_DEPRECATED", "INT_DECOMMISSIONED"] as const;
+const INTERFACE_CRITICALITY_VALUES = ["INT_CRITICAL", "INT_HIGH", "INT_MEDIUM", "INT_LOW"] as const;
 
 const ApplicationCreateInput = z.object({
   name: z.string().min(1).max(300),
@@ -26,6 +33,10 @@ const ApplicationCreateInput = z.object({
   licensedUsers: z.number().int().positive().optional(),
   businessOwnerName: z.string().optional(),
   itOwnerName: z.string().optional(),
+  functionalFit: z.enum(FUNCTIONAL_FIT_VALUES).default("FF_UNKNOWN"),
+  dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).default("DC_UNKNOWN"),
+  actualUsers: z.number().int().nonnegative().optional(),
+  replacementAppId: z.string().nullable().optional(),
   capabilityIds: z.array(z.string()).optional(),
 });
 
@@ -51,6 +62,10 @@ const ApplicationUpdateInput = z.object({
   licensedUsers: z.number().int().positive().nullable().optional(),
   businessOwnerName: z.string().nullable().optional(),
   itOwnerName: z.string().nullable().optional(),
+  functionalFit: z.enum(FUNCTIONAL_FIT_VALUES).optional(),
+  dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).optional(),
+  actualUsers: z.number().int().nonnegative().nullable().optional(),
+  replacementAppId: z.string().nullable().optional(),
   capabilityIds: z.array(z.string()).optional(),
 });
 
@@ -59,7 +74,22 @@ const AssessInput = z.object({
   businessValue: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "BV_UNKNOWN"]),
   technicalHealth: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR", "TH_CRITICAL", "TH_UNKNOWN"]),
   rationalizationStatus: z.enum(["KEEP", "INVEST", "MIGRATE", "RETIRE", "CONSOLIDATE", "EVALUATE", "RAT_NOT_ASSESSED"]),
+  functionalFit: z.enum(FUNCTIONAL_FIT_VALUES).optional(),
   notes: z.string().optional(),
+});
+
+const InterfaceInput = z.object({
+  sourceAppId: z.string(),
+  targetAppId: z.string(),
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  protocol: z.enum(INTERFACE_PROTOCOL_VALUES).default("REST_API"),
+  direction: z.enum(INTERFACE_DIRECTION_VALUES).default("OUTBOUND"),
+  status: z.enum(INTERFACE_STATUS_VALUES).default("INT_ACTIVE"),
+  criticality: z.enum(INTERFACE_CRITICALITY_VALUES).default("INT_MEDIUM"),
+  dataFlowDescription: z.string().optional(),
+  frequency: z.string().optional(),
+  dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).optional(),
 });
 
 export const applicationRouter = router({
@@ -83,6 +113,7 @@ export const applicationRouter = router({
         include: {
           capabilities: { select: { capabilityId: true, supportType: true } },
           assessments: { orderBy: { assessedAt: "desc" }, take: 1 },
+          _count: { select: { interfacesFrom: true, interfacesTo: true } },
         },
         orderBy: [{ name: "asc" }],
       });
@@ -97,6 +128,20 @@ export const applicationRouter = router({
           capabilities: { include: { capability: { select: { id: true, name: true, level: true } } } },
           assessments: { orderBy: { assessedAt: "desc" }, take: 5 },
           owner: { select: { id: true, name: true, avatarUrl: true } },
+          replacementApp: { select: { id: true, name: true } },
+          interfacesFrom: {
+            where: { isActive: true },
+            include: { targetApp: { select: { id: true, name: true, vendor: true } } },
+            orderBy: { createdAt: "desc" },
+          },
+          interfacesTo: {
+            where: { isActive: true },
+            include: { sourceApp: { select: { id: true, name: true, vendor: true } } },
+            orderBy: { createdAt: "desc" },
+          },
+          techStackLinks: {
+            include: { techRadarEntry: { select: { id: true, name: true, quadrant: true, ring: true } } },
+          },
         },
       });
       if (!app) throw new TRPCError({ code: "NOT_FOUND" });
@@ -106,7 +151,7 @@ export const applicationRouter = router({
   create: workspaceProcedure
     .input(ApplicationCreateInput)
     .mutation(async ({ ctx, input }) => {
-      const { capabilityIds, lifecycleStartDate, lifecycleEndDate, annualCostUsd, costRenewalDate, ...data } = input;
+      const { capabilityIds, lifecycleStartDate, lifecycleEndDate, annualCostUsd, costRenewalDate, actualUsers, replacementAppId, ...data } = input;
 
       const app = await ctx.db.application.create({
         data: {
@@ -116,6 +161,8 @@ export const applicationRouter = router({
           costRenewalDate: costRenewalDate ? new Date(costRenewalDate) : null,
           lifecycleStartDate: lifecycleStartDate ? new Date(lifecycleStartDate) : null,
           lifecycleEndDate: lifecycleEndDate ? new Date(lifecycleEndDate) : null,
+          actualUsers: actualUsers ?? null,
+          replacementAppId: replacementAppId ?? null,
           capabilities: capabilityIds?.length
             ? { create: capabilityIds.map((capabilityId) => ({ capabilityId, workspaceId: ctx.workspaceId })) }
             : undefined,
@@ -128,7 +175,7 @@ export const applicationRouter = router({
   update: workspaceProcedure
     .input(ApplicationUpdateInput)
     .mutation(async ({ ctx, input }) => {
-      const { id, capabilityIds, lifecycleEndDate, annualCostUsd, costRenewalDate, ...data } = input;
+      const { id, capabilityIds, lifecycleEndDate, annualCostUsd, costRenewalDate, actualUsers, replacementAppId, ...data } = input;
 
       const existing = await ctx.db.application.findFirst({
         where: { id, workspaceId: ctx.workspaceId },
@@ -160,6 +207,12 @@ export const applicationRouter = router({
               : {}),
             ...(costRenewalDate !== undefined
               ? { costRenewalDate: costRenewalDate ? new Date(costRenewalDate) : null }
+              : {}),
+            ...(actualUsers !== undefined
+              ? { actualUsers: actualUsers ?? null }
+              : {}),
+            ...(replacementAppId !== undefined
+              ? { replacementAppId: replacementAppId ?? null }
               : {}),
           },
         });
@@ -201,6 +254,7 @@ export const applicationRouter = router({
             businessValue: assessData.businessValue,
             technicalHealth: assessData.technicalHealth,
             rationalizationStatus: assessData.rationalizationStatus,
+            ...(assessData.functionalFit ? { functionalFit: assessData.functionalFit } : {}),
           },
         }),
       ]);
@@ -210,7 +264,11 @@ export const applicationRouter = router({
   getRationalizationMatrix: workspaceProcedure.query(async ({ ctx }) => {
     const apps = await ctx.db.application.findMany({
       where: { workspaceId: ctx.workspaceId, isActive: true },
-      include: { capabilities: true },
+      include: {
+        capabilities: true,
+        interfacesFrom: { where: { isActive: true }, select: { id: true, criticality: true } },
+        interfacesTo: { where: { isActive: true }, select: { id: true, criticality: true } },
+      },
     });
 
     // Redundancy: capabilities with multiple apps
@@ -243,7 +301,44 @@ export const applicationRouter = router({
       return acc;
     }, {} as Record<string, number>);
 
-    return { redundancies, retireCandidates, orphanedApps, costByStatus, totalApps: apps.length };
+    // Integration density per app
+    const appIntegrationCounts = apps.map((a) => ({
+      id: a.id,
+      name: a.name,
+      inbound: a.interfacesTo.length,
+      outbound: a.interfacesFrom.length,
+      total: a.interfacesFrom.length + a.interfacesTo.length,
+      critical: [...a.interfacesFrom, ...a.interfacesTo].filter((i) => i.criticality === "INT_CRITICAL").length,
+    }));
+
+    // Functional fit distribution
+    const byFunctionalFit: Record<string, number> = {};
+    // Adoption metrics
+    let totalAdoption = 0;
+    let adoptionCount = 0;
+    // Data classification distribution
+    const byDataClassification: Record<string, number> = {};
+
+    for (const app of apps) {
+      byFunctionalFit[app.functionalFit] = (byFunctionalFit[app.functionalFit] ?? 0) + 1;
+      byDataClassification[app.dataClassification] = (byDataClassification[app.dataClassification] ?? 0) + 1;
+      if (app.actualUsers != null && app.licensedUsers != null && app.licensedUsers > 0) {
+        totalAdoption += app.actualUsers / app.licensedUsers;
+        adoptionCount++;
+      }
+    }
+
+    return {
+      redundancies,
+      retireCandidates,
+      orphanedApps,
+      costByStatus,
+      totalApps: apps.length,
+      appIntegrationCounts,
+      byFunctionalFit,
+      byDataClassification,
+      avgAdoptionRate: adoptionCount > 0 ? totalAdoption / adoptionCount : null,
+    };
   }),
 
   // ─── AI Mapping: context loader ─────────────────────────
@@ -524,6 +619,194 @@ export const applicationRouter = router({
       return { success: true };
     }),
 
+  // ─── Interface CRUD ─────────────────────────────────────
+  listInterfaces: workspaceProcedure
+    .input(z.object({ appId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.db.applicationInterface.findMany({
+        where: {
+          workspaceId: ctx.workspaceId,
+          isActive: true,
+          ...(input?.appId
+            ? { OR: [{ sourceAppId: input.appId }, { targetAppId: input.appId }] }
+            : {}),
+        },
+        include: {
+          sourceApp: { select: { id: true, name: true, vendor: true } },
+          targetApp: { select: { id: true, name: true, vendor: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    }),
+
+  createInterface: workspaceProcedure
+    .input(InterfaceInput)
+    .mutation(async ({ ctx, input }) => {
+      if (input.sourceAppId === input.targetAppId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Source and target apps must be different" });
+      }
+      const iface = await ctx.db.applicationInterface.create({
+        data: { ...input, workspaceId: ctx.workspaceId },
+      });
+      auditLog(ctx, { action: "CREATE", entityType: "ApplicationInterface", entityId: iface.id, after: iface as any });
+      return iface;
+    }),
+
+  updateInterface: workspaceProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).max(200).optional(),
+        description: z.string().nullable().optional(),
+        protocol: z.enum(INTERFACE_PROTOCOL_VALUES).optional(),
+        direction: z.enum(INTERFACE_DIRECTION_VALUES).optional(),
+        status: z.enum(INTERFACE_STATUS_VALUES).optional(),
+        criticality: z.enum(INTERFACE_CRITICALITY_VALUES).optional(),
+        dataFlowDescription: z.string().nullable().optional(),
+        frequency: z.string().nullable().optional(),
+        dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).nullable().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const existing = await ctx.db.applicationInterface.findFirst({
+        where: { id, workspaceId: ctx.workspaceId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.applicationInterface.update({ where: { id }, data });
+    }),
+
+  deleteInterface: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.applicationInterface.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await ctx.db.applicationInterface.update({
+        where: { id: input.id },
+        data: { isActive: false },
+      });
+      auditLog(ctx, { action: "DELETE", entityType: "ApplicationInterface", entityId: input.id, before: existing as any });
+      return { success: true };
+    }),
+
+  // ─── Tech Stack Links ──────────────────────────────────
+  linkTech: workspaceProcedure
+    .input(
+      z.object({
+        applicationId: z.string(),
+        techRadarEntryId: z.string(),
+        layer: z.enum(["APPLICATION", "MIDDLEWARE", "DATABASE", "INFRASTRUCTURE", "PLATFORM"]).default("APPLICATION"),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.applicationTechLink.create({
+        data: { ...input, workspaceId: ctx.workspaceId },
+      });
+    }),
+
+  unlinkTech: workspaceProcedure
+    .input(z.object({ applicationId: z.string(), techRadarEntryId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.applicationTechLink.delete({
+        where: {
+          applicationId_techRadarEntryId: {
+            applicationId: input.applicationId,
+            techRadarEntryId: input.techRadarEntryId,
+          },
+        },
+      });
+      return { success: true };
+    }),
+
+  // ─── AI Rationalization Context (enriched) ─────────────
+  getAIRationalizationContext: workspaceProcedure.query(async ({ ctx }) => {
+    const [apps, workspace] = await Promise.all([
+      ctx.db.application.findMany({
+        where: { workspaceId: ctx.workspaceId, isActive: true },
+        include: {
+          capabilities: { select: { capabilityId: true, relationshipType: true } },
+          interfacesFrom: {
+            where: { isActive: true },
+            select: { targetAppId: true, protocol: true, criticality: true, direction: true, dataClassification: true },
+            include: { targetApp: { select: { name: true } } },
+          },
+          interfacesTo: {
+            where: { isActive: true },
+            select: { sourceAppId: true, protocol: true, criticality: true, direction: true, dataClassification: true },
+            include: { sourceApp: { select: { name: true } } },
+          },
+          techStackLinks: {
+            include: { techRadarEntry: { select: { name: true, quadrant: true, ring: true } } },
+          },
+          replacementApp: { select: { id: true, name: true } },
+        },
+      }),
+      ctx.db.workspace.findFirst({ where: { id: ctx.workspaceId } }),
+    ]);
+
+    const enriched = apps.map((a) => {
+      const adoptionRate =
+        a.actualUsers != null && a.licensedUsers != null && a.licensedUsers > 0
+          ? a.actualUsers / a.licensedUsers
+          : null;
+      return {
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        vendor: a.vendor,
+        version: a.version,
+        applicationType: a.applicationType,
+        deploymentModel: a.deploymentModel,
+        lifecycle: a.lifecycle,
+        businessValue: a.businessValue,
+        technicalHealth: a.technicalHealth,
+        functionalFit: a.functionalFit,
+        rationalizationStatus: a.rationalizationStatus,
+        dataClassification: a.dataClassification,
+        annualCostUsd: a.annualCostUsd ? Number(a.annualCostUsd) : null,
+        costModel: a.costModel,
+        licensedUsers: a.licensedUsers,
+        actualUsers: a.actualUsers,
+        adoptionRate,
+        capabilityCount: a.capabilities.length,
+        interfaceCount: {
+          inbound: a.interfacesTo.length,
+          outbound: a.interfacesFrom.length,
+          total: a.interfacesFrom.length + a.interfacesTo.length,
+          critical: [...a.interfacesFrom, ...a.interfacesTo].filter((i) => i.criticality === "INT_CRITICAL").length,
+        },
+        interfaces: [
+          ...a.interfacesFrom.map((i) => ({
+            direction: "OUTBOUND" as const,
+            appName: i.targetApp.name,
+            protocol: i.protocol,
+            criticality: i.criticality,
+            dataClassification: i.dataClassification,
+          })),
+          ...a.interfacesTo.map((i) => ({
+            direction: "INBOUND" as const,
+            appName: i.sourceApp.name,
+            protocol: i.protocol,
+            criticality: i.criticality,
+            dataClassification: i.dataClassification,
+          })),
+        ],
+        techStack: a.techStackLinks.map((t) => ({
+          name: t.techRadarEntry.name,
+          quadrant: t.techRadarEntry.quadrant,
+          ring: t.techRadarEntry.ring,
+          layer: t.layer,
+        })),
+        replacementApp: a.replacementApp?.name ?? null,
+      };
+    });
+
+    return { apps: enriched, workspace };
+  }),
+
   getStats: workspaceProcedure.query(async ({ ctx }) => {
     const apps = await ctx.db.application.findMany({
       where: { workspaceId: ctx.workspaceId, isActive: true },
@@ -533,6 +816,8 @@ export const applicationRouter = router({
         rationalizationStatus: true,
         technicalHealth: true,
         businessValue: true,
+        functionalFit: true,
+        dataClassification: true,
         annualCostUsd: true,
       },
     });
@@ -541,6 +826,8 @@ export const applicationRouter = router({
     const byType: Record<string, number> = {};
     const byRationalization: Record<string, number> = {};
     const byHealth: Record<string, number> = {};
+    const byFunctionalFit: Record<string, number> = {};
+    const byDataClassification: Record<string, number> = {};
     let totalCost = 0;
 
     for (const app of apps) {
@@ -548,9 +835,11 @@ export const applicationRouter = router({
       byType[app.applicationType] = (byType[app.applicationType] ?? 0) + 1;
       byRationalization[app.rationalizationStatus] = (byRationalization[app.rationalizationStatus] ?? 0) + 1;
       byHealth[app.technicalHealth] = (byHealth[app.technicalHealth] ?? 0) + 1;
+      byFunctionalFit[app.functionalFit] = (byFunctionalFit[app.functionalFit] ?? 0) + 1;
+      byDataClassification[app.dataClassification] = (byDataClassification[app.dataClassification] ?? 0) + 1;
       totalCost += Number(app.annualCostUsd ?? 0);
     }
 
-    return { byLifecycle, byType, byRationalization, byHealth, totalCost, totalApps: apps.length };
+    return { byLifecycle, byType, byRationalization, byHealth, byFunctionalFit, byDataClassification, totalCost, totalApps: apps.length };
   }),
 });

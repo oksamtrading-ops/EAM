@@ -52,7 +52,7 @@ async function generateRationalization(workspace: any, payload: { apps: any[] })
   const appList = payload.apps
     .map(
       (a) =>
-        `- ${a.name} | Vendor: ${a.vendor ?? "N/A"} | Type: ${a.applicationType ?? "N/A"} | Deployment: ${a.deploymentModel ?? "N/A"} | Lifecycle: ${a.lifecycle} | BV: ${a.businessValue} | TH: ${a.technicalHealth} | Rationalization: ${a.rationalizationStatus} | Cost: ${a.annualCostUsd ? "$" + Number(a.annualCostUsd).toLocaleString() : "N/A"} | CostModel: ${a.costModel ?? "N/A"} | Capabilities: ${a.capabilityCount}`
+        `- ${a.name} | Vendor: ${a.vendor ?? "N/A"} | Type: ${a.applicationType ?? "N/A"} | Deploy: ${a.deploymentModel ?? "N/A"} | Lifecycle: ${a.lifecycle} | BV: ${a.businessValue} | TH: ${a.technicalHealth} | FF: ${a.functionalFit ?? "FF_UNKNOWN"} | DataClass: ${a.dataClassification ?? "DC_UNKNOWN"} | Rationalization: ${a.rationalizationStatus} | Cost: ${a.annualCostUsd ? "$" + Number(a.annualCostUsd).toLocaleString() : "N/A"} | CostModel: ${a.costModel ?? "N/A"} | Licensed: ${a.licensedUsers ?? "N/A"} | Actual: ${a.actualUsers ?? "N/A"} | Adoption: ${a.adoptionRate != null ? (a.adoptionRate * 100).toFixed(0) + "%" : "N/A"} | Integrations: ${a.interfaceCount?.total ?? 0} (in:${a.interfaceCount?.inbound ?? 0}/out:${a.interfaceCount?.outbound ?? 0}/critical:${a.interfaceCount?.critical ?? 0}) | TechStack: [${(a.techStack ?? []).map((t: any) => `${t.name}(${t.ring})`).join(", ")}] | Caps: ${a.capabilityCount} | Replacement: ${a.replacementApp ?? "none"}`
     )
     .join("\n");
 
@@ -83,17 +83,25 @@ METHOD (follow in order)
 2. For each application, compute a rationalization score using:
    - Business Value weight: CRITICAL=5, HIGH=4, MEDIUM=3, LOW=2, BV_UNKNOWN=0
    - Technical Health weight: EXCELLENT=5, GOOD=4, FAIR=3, POOR=2, TH_CRITICAL=1, TH_UNKNOWN=0
+   - Functional Fit weight: EXCELLENT=5, GOOD=4, ADEQUATE=3, POOR=2, UNFIT=1, FF_UNKNOWN=0
    - Lifecycle penalty: PHASING_OUT=-2, RETIRED=-4, SUNSET=-3, PLANNED=0, ACTIVE=0
-   - Composite score = (BV_weight + TH_weight + lifecycle_penalty)
-3. Map each application to a TIME recommendation:
-   - TOLERATE (score 4-6): Adequate, no action needed, monitor only
-   - INVEST (score 7+): High-value, healthy — invest to maximize returns
-   - MIGRATE (score 3-5 with TH ≤ FAIR): Business value exists but tech is failing
-   - ELIMINATE (score ≤ 3, or RETIRED/SUNSET lifecycle): Remove from portfolio
+   - Adoption modifier: adoption > 80% → +1, adoption < 20% → -1, N/A → 0
+   - Composite score = (BV_weight * 0.3 + TH_weight * 0.3 + FF_weight * 0.4 + lifecycle_penalty)
+3. Assess integration risk for each application:
+   - HIGH_RISK: total integrations > 10, or critical integrations > 3
+   - MEDIUM_RISK: total integrations 5-10
+   - LOW_RISK: total integrations < 5
+   Integration risk INCREASES migration/elimination complexity and cost.
+4. Map each application to a TIME recommendation using integration-aware logic:
+   - TOLERATE: FF >= ADEQUATE, TH >= FAIR, BV <= MEDIUM — adequate but not strategic. Low priority.
+   - INVEST: FF >= GOOD, BV >= HIGH — strategic, needs TH improvement or scaling.
+   - MIGRATE: FF >= GOOD but TH <= FAIR — function is valued but tech is failing. Flag HIGH integration count as migration risk factor. RESTRICTED/CONFIDENTIAL data increases migration complexity.
+   - ELIMINATE: FF <= POOR, BV <= LOW, or (adoption < 20% AND BV not CRITICAL) — low value, remove. Flag data sensitivity if CONFIDENTIAL/RESTRICTED (requires data migration plan).
    Additionally flag CONSOLIDATE for apps where 2+ serve the same capabilities.
-4. Identify redundancies: capabilities supported by 2+ applications.
-5. Quantify savings: sum annualCostUsd for ELIMINATE + estimated savings from CONSOLIDATE (use 40-60% of the lower-cost app as estimate).
-6. Flag applications with BV_UNKNOWN or TH_UNKNOWN as requiring assessment.
+5. Identify redundancies: capabilities supported by 2+ applications.
+6. Quantify savings: sum annualCostUsd for ELIMINATE + estimated savings from CONSOLIDATE (use 40-60% of the lower-cost app as estimate).
+7. Flag applications with BV_UNKNOWN, TH_UNKNOWN, or FF_UNKNOWN as requiring assessment.
+8. For each MIGRATE/ELIMINATE recommendation, note integrationRisk and migrationComplexity.
 
 CONSTRAINTS
 - Assess ALL applications. Every app must appear in exactly one category.
@@ -126,9 +134,15 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
       "currentStatus": "string",
       "businessValue": "string",
       "technicalHealth": "string",
+      "functionalFit": "string",
+      "adoptionRate": "string | null",
+      "integrationCount": 0,
+      "integrationRisk": "HIGH | MEDIUM | LOW",
+      "dataSensitivity": "string",
+      "migrationComplexity": "HIGH | MEDIUM | LOW",
       "annualCost": 0,
       "confidence": "HIGH | MEDIUM | LOW",
-      "rationale": "string (2-3 sentences: why this recommendation, business risk, and expected outcome)",
+      "rationale": "string (2-3 sentences: why this recommendation, referencing functional fit, integration risk, adoption rate, and data sensitivity where relevant)",
       "action": "string (1-2 sentences: specific next step)",
       "savingsIfActioned": 0
     }
@@ -140,7 +154,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
       "recommendation": "string (1-2 sentences: which to keep, which to consolidate)"
     }
   ],
-  "requiresAssessment": ["string — app names with UNKNOWN scores"],
+  "requiresAssessment": ["string — app names with UNKNOWN scores (BV_UNKNOWN, TH_UNKNOWN, or FF_UNKNOWN)"],
   "lifecycleRisks": [
     {
       "applicationName": "string",
@@ -153,7 +167,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 4000,
+    max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -203,10 +217,16 @@ INPUTS
   Vendor: ${target.vendor ?? "N/A"}
   Type: ${target.applicationType} | Deployment: ${target.deploymentModel}
   Lifecycle: ${target.lifecycle}
-  Business Value: ${target.businessValue} | Tech Health: ${target.technicalHealth}
+  Business Value: ${target.businessValue} | Tech Health: ${target.technicalHealth} | Functional Fit: ${target.functionalFit ?? "FF_UNKNOWN"}
+  Data Classification: ${target.dataClassification ?? "DC_UNKNOWN"}
   Annual Cost: ${target.annualCostUsd ? "$" + Number(target.annualCostUsd).toLocaleString() : "N/A"}
-  Licensed Users: ${target.licensedUsers ?? "N/A"}
+  Licensed Users: ${target.licensedUsers ?? "N/A"} | Actual Users: ${target.actualUsers ?? "N/A"} | Adoption: ${target.adoptionRate != null ? (target.adoptionRate * 100).toFixed(0) + "%" : "N/A"}
   Cost Model: ${target.costModel ?? "N/A"}
+  Interfaces:
+${(target.interfaces ?? []).map((i: any) => `    ${i.direction === "OUTBOUND" ? "→" : "←"} ${i.appName} | ${i.protocol} | ${i.criticality}`).join("\n") || "    (none documented)"}
+  Tech Stack:
+${(target.techStack ?? []).map((t: any) => `    - ${t.name} (${t.quadrant}, ${t.ring})`).join("\n") || "    (unknown)"}
+  Replacement Candidate: ${target.replacementApp ?? "none identified"}
   Capabilities supported:
 ${targetCaps || "  (none mapped)"}
 - Remaining portfolio (for identifying alternatives):
@@ -224,11 +244,20 @@ METHOD (follow in order)
 5. Estimate cost impact: savings from retirement vs migration/transition costs.
 6. Produce a phased transition plan if retirement is recommended.
 
+7. Assess integration rewiring complexity:
+   - Count CRITICAL interfaces — each adds ~2 weeks to transition timeline
+   - BIDIRECTIONAL interfaces are 2x complexity of unidirectional
+   - Flag any interfaces carrying CONFIDENTIAL/RESTRICTED data (require special handling)
+8. Factor adoption rate into transition impact:
+   - adoption > 80%: HIGH user disruption risk — extensive change management required
+   - adoption 40-80%: MEDIUM disruption
+   - adoption < 40%: LOW disruption (users may have already migrated informally)
+
 CONSTRAINTS
 - Only analyze the specific target application provided.
 - Alternatives must be existing applications from the portfolio, not external suggestions.
 - Do NOT recommend retirement if it would leave CRITICAL capabilities unsupported without a clear alternative.
-- User count and cost model should inform transition complexity.
+- User count, adoption rate, and integration count should inform transition complexity.
 - Be explicit about what you DON'T know (unknowns array).
 - Every assessment must include a confidence level.
 
@@ -281,7 +310,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 4000,
+    max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -415,7 +444,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 4000,
+    max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });
 

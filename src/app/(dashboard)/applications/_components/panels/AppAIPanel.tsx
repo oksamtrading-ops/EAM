@@ -144,10 +144,24 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
               lifecycle: a.lifecycle,
               businessValue: a.businessValue,
               technicalHealth: a.technicalHealth,
+              functionalFit: a.functionalFit ?? "FF_UNKNOWN",
+              dataClassification: a.dataClassification ?? "DC_UNKNOWN",
               rationalizationStatus: a.rationalizationStatus,
               annualCostUsd: a.annualCostUsd ? Number(a.annualCostUsd) : null,
               costModel: a.costModel,
+              licensedUsers: a.licensedUsers,
+              actualUsers: a.actualUsers,
+              adoptionRate: a.actualUsers != null && a.licensedUsers != null && a.licensedUsers > 0
+                ? a.actualUsers / a.licensedUsers : null,
               capabilityCount: a.capabilities?.length ?? 0,
+              interfaceCount: {
+                inbound: a._count?.interfacesTo ?? 0,
+                outbound: a._count?.interfacesFrom ?? 0,
+                total: (a._count?.interfacesFrom ?? 0) + (a._count?.interfacesTo ?? 0),
+                critical: 0,
+              },
+              techStack: [],
+              replacementApp: null,
             })),
           },
         }),
@@ -214,6 +228,14 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
                       <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                         <Badge variant="secondary" className="text-[9px]">BV: {BV_LABELS[rec.businessValue] ?? rec.businessValue}</Badge>
                         <Badge variant="secondary" className="text-[9px]">TH: {TH_LABELS[rec.technicalHealth] ?? rec.technicalHealth}</Badge>
+                        {rec.functionalFit && rec.functionalFit !== "FF_UNKNOWN" && (
+                          <Badge variant="secondary" className="text-[9px]">FF: {rec.functionalFit}</Badge>
+                        )}
+                        {rec.integrationRisk && rec.integrationRisk !== "LOW" && (
+                          <Badge variant="outline" className={`text-[9px] ${rec.integrationRisk === "HIGH" ? "border-red-300 text-red-600" : "border-orange-300 text-orange-600"}`}>
+                            {rec.integrationCount ?? 0} ifaces ({rec.integrationRisk})
+                          </Badge>
+                        )}
                         {rec.annualCost > 0 && <Badge variant="outline" className="text-[9px]">${Number(rec.annualCost).toLocaleString()}/yr</Badge>}
                       </div>
                       <p className="text-[11px] text-[#495057] leading-relaxed mb-1">{rec.rationale}</p>
@@ -327,9 +349,17 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
               lifecycle: targetApp.lifecycle,
               businessValue: targetApp.businessValue,
               technicalHealth: targetApp.technicalHealth,
+              functionalFit: targetApp.functionalFit ?? "FF_UNKNOWN",
+              dataClassification: targetApp.dataClassification ?? "DC_UNKNOWN",
               annualCostUsd: targetApp.annualCostUsd ? Number(targetApp.annualCostUsd) : null,
               licensedUsers: targetApp.licensedUsers,
+              actualUsers: targetApp.actualUsers,
+              adoptionRate: targetApp.actualUsers != null && targetApp.licensedUsers != null && targetApp.licensedUsers > 0
+                ? targetApp.actualUsers / targetApp.licensedUsers : null,
               costModel: targetApp.costModel,
+              interfaces: [],
+              techStack: [],
+              replacementApp: null,
               capabilities: (targetApp.capabilities ?? []).map((c: any) => ({
                 capabilityName: c.capability?.name ?? c.capabilityName ?? "Unknown",
                 level: c.capability?.level ?? c.level ?? "?",

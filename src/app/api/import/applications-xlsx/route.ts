@@ -10,6 +10,8 @@ const VALID_BV = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "BV_UNKNOWN"] as const;
 const VALID_TH = ["EXCELLENT", "GOOD", "FAIR", "POOR", "TH_CRITICAL", "TH_UNKNOWN"] as const;
 const VALID_RAT = ["KEEP", "INVEST", "MIGRATE", "RETIRE", "CONSOLIDATE", "EVALUATE", "RAT_NOT_ASSESSED"] as const;
 const VALID_COST_MODEL = ["LICENSE_PER_USER", "LICENSE_FLAT", "SUBSCRIPTION", "USAGE_BASED", "OPEN_SOURCE", "INTERNAL"] as const;
+const VALID_FF = ["EXCELLENT", "GOOD", "ADEQUATE", "POOR", "UNFIT", "FF_UNKNOWN"] as const;
+const VALID_DC = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "DC_UNKNOWN"] as const;
 
 type ValidatedRow = {
   rowNum: number;
@@ -38,6 +40,8 @@ function parseRow(row: Record<string, unknown>, rowNum: number): ValidatedRow {
   const thStr = String(row["Technical Health"] ?? "").trim().toUpperCase() || undefined;
   const ratStr = String(row["Rationalization"] ?? "").trim().toUpperCase() || undefined;
   const costModelStr = String(row["Cost Model"] ?? "").trim().toUpperCase() || undefined;
+  const ffStr = String(row["Functional Fit"] ?? "").trim().toUpperCase() || undefined;
+  const dcStr = String(row["Data Classification"] ?? "").trim().toUpperCase() || undefined;
 
   const enumErrors = [
     validateEnum(typeStr, VALID_APP_TYPES, "Type"),
@@ -47,6 +51,8 @@ function parseRow(row: Record<string, unknown>, rowNum: number): ValidatedRow {
     validateEnum(thStr, VALID_TH, "Technical Health"),
     validateEnum(ratStr, VALID_RAT, "Rationalization"),
     validateEnum(costModelStr, VALID_COST_MODEL, "Cost Model"),
+    validateEnum(ffStr, VALID_FF, "Functional Fit"),
+    validateEnum(dcStr, VALID_DC, "Data Classification"),
   ].filter(Boolean) as string[];
   errors.push(...enumErrors);
 
@@ -66,6 +72,15 @@ function parseRow(row: Record<string, unknown>, rowNum: number): ValidatedRow {
     const parsed = parseInt(String(luRaw));
     if (isNaN(parsed)) errors.push("Licensed Users: must be a number");
     else licensedUsers = parsed;
+  }
+
+  // Parse actual users
+  const auRaw = row["Actual Users"];
+  let actualUsers: number | null = null;
+  if (auRaw !== undefined && auRaw !== "" && auRaw !== null) {
+    const parsed = parseInt(String(auRaw));
+    if (isNaN(parsed)) errors.push("Actual Users: must be a number");
+    else actualUsers = parsed;
   }
 
   // Parse renewal date
@@ -99,6 +114,9 @@ function parseRow(row: Record<string, unknown>, rowNum: number): ValidatedRow {
       costNotes: String(row["Cost Notes"] ?? "").trim() || null,
       businessOwnerName: String(row["Business Owner"] ?? "").trim() || null,
       itOwnerName: String(row["IT Owner"] ?? "").trim() || null,
+      functionalFit: ffStr || "FF_UNKNOWN",
+      dataClassification: dcStr || "DC_UNKNOWN",
+      actualUsers,
     },
     errors,
     isValid: errors.length === 0,
@@ -178,6 +196,9 @@ export async function POST(req: Request) {
       costNotes: r.data.costNotes as string | null,
       businessOwnerName: r.data.businessOwnerName as string | null,
       itOwnerName: r.data.itOwnerName as string | null,
+      functionalFit: r.data.functionalFit as any,
+      dataClassification: r.data.dataClassification as any,
+      actualUsers: r.data.actualUsers as number | null,
     })),
   });
 

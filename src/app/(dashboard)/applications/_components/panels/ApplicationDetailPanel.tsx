@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Sparkles } from "lucide-react";
+import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, ChevronDown, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,9 @@ import { toast } from "sonner";
 import {
   LIFECYCLE_LABELS, BV_LABELS, BV_COLORS, TH_LABELS, TH_COLORS,
   RAT_LABELS, RAT_COLORS, APP_TYPE_LABELS, DEPLOY_LABELS,
+  FF_LABELS, FF_COLORS, DC_LABELS, DC_COLORS,
+  IFACE_PROTOCOL_LABELS, IFACE_CRITICALITY_LABELS, IFACE_CRITICALITY_COLORS,
+  IFACE_DIRECTION_LABELS,
 } from "@/lib/constants/application-colors";
 
 type Props = {
@@ -24,8 +27,15 @@ type Props = {
 
 export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showInterfaces, setShowInterfaces] = useState(false);
+  const [showTechStack, setShowTechStack] = useState(false);
+  const [showAddInterface, setShowAddInterface] = useState(false);
+  const [newIface, setNewIface] = useState({ targetAppId: "", name: "", protocol: "REST_API", direction: "OUTBOUND", criticality: "INT_MEDIUM" });
   const utils = trpc.useUtils();
   const { data: app, isLoading } = trpc.application.getById.useQuery({ id: applicationId });
+  const { data: allApps } = trpc.application.listForMapping.useQuery();
+  const { data: radarData } = trpc.techRadar.getRadar.useQuery(undefined, { enabled: showTechStack });
+  const radarEntries = radarData?.entries ?? [];
 
   const updateMutation = trpc.application.update.useMutation({
     onSuccess: () => {
@@ -50,6 +60,40 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
       utils.application.list.invalidate();
       onClose();
       toast.success("Application deleted");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const createIfaceMutation = trpc.application.createInterface.useMutation({
+    onSuccess: () => {
+      utils.application.getById.invalidate({ id: applicationId });
+      setShowAddInterface(false);
+      setNewIface({ targetAppId: "", name: "", protocol: "REST_API", direction: "OUTBOUND", criticality: "INT_MEDIUM" });
+      toast.success("Interface created");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteIfaceMutation = trpc.application.deleteInterface.useMutation({
+    onSuccess: () => {
+      utils.application.getById.invalidate({ id: applicationId });
+      toast.success("Interface removed");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const linkTechMutation = trpc.application.linkTech.useMutation({
+    onSuccess: () => {
+      utils.application.getById.invalidate({ id: applicationId });
+      toast.success("Technology linked");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const unlinkTechMutation = trpc.application.unlinkTech.useMutation({
+    onSuccess: () => {
+      utils.application.getById.invalidate({ id: applicationId });
+      toast.success("Technology unlinked");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -207,6 +251,19 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                 />
               </div>
               <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Actual Users</label>
+                <Input
+                  type="number"
+                  defaultValue={app.actualUsers ?? ""}
+                  placeholder="0"
+                  className="h-8 text-xs"
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value);
+                    updateMutation.mutate({ id: app.id, actualUsers: isNaN(val) ? null : val });
+                  }}
+                />
+              </div>
+              <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Renewal Date</label>
                 <Input
                   type="date"
@@ -217,6 +274,44 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                   }}
                 />
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Data Classification</label>
+                <Select
+                  value={app.dataClassification}
+                  onValueChange={(v) => updateMutation.mutate({ id: app.id, dataClassification: v as any })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(DC_LABELS).map(([k, l]) => (
+                      <SelectItem key={k} value={k}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: DC_COLORS[k] }} />
+                          {l}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {/* Replacement App */}
+            <div className="mt-3">
+              <label className="text-xs text-muted-foreground mb-1 block">Replacement App</label>
+              <Select
+                value={app.replacementAppId ?? ""}
+                onValueChange={(v) => updateMutation.mutate({ id: app.id, replacementAppId: v || null })}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {allApps?.filter((a) => a.id !== app.id).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}{a.vendor ? ` (${a.vendor})` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {app.replacementApp && (
+                <p className="text-[10px] text-muted-foreground mt-1">Current: {app.replacementApp.name}</p>
+              )}
             </div>
             <div className="mt-3">
               <label className="text-xs text-muted-foreground mb-1 block">Cost Notes</label>
@@ -238,7 +333,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           {/* Assessment */}
           <section>
             <h3 className="text-sm font-medium mb-3">Assessment</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Biz Value</label>
                 <Select
@@ -248,6 +343,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                     businessValue: v as any,
                     technicalHealth: app.technicalHealth as any,
                     rationalizationStatus: app.rationalizationStatus as any,
+                    functionalFit: app.functionalFit as any,
                   })}
                 >
                   <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
@@ -272,6 +368,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                     businessValue: app.businessValue as any,
                     technicalHealth: v as any,
                     rationalizationStatus: app.rationalizationStatus as any,
+                    functionalFit: app.functionalFit as any,
                   })}
                 >
                   <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
@@ -288,6 +385,31 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                 </Select>
               </div>
               <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Functional Fit</label>
+                <Select
+                  value={app.functionalFit}
+                  onValueChange={(v) => assessMutation.mutate({
+                    applicationId: app.id,
+                    businessValue: app.businessValue as any,
+                    technicalHealth: app.technicalHealth as any,
+                    rationalizationStatus: app.rationalizationStatus as any,
+                    functionalFit: v as any,
+                  })}
+                >
+                  <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(FF_LABELS).map(([k, l]) => (
+                      <SelectItem key={k} value={k}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: FF_COLORS[k] }} />
+                          {l}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Rationalization</label>
                 <Select
                   value={app.rationalizationStatus}
@@ -296,6 +418,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                     businessValue: app.businessValue as any,
                     technicalHealth: app.technicalHealth as any,
                     rationalizationStatus: v as any,
+                    functionalFit: app.functionalFit as any,
                   })}
                 >
                   <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
@@ -336,6 +459,181 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
               </p>
             )}
           </section>
+
+          <Separator />
+
+          {/* Interfaces */}
+          <section>
+            <button
+              onClick={() => setShowInterfaces(!showInterfaces)}
+              className="flex items-center gap-1.5 text-sm font-medium w-full text-left mb-2"
+            >
+              {showInterfaces ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              Interfaces ({(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0)})
+            </button>
+            {showInterfaces && (
+              <div className="space-y-1.5">
+                {app.interfacesFrom?.map((iface: any) => (
+                  <div key={iface.id} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
+                    <ArrowRight className="h-3 w-3 text-blue-500 shrink-0" />
+                    <span className="flex-1 truncate">{iface.targetApp?.name}</span>
+                    <Badge variant="outline" className="text-[9px]" style={{ borderColor: IFACE_CRITICALITY_COLORS[iface.criticality] }}>
+                      {IFACE_PROTOCOL_LABELS[iface.protocol] ?? iface.protocol}
+                    </Badge>
+                    <button
+                      onClick={() => deleteIfaceMutation.mutate({ id: iface.id })}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {app.interfacesTo?.map((iface: any) => (
+                  <div key={iface.id} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
+                    <ArrowLeft className="h-3 w-3 text-green-500 shrink-0" />
+                    <span className="flex-1 truncate">{iface.sourceApp?.name}</span>
+                    <Badge variant="outline" className="text-[9px]" style={{ borderColor: IFACE_CRITICALITY_COLORS[iface.criticality] }}>
+                      {IFACE_PROTOCOL_LABELS[iface.protocol] ?? iface.protocol}
+                    </Badge>
+                    <button
+                      onClick={() => deleteIfaceMutation.mutate({ id: iface.id })}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0) === 0 && (
+                  <p className="text-xs text-muted-foreground">No interfaces documented.</p>
+                )}
+
+                {showAddInterface ? (
+                  <div className="border rounded-md p-2 space-y-2 mt-2">
+                    <Select value={newIface.targetAppId} onValueChange={(v) => v && setNewIface({ ...newIface, targetAppId: v })}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Target app..." /></SelectTrigger>
+                      <SelectContent>
+                        {allApps?.filter((a) => a.id !== app.id).map((a) => (
+                          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={newIface.name}
+                      onChange={(e) => setNewIface({ ...newIface, name: e.target.value })}
+                      placeholder="Interface name..."
+                      className="h-7 text-xs"
+                    />
+                    <div className="grid grid-cols-3 gap-1">
+                      <Select value={newIface.protocol} onValueChange={(v) => v && setNewIface({ ...newIface, protocol: v })}>
+                        <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(IFACE_PROTOCOL_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select value={newIface.direction} onValueChange={(v) => v && setNewIface({ ...newIface, direction: v })}>
+                        <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(IFACE_DIRECTION_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select value={newIface.criticality} onValueChange={(v) => v && setNewIface({ ...newIface, criticality: v })}>
+                        <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(IFACE_CRITICALITY_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        disabled={!newIface.targetAppId || !newIface.name}
+                        onClick={() => createIfaceMutation.mutate({
+                          sourceAppId: app.id,
+                          targetAppId: newIface.targetAppId,
+                          name: newIface.name,
+                          protocol: newIface.protocol as any,
+                          direction: newIface.direction as any,
+                          criticality: newIface.criticality as any,
+                        })}
+                      >
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAddInterface(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs w-full mt-1"
+                    onClick={() => setShowAddInterface(true)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Interface
+                  </Button>
+                )}
+              </div>
+            )}
+          </section>
+
+          <Separator />
+
+          {/* Tech Stack */}
+          <section>
+            <button
+              onClick={() => setShowTechStack(!showTechStack)}
+              className="flex items-center gap-1.5 text-sm font-medium w-full text-left mb-2"
+            >
+              {showTechStack ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              Tech Stack ({app.techStackLinks?.length ?? 0})
+            </button>
+            {showTechStack && (
+              <div className="space-y-1.5">
+                {app.techStackLinks?.map((link: any) => (
+                  <div key={`${link.applicationId}-${link.techRadarEntryId}`} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
+                    <span className="flex-1 truncate">{link.techRadarEntry?.name}</span>
+                    <Badge variant="outline" className="text-[9px]">{link.layer}</Badge>
+                    <Badge variant="outline" className="text-[9px]">{link.techRadarEntry?.ring}</Badge>
+                    <button
+                      onClick={() => unlinkTechMutation.mutate({ applicationId: app.id, techRadarEntryId: link.techRadarEntryId })}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition-opacity"
+                    >
+                      <Unlink className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {(app.techStackLinks?.length ?? 0) === 0 && (
+                  <p className="text-xs text-muted-foreground">No technologies linked.</p>
+                )}
+                {radarEntries && radarEntries.length > 0 && (
+                  <div className="mt-2">
+                    <Select
+                      value=""
+                      onValueChange={(v) => {
+                        if (v) linkTechMutation.mutate({ applicationId: app.id, techRadarEntryId: v });
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Link technology..." /></SelectTrigger>
+                      <SelectContent>
+                        {radarEntries
+                          .filter((r: any) => !app.techStackLinks?.some((l: any) => l.techRadarEntryId === r.id))
+                          .map((r: any) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.name} ({r.ring})
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <Separator />
 
           {/* Ownership */}
           <section className="grid grid-cols-2 gap-3">

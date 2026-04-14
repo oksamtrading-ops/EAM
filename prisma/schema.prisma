@@ -164,6 +164,60 @@ enum FeedbackAction {
 }
 
 // ============================================================
+// APPLICATION PORTFOLIO GAP-FILL ENUMS
+// ============================================================
+
+enum FunctionalFitScore {
+  EXCELLENT
+  GOOD
+  ADEQUATE
+  POOR
+  UNFIT
+  FF_UNKNOWN
+}
+
+enum DataClassification {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  RESTRICTED
+  DC_UNKNOWN
+}
+
+enum InterfaceProtocol {
+  REST_API
+  SOAP
+  GRAPHQL
+  FILE_TRANSFER
+  DATABASE_LINK
+  MESSAGE_QUEUE
+  EVENT_STREAM
+  ETL
+  SFTP
+  CUSTOM
+}
+
+enum InterfaceDirection {
+  INBOUND
+  OUTBOUND
+  BIDIRECTIONAL
+}
+
+enum InterfaceStatus {
+  INT_ACTIVE
+  INT_PLANNED
+  INT_DEPRECATED
+  INT_DECOMMISSIONED
+}
+
+enum InterfaceCriticality {
+  INT_CRITICAL
+  INT_HIGH
+  INT_MEDIUM
+  INT_LOW
+}
+
+// ============================================================
 // USER (synced from Clerk)
 // ============================================================
 
@@ -237,10 +291,12 @@ model Workspace {
   eolWatchEntries    EolWatchEntry[]
   riskTags           RiskTag[]
   dashboardPins      DashboardPin[]
-  aiMappingFeedback  AIMappingFeedback[]
-  aiMappingRuns      AIMappingRun[]
-  savedPaletteQueries SavedPaletteQuery[]
-  valueStreams       ValueStream[]
+  aiMappingFeedback     AIMappingFeedback[]
+  aiMappingRuns         AIMappingRun[]
+  savedPaletteQueries   SavedPaletteQuery[]
+  valueStreams          ValueStream[]
+  applicationInterfaces ApplicationInterface[]
+  applicationTechLinks  ApplicationTechLink[]
 
   @@map("workspaces")
 }
@@ -483,19 +539,30 @@ model Application {
   businessOwnerName     String?
   itOwnerName           String?
   ownerId               String?
+  // --- AI-critical fields for TIME rationalization ---
+  functionalFit         FunctionalFitScore    @default(FF_UNKNOWN)
+  dataClassification    DataClassification    @default(DC_UNKNOWN)
+  actualUsers           Int?
+  replacementAppId      String?
   sortOrder             Int                   @default(0)
   isActive              Boolean               @default(true)
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
-  workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner        User?                    @relation("AppOwner", fields: [ownerId], references: [id])
-  capabilities ApplicationCapabilityMap[]
-  assessments  ApplicationAssessment[]
+  workspace       Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner           User?                    @relation("AppOwner", fields: [ownerId], references: [id])
+  replacementApp  Application?             @relation("ReplacementTarget", fields: [replacementAppId], references: [id])
+  replacedBy      Application[]            @relation("ReplacementTarget")
+  capabilities    ApplicationCapabilityMap[]
+  assessments     ApplicationAssessment[]
+  techStackLinks  ApplicationTechLink[]
+  interfacesFrom  ApplicationInterface[]   @relation("InterfaceSource")
+  interfacesTo    ApplicationInterface[]   @relation("InterfaceTarget")
 
   @@index([workspaceId])
   @@index([workspaceId, lifecycle])
   @@index([workspaceId, rationalizationStatus])
+  @@index([workspaceId, functionalFit])
   @@map("applications")
 }
 
@@ -589,19 +656,74 @@ model AIMappingRun {
 // ============================================================
 
 model ApplicationAssessment {
-  id                    String                @id @default(cuid())
+  id                    String                 @id @default(cuid())
   applicationId         String
   assessedById          String?
   businessValue         BusinessValueScore
   technicalHealth       TechnicalHealthScore
   rationalizationStatus RationalizationStatus
+  functionalFit         FunctionalFitScore?
   notes                 String?
-  assessedAt            DateTime              @default(now())
+  assessedAt            DateTime               @default(now())
 
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
   @@map("application_assessments")
+}
+
+// ============================================================
+// APPLICATION INTERFACE (Integration Catalogue)
+// ============================================================
+
+model ApplicationInterface {
+  id                    String               @id @default(cuid())
+  workspaceId           String
+  sourceAppId           String
+  targetAppId           String
+  name                  String
+  description           String?
+  protocol              InterfaceProtocol    @default(REST_API)
+  direction             InterfaceDirection   @default(OUTBOUND)
+  status                InterfaceStatus      @default(INT_ACTIVE)
+  criticality           InterfaceCriticality @default(INT_MEDIUM)
+  dataFlowDescription   String?
+  frequency             String?
+  dataClassification    DataClassification?
+  isActive              Boolean              @default(true)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceApp Application @relation("InterfaceSource", fields: [sourceAppId], references: [id], onDelete: Cascade)
+  targetApp Application @relation("InterfaceTarget", fields: [targetAppId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, sourceAppId, targetAppId, name])
+  @@index([workspaceId])
+  @@index([sourceAppId])
+  @@index([targetAppId])
+  @@map("application_interfaces")
+}
+
+// ============================================================
+// APPLICATION ↔ TECH RADAR LINK (Tech Stack Decomposition)
+// ============================================================
+
+model ApplicationTechLink {
+  applicationId    String
+  techRadarEntryId String
+  workspaceId      String
+  layer            String   @default("APPLICATION")
+  notes            String?
+  assignedAt       DateTime @default(now())
+
+  application    Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  techRadarEntry TechRadarEntry @relation(fields: [techRadarEntryId], references: [id], onDelete: Cascade)
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, techRadarEntryId])
+  @@index([workspaceId])
+  @@map("application_tech_links")
 }
 
 // ============================================================
@@ -1028,8 +1150,9 @@ model TechRadarEntry {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  reviewedBy User?     @relation("RadarReviewer", fields: [reviewedById], references: [id])
+  workspace        Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reviewedBy       User?                 @relation("RadarReviewer", fields: [reviewedById], references: [id])
+  applicationLinks ApplicationTechLink[]
 
   @@unique([workspaceId, name])
   @@index([workspaceId, ring])

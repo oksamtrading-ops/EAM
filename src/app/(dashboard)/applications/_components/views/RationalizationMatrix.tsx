@@ -63,24 +63,29 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
           <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#1a1f2e]/20" />
           <div className="absolute top-1/2 left-0 right-0 h-px bg-[#1a1f2e]/20" />
 
-          {/* App dots */}
+          {/* App dots — size reflects integration count (migration risk) */}
           {assessed.map((app) => {
             const color = RAT_COLORS[app.rationalizationStatus] ?? "#cbd5e1";
+            const ifaceCount = (app._count?.interfacesFrom ?? 0) + (app._count?.interfacesTo ?? 0);
+            // Base 28px, +4px per interface, max 48px
+            const dotSize = Math.min(48, 28 + ifaceCount * 4);
             return (
               <button
                 key={app.id}
                 onClick={() => onSelect(app.id)}
                 className={cn(
-                  "absolute w-8 h-8 rounded-full border-2 border-white shadow-md transition-all hover:scale-125 hover:z-10 flex items-center justify-center text-[8px] font-bold text-white",
+                  "absolute rounded-full border-2 border-white shadow-md transition-all hover:scale-125 hover:z-10 flex items-center justify-center text-[8px] font-bold text-white",
                   selectedId === app.id && "ring-2 ring-[#0B5CD6] ring-offset-2 scale-125 z-10"
                 )}
                 style={{
+                  width: dotSize,
+                  height: dotSize,
                   left: `${Math.max(5, Math.min(95, app.x))}%`,
                   top: `${Math.max(5, Math.min(95, app.y))}%`,
                   transform: "translate(-50%, -50%)",
                   backgroundColor: color,
                 }}
-                title={`${app.name}\nBusiness Value: ${app.businessValue}\nTech Health: ${app.technicalHealth}`}
+                title={`${app.name}\nBusiness Value: ${app.businessValue}\nTech Health: ${app.technicalHealth}${ifaceCount > 0 ? `\nInterfaces: ${ifaceCount}` : ""}`}
               >
                 {app.name.substring(0, 2).toUpperCase()}
               </button>
