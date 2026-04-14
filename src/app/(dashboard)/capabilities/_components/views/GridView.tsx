@@ -11,7 +11,6 @@ import {
   getGapColor,
   getOwnerColor,
 } from "@/lib/constants/maturity-colors";
-import { Badge } from "@/components/ui/badge";
 import { ChevronRight, TrendingUp, GripVertical } from "lucide-react";
 import type { ColorByMode } from "../CapabilityPageClient";
 
@@ -147,24 +146,26 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   {isDragOver && (
-                    <span className="text-xs text-[#0B5CD6] font-medium animate-pulse">
+                    <span className="text-xs text-[#0B5CD6] font-medium animate-pulse shrink-0">
                       Drop here
                     </span>
                   )}
                   {gap > 0 && (
-                    <div className="flex items-center gap-1 text-orange-600 text-xs">
+                    <div className="flex items-center gap-1 text-orange-600 text-xs shrink-0">
                       <TrendingUp className="h-3.5 w-3.5" />
                       <span>+{gap} gap</span>
                     </div>
                   )}
-                  <MaturityPill value={l1.currentMaturity} />
-                  <ImportancePill value={l1.strategicImportance} />
-                  <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-1 rounded-md">
+                  <StatusBadge label={MATURITY_LABELS[l1.currentMaturity] ?? "N/A"} color={MATURITY_COLORS[l1.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED} />
+                  {l1.strategicImportance !== "NOT_ASSESSED" && (
+                    <StatusBadge label={IMPORTANCE_LABELS[l1.strategicImportance] ?? "N/A"} color={IMPORTANCE_COLORS[l1.strategicImportance] ?? IMPORTANCE_COLORS.NOT_ASSESSED} />
+                  )}
+                  <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-1 rounded-md shrink-0 whitespace-nowrap">
                     {l1.children?.length ?? 0} sub-capabilities
                   </span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </div>
               </div>
             </button>
@@ -202,7 +203,11 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                       {l2.name}
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <MaturityChip value={l2.currentMaturity} />
+                      <StatusBadge
+                        label={MATURITY_LABELS[l2.currentMaturity] ?? "N/A"}
+                        color={MATURITY_COLORS[l2.currentMaturity] ?? MATURITY_COLORS.NOT_ASSESSED}
+                        dot
+                      />
                     </div>
 
                     {/* L3 sub-capabilities */}
@@ -264,59 +269,18 @@ function getGap(node: any): number {
   return Math.max(0, target - current);
 }
 
-function MaturityPill({ value }: { value: string }) {
-  const color = MATURITY_COLORS[value] ?? MATURITY_COLORS.NOT_ASSESSED;
-  const label = MATURITY_LABELS[value] ?? "N/A";
-
+function StatusBadge({ label, color, dot }: { label: string; color: string; dot?: boolean }) {
   return (
     <span
-      className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
+      className="text-[11px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 inline-flex items-center gap-1"
       style={{ borderColor: color, color }}
     >
-      {label}
-    </span>
-  );
-}
-
-function ImportancePill({ value }: { value: string }) {
-  const label = IMPORTANCE_LABELS[value] ?? "N/A";
-  if (value === "NOT_ASSESSED") return null;
-
-  const bgMap: Record<string, string> = {
-    CRITICAL: "bg-red-50 text-red-700 border-red-200",
-    HIGH: "bg-orange-50 text-orange-700 border-orange-200",
-    MEDIUM: "bg-yellow-50 text-yellow-700 border-yellow-200",
-    LOW: "bg-green-50 text-green-700 border-green-200",
-  };
-
-  return (
-    <span
-      className={cn(
-        "text-[11px] font-medium px-2 py-0.5 rounded-full border",
-        bgMap[value]
+      {dot && (
+        <span
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: color }}
+        />
       )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function MaturityChip({ value }: { value: string }) {
-  const color = MATURITY_COLORS[value] ?? MATURITY_COLORS.NOT_ASSESSED;
-  const label =
-    value === "NOT_ASSESSED"
-      ? "Not assessed"
-      : value.charAt(0) + value.slice(1).toLowerCase();
-
-  return (
-    <span
-      className="text-[10px] font-medium px-1.5 py-0.5 rounded border inline-flex items-center gap-1"
-      style={{ borderColor: color + "60", color }}
-    >
-      <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ backgroundColor: color }}
-      />
       {label}
     </span>
   );

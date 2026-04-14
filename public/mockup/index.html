@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Status Badge Unification — Before / After</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f1f3; color: #1a1f2e; padding: 32px; }
+
+  h1 { font-size: 22px; margin-bottom: 24px; }
+  h2 { font-size: 16px; margin-bottom: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px; }
+  .col { background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; }
+  .col.before { border-left: 4px solid #dc2626; }
+  .col.after  { border-left: 4px solid #16a34a; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+  .label.red  { color: #dc2626; }
+  .label.green { color: #16a34a; }
+
+  /* L1 group card */
+  .l1-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .l1-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f1f3f5; }
+  .l1-left { display: flex; align-items: center; gap: 12px; }
+  .l1-bar { width: 6px; height: 40px; border-radius: 999px; background: #94a3b8; flex-shrink: 0; }
+  .l1-tag { font-size: 10px; font-weight: 700; color: white; background: #1a1f2e; padding: 2px 6px; border-radius: 4px; }
+  .l1-name { font-size: 15px; font-weight: 600; }
+  .l1-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .l1-right { display: flex; align-items: center; gap: 12px; }
+  .l1-right.wrap { flex-wrap: wrap; }
+
+  /* BEFORE: inconsistent badges */
+  .maturity-pill-before {
+    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid #94a3b8; color: #94a3b8; white-space: nowrap;
+  }
+  .maturity-chip-before {
+    font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px;
+    border: 1px solid rgba(148,163,184,0.38); color: #94a3b8;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .maturity-chip-before .dot { width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; }
+
+  /* AFTER: unified StatusBadge */
+  .status-badge {
+    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid; white-space: nowrap; flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .sub-cap { font-size: 12px; color: #94a3b8; background: #f1f3f5; padding: 4px 8px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+  .chevron { width: 16px; height: 16px; color: #94a3b8; flex-shrink: 0; }
+
+  /* L2 grid */
+  .l2-grid { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #fafbfc; }
+  .l2-card { background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 14px; }
+  .l2-top { display: flex; align-items: start; justify-content: space-between; margin-bottom: 8px; }
+  .l2-tag { font-size: 9px; font-weight: 700; color: #0B5CD6; background: rgba(11,92,214,0.1); padding: 2px 6px; border-radius: 4px; }
+  .l2-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .l2-name { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+
+  /* Color variants */
+  .c-slate    { border-color: #94a3b8; color: #94a3b8; }
+  .c-orange   { border-color: #ea580c; color: #ea580c; }
+  .c-red      { border-color: #dc2626; color: #dc2626; }
+  .c-yellow   { border-color: #ca8a04; color: #ca8a04; }
+  .c-initial  { border-color: #dc2626; color: #dc2626; }
+
+  .note { font-size: 13px; color: #64748b; line-height: 1.6; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+  .note strong { color: #1a1f2e; }
+
+  @media (max-width: 700px) {
+    .columns { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Status Badge Unification — Before / After</h1>
+
+<!-- ───── SECTION 1: L1 HEADERS ───── -->
+<h2>L1 Capability Headers</h2>
+<div class="columns">
+  <div class="col before">
+    <div class="label red">BEFORE — MaturityPill (11px, pill) vs inconsistent wrapping</div>
+    <div class="l1-card">
+      <div class="l1-header">
+        <div class="l1-left">
+          <div class="l1-bar"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Procurement & Sourcing</span></div>
+            <div class="l1-desc">Supplier selection, contract management...</div>
+          </div>
+        </div>
+        <div class="l1-right">
+          <span class="maturity-pill-before">Not Assessed</span>
+          <span class="sub-cap">2 sub-capabilities</span>
+          <span class="chevron">&#8250;</span>
+        </div>
+      </div>
+    </div>
+    <div class="l1-card">
+      <div class="l1-header">
+        <div class="l1-left">
+          <div class="l1-bar" style="background:#ea580c"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Order Management</span></div>
+            <div class="l1-desc">Order capture, fulfillment...</div>
+          </div>
+        </div>
+        <div class="l1-right">
+          <span class="maturity-pill-before" style="border-color:#ea580c;color:#ea580c">Developing</span>
+          <span class="sub-cap">3 sub-capabilities</span>
+          <span class="chevron">&#8250;</span>
+        </div>
+      </div>
+    </div>
+    <div class="note"><strong>Issue:</strong> L1 right-side container has no <code>flex-wrap</code>. On narrow screens, badges clip/overflow instead of wrapping. No <code>shrink-0</code> on badges.</div>
+  </div>
+
+  <div class="col after">
+    <div class="label green">AFTER — Unified StatusBadge + flex-wrap</div>
+    <div class="l1-card">
+      <div class="l1-header">
+        <div class="l1-left">
+          <div class="l1-bar"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Procurement & Sourcing</span></div>
+            <div class="l1-desc">Supplier selection, contract management...</div>
+          </div>
+        </div>
+        <div class="l1-right wrap">
+          <span class="status-badge c-slate">Not Assessed</span>
+          <span class="sub-cap">2 sub-capabilities</span>
+          <span class="chevron">&#8250;</span>
+        </div>
+      </div>
+    </div>
+    <div class="l1-card">
+      <div class="l1-header">
+        <div class="l1-left">
+          <div class="l1-bar" style="background:#ea580c"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Order Management</span></div>
+            <div class="l1-desc">Order capture, fulfillment...</div>
+          </div>
+        </div>
+        <div class="l1-right wrap">
+          <span class="status-badge c-orange">Not Assessed</span>
+          <span class="sub-cap">3 sub-capabilities</span>
+          <span class="chevron">&#8250;</span>
+        </div>
+      </div>
+    </div>
+    <div class="note"><strong>Fixed:</strong> Container now has <code>flex-wrap</code>. All badges use <code>shrink-0</code> + <code>whitespace-nowrap</code>. Consistent <code>rounded-full</code> pill shape everywhere.</div>
+  </div>
+</div>
+
+<!-- ───── SECTION 2: L2 CARDS ───── -->
+<h2>L2 Capability Cards</h2>
+<div class="columns">
+  <div class="col before">
+    <div class="label red">BEFORE — MaturityChip (10px, rounded rect, lowercase "a")</div>
+    <div class="l2-grid" style="border-radius:8px;border:1px solid #e9ecef">
+      <div class="l2-card">
+        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#94a3b8"></div></div>
+        <div class="l2-name">Returns Management</div>
+        <span class="maturity-chip-before"><span class="dot"></span>Not assessed</span>
+      </div>
+      <div class="l2-card">
+        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#ca8a04"></div></div>
+        <div class="l2-name">Order Fulfillment</div>
+        <span class="maturity-chip-before" style="border-color:rgba(202,138,4,0.38);color:#ca8a04"><span class="dot" style="background:#ca8a04"></span>Defined</span>
+      </div>
+    </div>
+    <div class="note"><strong>Issues:</strong> Different font size (10px vs 11px), smaller padding (px-1.5 vs px-2), rounded-rect not pill, hardcoded "Not assessed" (lowercase "a").</div>
+  </div>
+
+  <div class="col after">
+    <div class="label green">AFTER — StatusBadge with dot (11px, pill, "Not Assessed")</div>
+    <div class="l2-grid" style="border-radius:8px;border:1px solid #e9ecef">
+      <div class="l2-card">
+        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#94a3b8"></div></div>
+        <div class="l2-name">Returns Management</div>
+        <span class="status-badge c-slate"><span class="dot" style="background:#94a3b8"></span>Not Assessed</span>
+      </div>
+      <div class="l2-card">
+        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#ca8a04"></div></div>
+        <div class="l2-name">Order Fulfillment</div>
+        <span class="status-badge c-yellow"><span class="dot" style="background:#ca8a04"></span>Defined</span>
+      </div>
+    </div>
+    <div class="note"><strong>Fixed:</strong> Same <code>StatusBadge</code> component. Pill shape, 11px, consistent padding. <code>dot</code> prop adds colored indicator. Label from constants (capital "A").</div>
+  </div>
+</div>
+
+<!-- ───── SECTION 3: SUMMARY ───── -->
+<h2>Changes Summary</h2>
+<div style="background:white;border-radius:12px;padding:24px;border:1px solid #e5e7eb;max-width:700px;">
+  <table style="width:100%;font-size:13px;border-collapse:collapse;">
+    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0;font-weight:600">Component</td><td style="padding:8px 0">Before</td><td style="padding:8px 0">After</td></tr>
+    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">L1 maturity</td><td style="padding:8px 0;color:#94a3b8">MaturityPill (11px, pill)</td><td style="padding:8px 0;color:#16a34a">StatusBadge (11px, pill)</td></tr>
+    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">L1 importance</td><td style="padding:8px 0;color:#94a3b8">ImportancePill (11px, pill)</td><td style="padding:8px 0;color:#16a34a">StatusBadge (11px, pill)</td></tr>
+    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">L2 maturity</td><td style="padding:8px 0;color:#dc2626">MaturityChip (10px, rect)</td><td style="padding:8px 0;color:#16a34a">StatusBadge + dot (11px, pill)</td></tr>
+    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">Label text</td><td style="padding:8px 0;color:#dc2626">"Not assessed" (mixed case)</td><td style="padding:8px 0;color:#16a34a">"Not Assessed" (consistent)</td></tr>
+    <tr><td style="padding:8px 0">L1 wrapping</td><td style="padding:8px 0;color:#dc2626">No flex-wrap (clips)</td><td style="padding:8px 0;color:#16a34a">flex-wrap + shrink-0</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

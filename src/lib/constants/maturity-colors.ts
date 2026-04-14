@@ -55,7 +55,7 @@ export const GAP_LABELS: Record<string, string> = {
   GAP_1:        "1 level behind",
   GAP_2:        "2 levels behind",
   GAP_3:        "3+ levels behind",
-  NOT_ASSESSED: "Not assessed",
+  NOT_ASSESSED: "Not Assessed",
 };
 
 export function getGapColor(node: { currentMaturity: string; targetMaturity: string }): string {
