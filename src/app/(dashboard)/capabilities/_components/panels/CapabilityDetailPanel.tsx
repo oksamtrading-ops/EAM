@@ -249,7 +249,13 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
               }
             >
               <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Assign value stream..." />
+                {(cap as any).valueStream
+                  ? <span className="flex flex-1 items-center gap-2 text-left truncate">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (cap as any).valueStream.color }} />
+                      {(cap as any).valueStream.name}
+                    </span>
+                  : <SelectValue placeholder="Assign value stream..." />
+                }
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">
@@ -389,7 +395,10 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                   }
                 >
                   <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Assign org..." />
+                    {(cap as any).organization
+                      ? <span className="flex flex-1 text-left truncate">{(cap as any).organization.name}</span>
+                      : <SelectValue placeholder="Assign org..." />
+                    }
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">
