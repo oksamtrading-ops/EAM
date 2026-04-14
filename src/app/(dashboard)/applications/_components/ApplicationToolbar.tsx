@@ -2,6 +2,7 @@
 
 import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3, Sparkles, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 import type { AppViewMode } from "./ApplicationPageClient";
 
 type Props = {
@@ -35,13 +36,16 @@ export function ApplicationToolbar({
 }: Props) {
   return (
     <div className="bg-white border-b px-6 py-4 flex items-center justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
-          Application Portfolio
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {appCount} applications catalogued
-        </p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+            Application Portfolio
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {appCount} applications catalogued
+          </p>
+        </div>
+        <PageSearchTrigger />
       </div>
 
       <div className="flex items-center gap-2">
@@ -90,7 +94,7 @@ export function ApplicationToolbar({
           Import / Export
         </Button>
 
-        <Button size="sm" onClick={onCreateNew} className="h-9 text-xs bg-[#86BC25] hover:bg-[#76a821] text-white">
+        <Button size="sm" onClick={onCreateNew} className="h-9 text-xs bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           Add Application
         </Button>

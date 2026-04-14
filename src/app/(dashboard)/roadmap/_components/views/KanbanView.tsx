@@ -31,8 +31,8 @@ const COLUMN_CONFIG: Record<
   },
   IN_PROGRESS: {
     label: "In Progress",
-    headerClass: "border-[#86BC25]/60 bg-[#86BC25]/5",
-    bodyClass: "bg-[#86BC25]/5",
+    headerClass: "border-[#0B5CD6]/60 bg-[#0B5CD6]/5",
+    bodyClass: "bg-[#0B5CD6]/5",
   },
   ON_HOLD: {
     label: "On Hold",
@@ -131,7 +131,7 @@ export function KanbanView() {
           return (
             <div
               key={status}
-              className={`w-64 shrink-0 rounded-lg border-2 flex flex-col transition-colors ${config.headerClass} ${isOver ? "ring-2 ring-[#86BC25] ring-offset-1" : ""}`}
+              className={`w-64 shrink-0 rounded-lg border-2 flex flex-col transition-colors ${config.headerClass} ${isOver ? "ring-2 ring-[#0B5CD6] ring-offset-1" : ""}`}
               onDragOver={(e) => handleDragOver(e, status)}
               onDrop={(e) => handleDrop(e, status)}
               onDragLeave={() => setDragOverColumn(null)}

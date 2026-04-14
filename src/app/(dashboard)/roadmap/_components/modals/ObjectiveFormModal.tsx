@@ -117,7 +117,7 @@ export function ObjectiveFormModal({
               required
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
               placeholder="e.g. Reduce IT cost by 20% by 2026"
             />
           </div>
@@ -214,7 +214,7 @@ export function ObjectiveFormModal({
             <button
               type="submit"
               disabled={isPending || !form.name}
-              className="flex items-center gap-2 px-4 py-2 bg-[#86BC25] text-white text-sm font-semibold rounded-md hover:bg-[#76a820] disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-[#0B5CD6] text-white text-sm font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isEdit ? "Save Changes" : "Create Objective"}

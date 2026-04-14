@@ -22,7 +22,7 @@ const LINES: { key: keyof Omit<MigrationTrendPoint, "month">; color: string; lab
   { key: "Cloud", color: "#0076A8", label: "Cloud" },
   { key: "OnPremise", color: "#f97316", label: "On-Premise" },
   { key: "Hybrid", color: "#8b5cf6", label: "Hybrid" },
-  { key: "SaaS", color: "#86BC25", label: "SaaS" },
+  { key: "SaaS", color: "#0B5CD6", label: "SaaS" },
 ];
 
 export function MigrationTrendChart({ data, loading }: Props) {

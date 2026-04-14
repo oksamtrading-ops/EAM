@@ -115,7 +115,7 @@ export function TreeView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
         <MiniMap
           nodeColor={(node) => {
             if (node.data?.level === "L1") return "#1a1f2e";
-            if (node.data?.level === "L2") return "#86BC25";
+            if (node.data?.level === "L2") return "#0B5CD6";
             return "#94a3b8";
           }}
           maskColor="rgba(0,0,0,0.05)"
@@ -151,11 +151,11 @@ function L1Node({ data, selected }: { data: any; selected: boolean }) {
         data.onDropOnL1?.(data.id);
       }}
       className={`rounded-xl border-2 bg-[#1a1f2e] text-white px-4 py-3 shadow-lg transition-all cursor-pointer ${
-        selected ? "ring-2 ring-[#86BC25] ring-offset-2" : ""
-      } ${data.isDragOver ? "ring-2 ring-[#86BC25] border-[#86BC25] scale-[1.02]" : ""}`}
+        selected ? "ring-2 ring-[#0B5CD6] ring-offset-2" : ""
+      } ${data.isDragOver ? "ring-2 ring-[#0B5CD6] border-[#0B5CD6] scale-[1.02]" : ""}`}
       style={{ width: L1_WIDTH, minHeight: L1_HEIGHT }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-[#86BC25] !w-2 !h-2" />
+      <Handle type="target" position={Position.Top} className="!bg-[#0B5CD6] !w-2 !h-2" />
       <div className="flex items-center gap-2 mb-1">
         <span className="text-[9px] font-bold bg-white/20 px-1.5 py-0.5 rounded">
           L1
@@ -171,12 +171,12 @@ function L1Node({ data, selected }: { data: any; selected: boolean }) {
           {data.childCount} sub-capabilities
         </p>
         {data.isDragOver && (
-          <p className="text-[10px] text-[#86BC25] animate-pulse font-medium">
+          <p className="text-[10px] text-[#0B5CD6] animate-pulse font-medium">
             Drop here
           </p>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-[#86BC25] !w-2 !h-2" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#0B5CD6] !w-2 !h-2" />
     </div>
   );
 }
@@ -199,13 +199,13 @@ function L2Node({ data, selected }: { data: any; selected: boolean }) {
         (e.currentTarget as HTMLElement).style.opacity = "1";
       }}
       className={`rounded-lg border bg-white px-3 py-2.5 shadow-sm transition-all cursor-grab active:cursor-grabbing hover:shadow-md ${
-        selected ? "ring-2 ring-[#86BC25] ring-offset-1 border-[#86BC25]" : "border-[#e9ecef]"
+        selected ? "ring-2 ring-[#0B5CD6] ring-offset-1 border-[#0B5CD6]" : "border-[#e9ecef]"
       }`}
       style={{ width: L2_WIDTH, minHeight: L2_HEIGHT }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-[#86BC25] !w-1.5 !h-1.5" />
+      <Handle type="target" position={Position.Top} className="!bg-[#0B5CD6] !w-1.5 !h-1.5" />
       <div className="flex items-center gap-1.5 mb-1">
-        <span className="text-[8px] font-bold text-[#86BC25] bg-[#86BC25]/10 px-1 py-0.5 rounded">
+        <span className="text-[8px] font-bold text-[#0B5CD6] bg-[#0B5CD6]/10 px-1 py-0.5 rounded">
           L2
         </span>
         <span
@@ -221,7 +221,7 @@ function L2Node({ data, selected }: { data: any; selected: boolean }) {
           {data.maturityLabel}
         </p>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-[#86BC25] !w-1.5 !h-1.5" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#0B5CD6] !w-1.5 !h-1.5" />
     </div>
   );
 }
@@ -231,7 +231,7 @@ function L3Node({ data, selected }: { data: any; selected: boolean }) {
   return (
     <div
       className={`rounded-md border px-2.5 py-2 shadow-sm transition-all cursor-pointer hover:shadow-md ${
-        selected ? "ring-2 ring-[#86BC25] ring-offset-1 border-[#86BC25]" : "border-[#e9ecef]"
+        selected ? "ring-2 ring-[#0B5CD6] ring-offset-1 border-[#0B5CD6]" : "border-[#e9ecef]"
       }`}
       style={{ width: L3_WIDTH, minHeight: L3_HEIGHT, backgroundColor: "#fafbfc" }}
     >

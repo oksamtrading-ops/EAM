@@ -96,7 +96,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
             key={l1.id}
             className={cn(
               "bg-white rounded-xl border shadow-sm overflow-hidden transition-all",
-              isDragOver && "ring-2 ring-[#86BC25] border-[#86BC25]"
+              isDragOver && "ring-2 ring-[#0B5CD6] border-[#0B5CD6]"
             )}
             onDragOver={(e) => {
               if (draggingRef.current && draggingRef.current.level !== "L1") {
@@ -122,7 +122,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
               onClick={() => onSelect(l1.id)}
               className={cn(
                 "w-full text-left px-5 py-4 transition-all hover:bg-[#f8f9fa] border-b",
-                selectedId === l1.id && "bg-[#86BC25]/5"
+                selectedId === l1.id && "bg-[#0B5CD6]/5"
               )}
             >
               <div className="flex items-center justify-between">
@@ -149,7 +149,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                 </div>
                 <div className="flex items-center gap-3">
                   {isDragOver && (
-                    <span className="text-xs text-[#86BC25] font-medium animate-pulse">
+                    <span className="text-xs text-[#0B5CD6] font-medium animate-pulse">
                       Drop here
                     </span>
                   )}
@@ -180,16 +180,16 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                     onDragEnd={handleDragEnd}
                     onClick={() => onSelect(l2.id)}
                     className={cn(
-                      "text-left p-3.5 rounded-lg border bg-white transition-all hover:shadow-md hover:border-[#86BC25]/30 group cursor-grab active:cursor-grabbing",
+                      "text-left p-3.5 rounded-lg border bg-white transition-all hover:shadow-md hover:border-[#0B5CD6]/30 group cursor-grab active:cursor-grabbing",
                       selectedId === l2.id
-                        ? "border-[#86BC25] shadow-md ring-1 ring-[#86BC25]/20"
+                        ? "border-[#0B5CD6] shadow-md ring-1 ring-[#0B5CD6]/20"
                         : "border-[#e9ecef]"
                     )}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-1.5">
                         <GripVertical className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                        <span className="text-[9px] font-bold text-[#86BC25] bg-[#86BC25]/10 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-bold text-[#0B5CD6] bg-[#0B5CD6]/10 px-1.5 py-0.5 rounded">
                           L2
                         </span>
                       </div>
@@ -198,7 +198,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                         style={{ backgroundColor: getColor(l2, colorBy) }}
                       />
                     </div>
-                    <h4 className="text-sm font-medium text-[#1a1f2e] leading-tight mb-2 group-hover:text-[#86BC25] transition-colors">
+                    <h4 className="text-sm font-medium text-[#1a1f2e] leading-tight mb-2 group-hover:text-[#0B5CD6] transition-colors">
                       {l2.name}
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -221,7 +221,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                               className={cn(
                                 "w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] transition-colors group/l3",
                                 selectedId === l3.id
-                                  ? "bg-[#86BC25]/10 text-[#1a1f2e]"
+                                  ? "bg-[#0B5CD6]/10 text-[#1a1f2e]"
                                   : "hover:bg-[#f1f3f5] text-muted-foreground"
                               )}
                             >

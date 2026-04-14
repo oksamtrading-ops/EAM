@@ -155,7 +155,7 @@ export function DependencyModal({
             <button
               type="submit"
               disabled={addDep.isPending || !dependentId || !blockingId}
-              className="flex items-center gap-2 px-4 py-2 bg-[#86BC25] text-white text-sm font-semibold rounded-md hover:bg-[#76a820] disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-[#0B5CD6] text-white text-sm font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50"
             >
               {addDep.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Add Dependency

@@ -30,7 +30,7 @@ interface Props {
 const MAX_VISIBLE = 5;
 
 function barColor(score: number): string {
-  if (score >= 4) return "#86BC25";
+  if (score >= 4) return "#0B5CD6";
   if (score >= 3) return "#0076A8";
   if (score >= 2) return "#f59e0b";
   return "#ef4444";
@@ -114,7 +114,7 @@ export function CapabilityMaturityChart({ data, loading }: Props) {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400 inline-block" />Initial (&lt;2)</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400 inline-block" />Developing (2&ndash;3)</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#0076A8] inline-block" />Defined/Managed (3&ndash;4)</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#86BC25] inline-block" />Optimizing (&ge;4)</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#0B5CD6] inline-block" />Optimizing (&ge;4)</span>
           </div>
         )}
 

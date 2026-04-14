@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Tags as TagsIcon, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const PRESET_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
   "#f97316", "#eab308", "#22c55e", "#06b6d4",
-  "#3b82f6", "#1a1f2e", "#86BC25", "#64748b",
+  "#3b82f6", "#1a1f2e", "#0B5CD6", "#64748b",
 ];
 
 type EditState = { name: string; color: string };
@@ -20,7 +21,7 @@ export default function TagsPage() {
   const utils = trpc.useUtils();
 
   const [newName, setNewName] = useState("");
-  const [newColor, setNewColor] = useState("#86BC25");
+  const [newColor, setNewColor] = useState("#0B5CD6");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState>({ name: "", color: "" });
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -65,13 +66,16 @@ export default function TagsPage() {
 
   return (
     <div className="max-w-2xl p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
-          Capability Tags
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Create tags to classify and filter capabilities across your map.
-        </p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+            Capability Tags
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Create tags to classify and filter capabilities across your map.
+          </p>
+        </div>
+        <PageSearchTrigger />
       </div>
 
       {/* Create new tag */}
@@ -117,7 +121,7 @@ export default function TagsPage() {
               createMutation.mutate({ name: newName.trim(), color: newColor })
             }
             disabled={!newName.trim() || createMutation.isPending}
-            className="bg-[#86BC25] hover:bg-[#76a821] text-white shrink-0"
+            className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white shrink-0"
           >
             <Plus className="h-4 w-4 mr-1.5" />
             Add
@@ -174,7 +178,7 @@ export default function TagsPage() {
                       <button
                         onClick={() => saveEdit(tag.id)}
                         disabled={updateMutation.isPending || !editState.name.trim()}
-                        className="p-1.5 rounded text-[#86BC25] hover:bg-[#86BC25]/10 disabled:opacity-50"
+                        className="p-1.5 rounded text-[#0B5CD6] hover:bg-[#0B5CD6]/10 disabled:opacity-50"
                       >
                         <Check className="h-4 w-4" />
                       </button>
@@ -202,7 +206,7 @@ export default function TagsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-[#86BC25] h-8 w-8 p-0"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-[#0B5CD6] h-8 w-8 p-0"
                         onClick={() => startEdit(tag)}
                         title="Edit tag"
                       >

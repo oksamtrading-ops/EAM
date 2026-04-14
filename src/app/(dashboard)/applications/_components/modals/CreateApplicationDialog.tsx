@@ -117,12 +117,12 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
                     type="button"
                     onClick={() => toggleCap(cap.id)}
                     className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-2 transition-colors ${
-                      selectedCaps.includes(cap.id) ? "bg-[#86BC25]/10 text-[#86BC25]" : "hover:bg-[#f1f3f5] text-muted-foreground"
+                      selectedCaps.includes(cap.id) ? "bg-[#0B5CD6]/10 text-[#0B5CD6]" : "hover:bg-[#f1f3f5] text-muted-foreground"
                     }`}
                   >
                     <Badge variant="outline" className="text-[8px] shrink-0">{cap.level}</Badge>
                     <span className="truncate">{cap.name}</span>
-                    {selectedCaps.includes(cap.id) && <span className="ml-auto text-[#86BC25]">✓</span>}
+                    {selectedCaps.includes(cap.id) && <span className="ml-auto text-[#0B5CD6]">✓</span>}
                   </button>
                 ))
               )}
@@ -143,7 +143,7 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
                 capabilityIds: selectedCaps.length > 0 ? selectedCaps : undefined,
               })}
               disabled={!name.trim() || createMutation.isPending}
-              className="bg-[#86BC25] hover:bg-[#76a821] text-white"
+              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
             >
               {createMutation.isPending ? "Creating..." : "Create Application"}
             </Button>

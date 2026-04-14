@@ -72,7 +72,7 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
                 onClick={() => onSelect(app.id)}
                 className={cn(
                   "absolute w-8 h-8 rounded-full border-2 border-white shadow-md transition-all hover:scale-125 hover:z-10 flex items-center justify-center text-[8px] font-bold text-white",
-                  selectedId === app.id && "ring-2 ring-[#86BC25] ring-offset-2 scale-125 z-10"
+                  selectedId === app.id && "ring-2 ring-[#0B5CD6] ring-offset-2 scale-125 z-10"
                 )}
                 style={{
                   left: `${Math.max(5, Math.min(95, app.x))}%`,

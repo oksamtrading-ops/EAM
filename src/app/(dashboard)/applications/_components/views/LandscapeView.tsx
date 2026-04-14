@@ -105,7 +105,7 @@ function AppCard({ app, onSelect, selected }: { app: any; onSelect: (id: string)
       onClick={() => onSelect(app.id)}
       className={cn(
         "text-left w-full px-3 py-2 rounded-lg border text-xs transition-all hover:shadow-sm",
-        selected ? "border-[#86BC25] ring-1 ring-[#86BC25]/20 bg-white" : "border-[#e9ecef] bg-white hover:border-[#86BC25]/30"
+        selected ? "border-[#0B5CD6] ring-1 ring-[#0B5CD6]/20 bg-white" : "border-[#e9ecef] bg-white hover:border-[#0B5CD6]/30"
       )}
       style={{ borderLeftColor: color, borderLeftWidth: "3px" }}
     >

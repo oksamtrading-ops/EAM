@@ -100,7 +100,7 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="flex-1 bg-[#86BC25] hover:bg-[#76a821] text-white text-xs"
+                className="flex-1 bg-[#0B5CD6] hover:bg-[#094cb0] text-white text-xs"
                 disabled={!saveLabel.trim() || saveMutation.isPending}
                 onClick={() => saveMutation.mutate({ label: saveLabel.trim() })}
               >
@@ -127,7 +127,7 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
         ) : (
           <Button
             size="sm"
-            className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white"
+            className="w-full bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
             onClick={() => setShowSaveInput(true)}
           >
             <Save className="h-4 w-4 mr-2" />

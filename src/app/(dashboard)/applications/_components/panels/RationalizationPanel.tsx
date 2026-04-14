@@ -153,7 +153,7 @@ export function RationalizationPanel({ open, onClose, apps }: Props) {
             <Button
               onClick={generateNarrative}
               disabled={loading}
-              className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white"
+              className="w-full bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
             >
               {loading ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>

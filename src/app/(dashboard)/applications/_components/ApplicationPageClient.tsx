@@ -173,7 +173,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
       </p>
       <button
         onClick={onCreateNew}
-        className="px-5 py-2.5 bg-[#86BC25] text-white rounded-lg text-sm font-semibold hover:bg-[#76a821] transition-colors shadow-sm"
+        className="px-5 py-2.5 bg-[#0B5CD6] text-white rounded-lg text-sm font-semibold hover:bg-[#094cb0] transition-colors shadow-sm"
       >
         Add First Application
       </button>

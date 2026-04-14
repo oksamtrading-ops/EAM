@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
 import { CmdPaletteProvider } from "./CmdPaletteProvider";
-import { CmdSearchPill } from "./CmdSearchPill";
 
 const navItems = [
   {
@@ -104,7 +103,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-bold transition-all",
                   isActive
-                    ? "bg-[#86BC25] text-white shadow-sm"
+                    ? "bg-[#0B5CD6] text-white shadow-sm"
                     : "text-[#3a3a3c] hover:bg-black/[0.05] hover:text-[#1d1d1f]"
                 )}
               >
@@ -136,9 +135,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto flex flex-col">
-        <div className="flex items-center justify-end gap-3 px-6 py-3 border-b border-black/[0.05] bg-white/40 backdrop-blur-sm">
-          <CmdSearchPill />
-        </div>
         <div className="flex-1 overflow-auto">{children}</div>
       </main>
 

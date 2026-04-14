@@ -187,7 +187,7 @@ export function RadarEntryPanel({ entryId, onClose }: Props) {
           </div>
 
           <div className="px-6 py-4 border-t flex items-center gap-2 shrink-0">
-            <Button type="submit" disabled={upsertMutation.isPending} className="bg-[#86BC25] hover:bg-[#75a821] text-white">
+            <Button type="submit" disabled={upsertMutation.isPending} className="bg-[#0B5CD6] hover:bg-[#75a821] text-white">
               {upsertMutation.isPending ? "Saving…" : entryId ? "Update" : "Add to Radar"}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

@@ -153,7 +153,7 @@ export function ArchStatePanel({
               onClick={() => setTab(t.id)}
               className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                 tab === t.id
-                  ? "border-b-2 border-[#86BC25] text-foreground"
+                  ? "border-b-2 border-[#0B5CD6] text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -179,12 +179,12 @@ export function ArchStatePanel({
                     value={asIsLabel}
                     onChange={(e) => setAsIsLabel(e.target.value)}
                     placeholder="e.g. As-Is — April 2026"
-                    className="flex-1 h-9 text-sm border rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                    className="flex-1 h-9 text-sm border rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
                   />
                   <button
                     onClick={() => captureAsIs.mutate({ label: asIsLabel })}
                     disabled={!asIsLabel.trim() || captureAsIs.isPending}
-                    className="flex items-center gap-1.5 px-3 h-9 bg-[#86BC25] text-white text-xs font-semibold rounded-md hover:bg-[#76a820] disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 h-9 bg-[#0B5CD6] text-white text-xs font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50 transition-colors"
                   >
                     {captureAsIs.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
                     Capture
@@ -256,7 +256,7 @@ export function ArchStatePanel({
                   value={toBeLabel}
                   onChange={(e) => setToBeLabel(e.target.value)}
                   placeholder="e.g. To-Be — Post Digital Transformation"
-                  className="w-full h-9 text-sm border rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                  className="w-full h-9 text-sm border rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
                 />
               </div>
 
@@ -281,7 +281,7 @@ export function ArchStatePanel({
                   <button
                     type="button"
                     onClick={() => setCapTargets((prev) => [...prev, { capabilityId: "", targetMaturity: "DEFINED" }])}
-                    className="flex items-center gap-1 text-[11px] text-[#86BC25] hover:underline"
+                    className="flex items-center gap-1 text-[11px] text-[#0B5CD6] hover:underline"
                   >
                     <Plus className="h-3 w-3" /> Add
                   </button>
@@ -322,7 +322,7 @@ export function ArchStatePanel({
                   <button
                     type="button"
                     onClick={() => setAppChanges((prev) => [...prev, { applicationId: "", changeType: "KEEP" }])}
-                    className="flex items-center gap-1 text-[11px] text-[#86BC25] hover:underline"
+                    className="flex items-center gap-1 text-[11px] text-[#0B5CD6] hover:underline"
                   >
                     <Plus className="h-3 w-3" /> Add
                   </button>
@@ -368,7 +368,7 @@ export function ArchStatePanel({
                   });
                 }}
                 disabled={!toBeLabel.trim() || !toBeInitiativeId || defineToBe.isPending}
-                className="w-full flex items-center justify-center gap-2 h-9 bg-[#86BC25] text-white text-xs font-semibold rounded-md hover:bg-[#76a820] disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 h-9 bg-[#0B5CD6] text-white text-xs font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50 transition-colors"
               >
                 {defineToBe.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
                 Save To-Be State
@@ -386,10 +386,10 @@ export function ArchStatePanel({
                   </p>
                   <div className="flex gap-2 justify-center mt-3">
                     {asIsStates.length === 0 && (
-                      <button onClick={() => setTab("capture")} className="text-xs text-[#86BC25] hover:underline">Capture As-Is →</button>
+                      <button onClick={() => setTab("capture")} className="text-xs text-[#0B5CD6] hover:underline">Capture As-Is →</button>
                     )}
                     {toBeStates.length === 0 && (
-                      <button onClick={() => setTab("tobe")} className="text-xs text-[#86BC25] hover:underline">Define To-Be →</button>
+                      <button onClick={() => setTab("tobe")} className="text-xs text-[#0B5CD6] hover:underline">Define To-Be →</button>
                     )}
                   </div>
                 </div>

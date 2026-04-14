@@ -194,7 +194,7 @@ export function ComplianceMappingPanel({ requirementId, controlTitle, onClose }:
           </div>
 
           <div className="px-6 py-4 border-t flex items-center gap-2 shrink-0">
-            <Button type="submit" disabled={assessMutation.isPending} className="bg-[#86BC25] hover:bg-[#75a821] text-white">
+            <Button type="submit" disabled={assessMutation.isPending} className="bg-[#0B5CD6] hover:bg-[#75a821] text-white">
               {assessMutation.isPending ? "Saving…" : "Save Assessment"}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

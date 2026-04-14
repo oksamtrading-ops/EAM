@@ -2,6 +2,7 @@
 
 import { BarChart2, LayoutGrid, Columns3, Plus, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 export type ViewMode = "gantt" | "lanes" | "kanban";
 
@@ -26,6 +27,7 @@ export function RoadmapToolbar({
     <div className="flex items-center justify-between px-4 py-3 border-b bg-background shrink-0">
       <div className="flex items-center gap-2">
         <h1 className="text-base font-semibold">Architecture Roadmap</h1>
+        <PageSearchTrigger />
         <span className="text-xs text-muted-foreground hidden sm:inline">
           Strategic initiatives and transformation timeline
         </span>
@@ -63,7 +65,7 @@ export function RoadmapToolbar({
         {/* New Initiative */}
         <button
           onClick={onNewInitiative}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#86BC25] hover:bg-[#76a820] text-white text-xs font-semibold transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0B5CD6] hover:bg-[#094cb0] text-white text-xs font-semibold transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
           New Initiative

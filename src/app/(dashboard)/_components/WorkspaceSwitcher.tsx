@@ -35,7 +35,7 @@ export function WorkspaceSwitcher({ onCreateNew }: Props) {
         <div
           className="h-9 w-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
           style={{
-            background: "linear-gradient(135deg, #86BC25 0%, #5e8a1a 100%)",
+            background: "linear-gradient(135deg, #0B5CD6 0%, #5e8a1a 100%)",
           }}
         >
           <Building2 className="h-[18px] w-[18px] text-white" />
@@ -112,7 +112,7 @@ export function WorkspaceSwitcher({ onCreateNew }: Props) {
                   setOpen(false);
                   onCreateNew();
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium text-[#86BC25] hover:bg-[#86BC25]/5 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium text-[#0B5CD6] hover:bg-[#0B5CD6]/5 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 Create New Workspace
@@ -145,14 +145,14 @@ function WorkspaceItem({
         disabled
           ? "opacity-50 cursor-not-allowed"
           : "hover:bg-black/[0.04] cursor-pointer",
-        isSelected && "bg-[#86BC25]/8"
+        isSelected && "bg-[#0B5CD6]/8"
       )}
     >
       {workspace.isActive ? (
         <CircleDot
           className={cn(
             "h-3.5 w-3.5 shrink-0",
-            isSelected ? "text-[#86BC25]" : "text-[#86868b]"
+            isSelected ? "text-[#0B5CD6]" : "text-[#86868b]"
           )}
         />
       ) : (
@@ -173,7 +173,7 @@ function WorkspaceItem({
           </p>
         )}
       </div>
-      {isSelected && <Check className="h-4 w-4 text-[#86BC25] shrink-0" />}
+      {isSelected && <Check className="h-4 w-4 text-[#0B5CD6] shrink-0" />}
       {workspace.isDefault && !isSelected && (
         <span className="text-[9px] font-medium text-[#86868b] bg-[#f1f3f5] px-1.5 py-0.5 rounded-full shrink-0">
           Default

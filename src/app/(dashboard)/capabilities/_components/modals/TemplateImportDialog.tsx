@@ -15,7 +15,7 @@ import { ChevronRight, ChevronLeft, CheckSquare, Square, Minus } from "lucide-re
 
 // ── Band metadata ────────────────────────────────────────────────────────────
 const BANDS: Record<string, { color: string; label: string; description: string }> = {
-  Grow:    { color: "#86BC25", label: "Grow",    description: "Revenue-facing: Sales, Marketing, Product, Customer Service, R&D" },
+  Grow:    { color: "#0B5CD6", label: "Grow",    description: "Revenue-facing: Sales, Marketing, Product, Customer Service, R&D" },
   Run:     { color: "#3b82f6", label: "Run",     description: "Operations: Manufacturing, Supply Chain, HR, Procurement, Service Delivery" },
   Protect: { color: "#f59e0b", label: "Protect", description: "Governance: Finance, GRC, Strategy, Trade Compliance, Sustainability" },
 };

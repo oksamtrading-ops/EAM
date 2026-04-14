@@ -49,84 +49,100 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Deloitte Glass Design System — Light Mode
-   Primary:  #86BC25  (Deloitte Green)
-   Dark:     #75a821  (hover / pressed)
-   Blue:     #0076A8  (Deloitte Blue — charts & accents)
+   EAM Glass Design System — Light Mode
+   Primary:  #0B5CD6  (brand blue)
+   Hover:    #094cb0  (pressed)
+   AI:       #7c3aed  (purple — reserved for AI surfaces)
 ───────────────────────────────────────────────────────────── */
 :root {
-  --background: #f0f2f5;
+  --background: #f0f3f7;
   --foreground: #1a1a1a;
   --card: rgba(255, 255, 255, 0.72);
   --card-foreground: #1a1a1a;
   --popover: rgba(255, 255, 255, 0.94);
   --popover-foreground: #1a1a1a;
-  --primary: #86BC25;
+  --primary: #0B5CD6;
+  --primary-hover: #094cb0;
+  --primary-subtle: rgba(11, 92, 214, 0.08);
   --primary-foreground: #ffffff;
-  --secondary: rgba(134, 188, 37, 0.10);
+  --secondary: rgba(11, 92, 214, 0.10);
   --secondary-foreground: #1a1a1a;
   --muted: rgba(100, 100, 100, 0.09);
-  --muted-foreground: #44495a; /* darkened for WCAG AA on glass/light bg */
-  --accent: rgba(134, 188, 37, 0.12);
+  --muted-foreground: #44495a;
+  --accent: rgba(11, 92, 214, 0.12);
   --accent-foreground: #1a1a1a;
   --destructive: #e53e3e;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.08);
   --input: rgba(255, 255, 255, 0.60);
-  --ring: rgba(134, 188, 37, 0.40);
-  /* Deloitte-aligned chart palette */
-  --chart-1: #86BC25;
-  --chart-2: #0076A8;
-  --chart-3: #B2D235;
-  --chart-4: #005587;
+  --ring: rgba(11, 92, 214, 0.40);
+  /* AI accent — reserved for AI-generated surfaces */
+  --ai: #7c3aed;
+  --ai-hover: #6d28d9;
+  --ai-subtle: rgba(124, 58, 237, 0.08);
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-muted: #f5f7fa;
+  /* Chart palette — rebased on blue primary */
+  --chart-1: #0B5CD6;
+  --chart-2: #0EA5E9;
+  --chart-3: #38BDF8;
+  --chart-4: #1E40AF;
   --chart-5: #63666A;
   --radius: 0.875rem;
   --sidebar: rgba(255, 255, 255, 0.68);
   --sidebar-foreground: #1a1a1a;
-  --sidebar-primary: #86BC25;
+  --sidebar-primary: #0B5CD6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(134, 188, 37, 0.10);
+  --sidebar-accent: rgba(11, 92, 214, 0.10);
   --sidebar-accent-foreground: #1a1a1a;
   --sidebar-border: rgba(0, 0, 0, 0.06);
-  --sidebar-ring: rgba(134, 188, 37, 0.35);
+  --sidebar-ring: rgba(11, 92, 214, 0.35);
 }
 
 /* ─────────────────────────────────────────────────────────────
    Dark Mode
 ───────────────────────────────────────────────────────────── */
 .dark {
-  --background: #0d0f0a;
+  --background: #0a0e1a;
   --foreground: #f5f5f2;
-  --card: rgba(22, 26, 16, 0.82);
+  --card: rgba(20, 26, 40, 0.82);
   --card-foreground: #f5f5f2;
-  --popover: rgba(22, 26, 16, 0.96);
+  --popover: rgba(20, 26, 40, 0.96);
   --popover-foreground: #f5f5f2;
-  --primary: #97d12b;
-  --primary-foreground: #0d1a00;
-  --secondary: rgba(134, 188, 37, 0.15);
+  --primary: #4f8fe5;
+  --primary-hover: #3d7ed1;
+  --primary-subtle: rgba(79, 143, 229, 0.12);
+  --primary-foreground: #041024;
+  --secondary: rgba(79, 143, 229, 0.15);
   --secondary-foreground: #f5f5f2;
-  --muted: rgba(134, 188, 37, 0.08);
-  --muted-foreground: #8f9e72;
-  --accent: rgba(134, 188, 37, 0.15);
+  --muted: rgba(79, 143, 229, 0.08);
+  --muted-foreground: #94a3b8;
+  --accent: rgba(79, 143, 229, 0.15);
   --accent-foreground: #f5f5f2;
   --destructive: #fc5454;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.07);
-  --ring: rgba(151, 209, 43, 0.45);
-  --chart-1: #97d12b;
+  --ring: rgba(79, 143, 229, 0.45);
+  --ai: #a78bfa;
+  --ai-hover: #8b5cf6;
+  --ai-subtle: rgba(167, 139, 250, 0.12);
+  --surface: #111827;
+  --surface-muted: #0f172a;
+  --chart-1: #4f8fe5;
   --chart-2: #29a8d9;
-  --chart-3: #c4e55a;
+  --chart-3: #7dd3fc;
   --chart-4: #2d7ab5;
   --chart-5: #9ca3af;
-  --sidebar: rgba(14, 18, 10, 0.88);
+  --sidebar: rgba(10, 14, 26, 0.88);
   --sidebar-foreground: #f5f5f2;
-  --sidebar-primary: #97d12b;
-  --sidebar-primary-foreground: #0d1a00;
-  --sidebar-accent: rgba(134, 188, 37, 0.12);
+  --sidebar-primary: #4f8fe5;
+  --sidebar-primary-foreground: #041024;
+  --sidebar-accent: rgba(79, 143, 229, 0.12);
   --sidebar-accent-foreground: #f5f5f2;
   --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: rgba(151, 209, 43, 0.4);
+  --sidebar-ring: rgba(79, 143, 229, 0.4);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -142,18 +158,18 @@
     @apply font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-size: 18px; /* bumped for readability */
+    font-size: 18px;
   }
 
   body {
     color: var(--foreground);
-    background-color: #e4e9d8;
-    /* Deloitte-tinted gradient — warm greens and slate */
+    background-color: #e6ecf3;
+    /* Blue/white tinted gradient */
     background-image:
-      radial-gradient(ellipse at 15% 50%, rgba(134, 188, 37, 0.12) 0%, transparent 55%),
-      radial-gradient(ellipse at 85% 15%, rgba(0, 118, 168, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 60% 90%, rgba(178, 210, 53, 0.10) 0%, transparent 50%),
-      linear-gradient(155deg, #edf2e4 0%, #e8ecdf 35%, #e2e8f0 100%);
+      radial-gradient(ellipse at 15% 50%, rgba(11, 92, 214, 0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 15%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 90%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+      linear-gradient(155deg, #edf2f9 0%, #e8ecf3 35%, #e2e8f0 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -232,9 +248,9 @@
   box-shadow:
     0 20px 50px rgba(0, 0, 0, 0.13),
     0 8px 20px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(134, 188, 37, 0.22),
+    0 0 0 1px rgba(11, 92, 214, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  border-color: rgba(134, 188, 37, 0.28) !important;
+  border-color: rgba(11, 92, 214, 0.28) !important;
 }
 
 /* Pressed / active state */
@@ -260,8 +276,8 @@ textarea {
 
 input:focus,
 textarea:focus {
-  border-color: rgba(134, 188, 37, 0.55) !important;
-  box-shadow: 0 0 0 3px rgba(134, 188, 37, 0.14);
+  border-color: rgba(11, 92, 214, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(11, 92, 214, 0.14);
   outline: none;
 }
 
@@ -274,8 +290,8 @@ textarea:focus {
 
 [data-slot="select-trigger"][data-open="true"],
 [data-slot="select-trigger"]:focus-visible {
-  border-color: rgba(134, 188, 37, 0.55) !important;
-  box-shadow: 0 0 0 3px rgba(134, 188, 37, 0.14);
+  border-color: rgba(11, 92, 214, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(11, 92, 214, 0.14);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -321,7 +337,6 @@ textarea:focus {
 
 /* ─────────────────────────────────────────────────────────────
    Overlay panels — no 3D transforms on anything inside
-   (fixed <aside> drawers and Sheet overlays)
 ───────────────────────────────────────────────────────────── */
 aside [data-slot="button"],
 aside [data-slot="button"]:hover:not(:disabled),
@@ -353,7 +368,7 @@ aside nav a {
   will-change: transform;
 }
 
-aside nav a:hover:not(.bg-\[\#86BC25\]) {
+aside nav a:hover:not(.bg-\[\#0B5CD6\]) {
   transform: translateX(4px) perspective(600px) rotateY(-4deg);
 }
 
@@ -387,7 +402,7 @@ aside nav a:hover:not(.bg-\[\#86BC25\]) {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(134, 188, 37, 0.45);
+  background: rgba(11, 92, 214, 0.45);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -438,7 +453,7 @@ tr {
 
 /* Focus rings — visible on all interactive elements */
 :focus-visible {
-  outline: 2px solid rgba(134, 188, 37, 0.70);
+  outline: 2px solid rgba(11, 92, 214, 0.70);
   outline-offset: 2px;
   border-radius: 4px;
 }

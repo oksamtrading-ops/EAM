@@ -58,7 +58,7 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
               onClick={() => { if (pendingDeleteId !== app.id) onSelect(app.id); }}
               className={cn(
                 "group cursor-pointer transition-colors hover:bg-[#fafbfc]",
-                selectedId === app.id && "bg-[#86BC25]/5"
+                selectedId === app.id && "bg-[#0B5CD6]/5"
               )}
             >
               <td className="px-4 py-3">

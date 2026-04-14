@@ -44,10 +44,10 @@ export function AISuggestionPanel({ open, onClose, tree }: Props) {
   return (
     <aside className="fixed right-0 top-0 h-screen w-[420px] z-40 border-l bg-white flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#86BC25]/5 to-transparent">
+      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#7c3aed]/5 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#86BC25]/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-[#86BC25]" />
+          <div className="h-8 w-8 rounded-lg bg-[#7c3aed]/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-[#7c3aed]" />
           </div>
           <div>
             <h2 className="font-bold text-sm text-[#1a1f2e]">AI Assistant</h2>
@@ -115,7 +115,7 @@ function TabButton({
       onClick={onClick}
       className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
         active
-          ? "border-[#86BC25] text-[#86BC25]"
+          ? "border-[#7c3aed] text-[#7c3aed]"
           : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >
@@ -236,7 +236,7 @@ function SuggestTab({
       <Button
         onClick={runSuggestion}
         disabled={loading}
-        className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white mb-5"
+        className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5"
       >
         {loading ? (
           <>
@@ -276,7 +276,7 @@ function SuggestTab({
           {suggestions.map((s, i) => (
             <div
               key={i}
-              className="p-3.5 rounded-lg border border-[#e9ecef] hover:border-[#86BC25]/30 transition-colors"
+              className="p-3.5 rounded-lg border border-[#e9ecef] hover:border-[#7c3aed]/30 transition-colors"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ function SuggestTab({
               </div>
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 {s.domain && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#86BC25]/10 text-[#86BC25] font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#7c3aed]/10 text-[#7c3aed] font-medium">
                     {s.domain}
                   </span>
                 )}
@@ -385,7 +385,7 @@ const MATURITY_BAR_COLORS: Record<string, string> = {
   DEVELOPING: "#f97316",
   DEFINED: "#eab308",
   MANAGED: "#22c55e",
-  OPTIMIZING: "#86BC25",
+  OPTIMIZING: "#7c3aed",
   NOT_ASSESSED: "#cbd5e1",
 };
 
@@ -472,7 +472,7 @@ function GapAnalysisTab({
       <Button
         onClick={runAnalysis}
         disabled={loading}
-        className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white mb-5"
+        className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5"
       >
         {loading ? (
           <>
@@ -621,7 +621,7 @@ function GapAnalysisTab({
                       <p className="text-[11px] text-[#495057] leading-relaxed mb-1">
                         {gap.analysis}
                       </p>
-                      <p className="text-[11px] text-[#86BC25] font-medium leading-relaxed">
+                      <p className="text-[11px] text-[#7c3aed] font-medium leading-relaxed">
                         → {gap.recommendation}
                       </p>
                     </div>
@@ -683,14 +683,14 @@ function GapAnalysisTab({
           {/* Transformation Themes */}
           {result.transformationThemes?.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#86BC25] mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] mb-2">
                 Transformation Themes
               </p>
               <div className="space-y-2">
                 {result.transformationThemes.map((t, i) => (
                   <div
                     key={i}
-                    className="p-3 rounded-lg border border-[#86BC25]/20 bg-[#86BC25]/5"
+                    className="p-3 rounded-lg border border-[#7c3aed]/20 bg-[#7c3aed]/5"
                   >
                     <h4 className="text-xs font-semibold text-[#1a1f2e] mb-1">
                       {t.theme}
@@ -702,7 +702,7 @@ function GapAnalysisTab({
                       {t.relatedCapabilities.map((cap, j) => (
                         <span
                           key={j}
-                          className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#86BC25]/30 text-[#495057]"
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#7c3aed]/30 text-[#495057]"
                         >
                           {cap}
                         </span>
@@ -876,7 +876,7 @@ const EFFORT_CONFIG: Record<string, { color: string; bg: string }> = {
 };
 
 const WAVE_COLORS = [
-  "border-[#86BC25]/40 bg-[#86BC25]/5",
+  "border-[#7c3aed]/40 bg-[#7c3aed]/5",
   "border-blue-300 bg-blue-50/50",
   "border-purple-300 bg-purple-50/50",
   "border-amber-300 bg-amber-50/50",
@@ -980,7 +980,7 @@ function InvestmentTab({
       <Button
         onClick={runPriorities}
         disabled={loading}
-        className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white mb-5"
+        className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5"
       >
         {loading ? (
           <>
@@ -1094,7 +1094,7 @@ function InvestmentTab({
                       <p className="text-[11px] text-[#495057] leading-relaxed mb-1">
                         {init.investmentRationale}
                       </p>
-                      <p className="text-[11px] text-[#86BC25] font-medium leading-relaxed mb-1">
+                      <p className="text-[11px] text-[#7c3aed] font-medium leading-relaxed mb-1">
                         → {init.implementationApproach}
                       </p>
                       <p className="text-[10px] text-red-600/70 italic">
@@ -1177,8 +1177,8 @@ function InvestmentTab({
 
           {/* Budget Guidance */}
           {result.budgetGuidance && (
-            <div className="p-3 rounded-lg border border-[#86BC25]/20 bg-[#86BC25]/5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#86BC25] mb-1">
+            <div className="p-3 rounded-lg border border-[#7c3aed]/20 bg-[#7c3aed]/5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] mb-1">
                 Budget Guidance
               </p>
               <p className="text-[11px] text-[#495057] leading-relaxed">

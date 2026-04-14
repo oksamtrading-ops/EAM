@@ -485,7 +485,7 @@ export const capabilityRouter = router({
       // Pre-create value-chain band tags outside the transaction
       // so we can upsert them cleanly (no nested transaction needed)
       const BAND_COLORS: Record<string, string> = {
-        Grow: "#86BC25",
+        Grow: "#0B5CD6",
         Run: "#3b82f6",
         Protect: "#f59e0b",
       };

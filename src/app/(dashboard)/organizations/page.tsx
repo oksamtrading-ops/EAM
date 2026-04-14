@@ -15,6 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Building2, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 // We need an org router — let's add inline fetch for now
 // using the capability router's workspace context
@@ -50,17 +51,20 @@ export default function OrganizationsPage() {
   return (
     <div className="max-w-2xl p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
-            Business Units
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage organizational units that own capabilities.
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+              Business Units
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage organizational units that own capabilities.
+            </p>
+          </div>
+          <PageSearchTrigger />
         </div>
         <Button
           onClick={() => setShowCreate(true)}
-          className="bg-[#86BC25] hover:bg-[#76a821] text-white"
+          className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
         >
           <Plus className="h-4 w-4 mr-1.5" />
           Add Business Unit
@@ -188,7 +192,7 @@ function CreateOrgDialog({
             <Button
               onClick={handleCreate}
               disabled={!name.trim() || saving}
-              className="bg-[#86BC25] hover:bg-[#76a821] text-white"
+              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
             >
               Create
             </Button>

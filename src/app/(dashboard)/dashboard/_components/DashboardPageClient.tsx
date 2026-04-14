@@ -17,6 +17,7 @@ import { ActivityFeed } from "./ActivityFeed";
 import { PinnedItemsCard } from "./PinnedItemsCard";
 import { CostByDomainChart } from "./CostByDomainChart";
 import { DashboardAIPanel } from "./DashboardAIPanel";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 export function DashboardPageClient() {
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
@@ -43,11 +44,14 @@ export function DashboardPageClient() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Executive Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time overview of architecture portfolio and health metrics
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Executive Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Real-time overview of architecture portfolio and health metrics
+            </p>
+          </div>
+          <PageSearchTrigger />
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
           <Button

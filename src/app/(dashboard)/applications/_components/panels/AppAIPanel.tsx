@@ -45,10 +45,10 @@ export function AppAIPanel({ open, onClose, apps, capTree }: Props) {
   return (
     <aside className="fixed right-0 top-0 h-screen w-[440px] z-40 border-l bg-white flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#86BC25]/5 to-transparent">
+      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#7c3aed]/5 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#86BC25]/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-[#86BC25]" />
+          <div className="h-8 w-8 rounded-lg bg-[#7c3aed]/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-[#7c3aed]" />
           </div>
           <div>
             <h2 className="font-bold text-sm text-[#1a1f2e]">AI Assistant</h2>
@@ -89,7 +89,7 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-        active ? "border-[#86BC25] text-[#86BC25]" : "border-transparent text-muted-foreground hover:text-foreground"
+        active ? "border-[#7c3aed] text-[#7c3aed]" : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}
@@ -166,7 +166,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
       <p className="text-sm text-muted-foreground mb-4">
         Analyze the entire portfolio using the Gartner TIME model. Every application will be assessed and categorized.
       </p>
-      <Button onClick={run} disabled={loading} className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white mb-5">
+      <Button onClick={run} disabled={loading} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
         {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing portfolio...</> : <><Sparkles className="h-4 w-4 mr-2" />Run Rationalization</>}
       </Button>
 
@@ -217,7 +217,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
                         {rec.annualCost > 0 && <Badge variant="outline" className="text-[9px]">${Number(rec.annualCost).toLocaleString()}/yr</Badge>}
                       </div>
                       <p className="text-[11px] text-[#495057] leading-relaxed mb-1">{rec.rationale}</p>
-                      <p className="text-[11px] text-[#86BC25] font-medium leading-relaxed">→ {rec.action}</p>
+                      <p className="text-[11px] text-[#7c3aed] font-medium leading-relaxed">→ {rec.action}</p>
                       {rec.savingsIfActioned > 0 && (
                         <p className="text-[10px] text-green-600 mt-1">Potential savings: ${Number(rec.savingsIfActioned).toLocaleString()}/yr</p>
                       )}
@@ -376,7 +376,7 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
           ))}
         </SelectContent>
       </Select>
-      <Button onClick={run} disabled={loading || !selectedAppId} className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white mb-5">
+      <Button onClick={run} disabled={loading || !selectedAppId} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
         {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing impact...</> : <><Target className="h-4 w-4 mr-2" />Analyze Impact</>}
       </Button>
 
@@ -622,7 +622,7 @@ function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any
           </SelectContent>
         </Select>
       </div>
-      <Button onClick={run} disabled={loading} className="w-full bg-[#86BC25] hover:bg-[#76a821] text-white mb-5">
+      <Button onClick={run} disabled={loading} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
         {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Researching solutions...</> : <><Cpu className="h-4 w-4 mr-2" />Get Recommendations</>}
       </Button>
 

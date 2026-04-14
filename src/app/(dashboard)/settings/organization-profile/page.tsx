@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Save, Sparkles, Building2, Globe, Scale, Lightbulb } from "lucide-react";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const INDUSTRIES = [
   { value: "BANKING", label: "Banking & Financial Services" },
@@ -96,15 +97,18 @@ export default function OrganizationProfilePage() {
 
   return (
     <div className="max-w-3xl p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-[#7c3aed]" />
-          Organization Profile
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Strategic context about your organization. This shapes AI outputs
-          across every module — the more specific, the better the results.
-        </p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-[#7c3aed]" />
+            Organization Profile
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Strategic context about your organization. This shapes AI outputs
+            across every module — the more specific, the better the results.
+          </p>
+        </div>
+        <PageSearchTrigger />
       </div>
 
       {/* AI context banner */}

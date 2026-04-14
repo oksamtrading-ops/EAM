@@ -19,6 +19,7 @@ import { useRiskContext, type ViewMode } from "./RiskContext";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const VIEWS: { id: ViewMode; label: string; icon: React.ElementType }[] = [
   { id: "radar", label: "Tech Radar", icon: Radar },
@@ -79,6 +80,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             <h1 className="font-semibold text-[15px]">Technology Risk & Compliance</h1>
             <p className="text-xs text-muted-foreground">Module 4</p>
           </div>
+          <PageSearchTrigger />
         </div>
 
         <div className="flex items-center gap-2">
@@ -105,7 +107,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             <Sparkles className="h-3.5 w-3.5" />
             AI Assistant
           </Button>
-          <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#86BC25] hover:bg-[#75a821] text-white">
+          <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#0B5CD6] hover:bg-[#75a821] text-white">
             <Plus className="h-4 w-4" />
             New Risk
           </Button>
@@ -139,7 +141,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-[13px] font-medium border-b-2 transition-colors",
               view === v.id
-                ? "border-[#86BC25] text-[#86BC25]"
+                ? "border-[#0B5CD6] text-[#0B5CD6]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >

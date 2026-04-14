@@ -2,6 +2,7 @@
 
 import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 import type { ViewMode } from "./CapabilityPageClient";
 
 type Props = {
@@ -31,7 +32,7 @@ export function CapabilityToolbar({
 }: Props) {
   return (
     <div className="bg-white border-b px-6 py-4 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <div>
           <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
             Business Capability Map
@@ -40,6 +41,7 @@ export function CapabilityToolbar({
             {capabilityCount} capabilities mapped
           </p>
         </div>
+        <PageSearchTrigger />
       </div>
 
       <div className="flex items-center gap-2">
@@ -86,7 +88,7 @@ export function CapabilityToolbar({
           size="sm"
           variant={showAI ? "default" : "outline"}
           onClick={onAI}
-          className={`h-9 text-xs ${showAI ? "bg-[#86BC25] hover:bg-[#76a821] text-white" : ""}`}
+          className={`h-9 text-xs ${showAI ? "bg-[#0B5CD6] hover:bg-[#094cb0] text-white" : ""}`}
         >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
           AI Assistant
@@ -125,7 +127,7 @@ export function CapabilityToolbar({
         <Button
           size="sm"
           onClick={onCreateNew}
-          className="h-9 text-xs bg-[#86BC25] hover:bg-[#76a821] text-white"
+          className="h-9 text-xs bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
         >
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           Add Capability

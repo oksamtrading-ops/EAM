@@ -23,6 +23,7 @@ import {
   Trash2,
   Star,
 } from "lucide-react";
+import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const INDUSTRIES = [
   { value: "BANKING", label: "Banking & Financial Services" },
@@ -119,13 +120,16 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl p-6 space-y-8">
-      <div>
-        <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
-          Workspace Settings
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Configure your workspace details and industry context.
-        </p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+            Workspace Settings
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Configure your workspace details and industry context.
+          </p>
+        </div>
+        <PageSearchTrigger />
       </div>
 
       {/* General settings */}
@@ -199,7 +203,7 @@ export default function SettingsPage() {
             })
           }
           disabled={updateMutation.isPending || !name.trim()}
-          className="bg-[#86BC25] hover:bg-[#76a821] text-white"
+          className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
         >
           <Save className="h-4 w-4 mr-2" />
           {updateMutation.isPending ? "Saving..." : "Save Settings"}
@@ -237,7 +241,7 @@ export default function SettingsPage() {
 
         {currentWs?.isDefault && (
           <div className="flex items-center gap-2 py-3 border-b text-sm text-muted-foreground">
-            <Star className="h-4 w-4 text-[#86BC25]" />
+            <Star className="h-4 w-4 text-[#0B5CD6]" />
             This is your default workspace.
           </div>
         )}

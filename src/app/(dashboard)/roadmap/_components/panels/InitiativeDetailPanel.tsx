@@ -126,7 +126,7 @@ export function InitiativeDetailPanel({
               onClick={() => setTab(t)}
               className={`flex-1 py-2 text-xs font-medium capitalize transition-colors ${
                 tab === t
-                  ? "border-b-2 border-[#86BC25] text-foreground"
+                  ? "border-b-2 border-[#0B5CD6] text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

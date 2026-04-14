@@ -47,7 +47,7 @@ export function ObjectiveProgressStrip({
                 <p className="text-[11px] font-medium truncate flex-1">{obj.name}</p>
                 <button
                   onClick={() => setEditObjective(obj)}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-[#86BC25] transition-all shrink-0"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-[#0B5CD6] transition-all shrink-0"
                   title="Edit objective"
                 >
                   <Pencil className="h-3 w-3" />

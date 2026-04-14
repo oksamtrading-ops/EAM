@@ -140,8 +140,8 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
             key={l1.id}
             className={cn(
               "rounded-xl border bg-white overflow-hidden shadow-sm transition-all hover:shadow-md",
-              selectedId === l1.id && "ring-2 ring-[#86BC25]",
-              isDragOver && "ring-2 ring-[#86BC25] border-[#86BC25]"
+              selectedId === l1.id && "ring-2 ring-[#0B5CD6]",
+              isDragOver && "ring-2 ring-[#0B5CD6] border-[#0B5CD6]"
             )}
             onDragOver={(e) => {
               if (draggingRef.current && draggingRef.current.level !== "L1") {
@@ -172,7 +172,7 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
                 </span>
                 <div className="flex items-center gap-2">
                   {isDragOver && (
-                    <span className="text-[10px] text-[#86BC25] font-medium animate-pulse">
+                    <span className="text-[10px] text-[#0B5CD6] font-medium animate-pulse">
                       Drop here
                     </span>
                   )}
@@ -293,7 +293,7 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
                             className={cn(
                               "w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
                               selectedId === l3.id
-                                ? "bg-[#86BC25]/10 ring-1 ring-[#86BC25]/40"
+                                ? "bg-[#0B5CD6]/10 ring-1 ring-[#0B5CD6]/40"
                                 : "hover:bg-[#f1f3f5]"
                             )}
                           >

@@ -98,7 +98,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. ACME Corp EA Engagement"
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#86BC25]/40 focus:border-[#86BC25]"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6]"
               autoFocus
               maxLength={100}
             />
@@ -114,7 +114,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="e.g. ACME Corporation"
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#86BC25]/40 focus:border-[#86BC25]"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6]"
               maxLength={100}
             />
           </div>
@@ -127,7 +127,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
             <select
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#86BC25]/40 focus:border-[#86BC25] bg-white"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6] bg-white"
             >
               {INDUSTRIES.map((ind) => (
                 <option key={ind.value} value={ind.value}>
@@ -147,7 +147,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of this workspace..."
               rows={2}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#86BC25]/40 focus:border-[#86BC25] resize-none"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6] resize-none"
               maxLength={500}
             />
           </div>
@@ -165,7 +165,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               type="submit"
               size="sm"
               disabled={!name.trim() || createMutation.isPending}
-              className="bg-[#86BC25] hover:bg-[#76a821] text-white"
+              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
             >
               {createMutation.isPending ? (
                 <>

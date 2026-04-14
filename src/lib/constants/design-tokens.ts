@@ -2,11 +2,17 @@
 // Used across all components instead of hard-coded hex values
 
 export const BRAND = {
-  // Deloitte green
-  primary: "#86BC25",
-  primaryHover: "#76a821",
-  primaryLight: "rgba(134, 188, 37, 0.1)",
-  primarySubtle: "rgba(134, 188, 37, 0.05)",
+  // Brand blue
+  primary: "#0B5CD6",
+  primaryHover: "#094cb0",
+  primaryLight: "rgba(11, 92, 214, 0.1)",
+  primarySubtle: "rgba(11, 92, 214, 0.05)",
+
+  // AI accent — purple, reserved for AI-generated surfaces
+  ai: "#7c3aed",
+  aiHover: "#6d28d9",
+  aiLight: "rgba(124, 58, 237, 0.1)",
+  aiSubtle: "rgba(124, 58, 237, 0.05)",
 
   // Dark sidebar / headings
   dark: "#1a1f2e",

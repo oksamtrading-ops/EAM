@@ -15,7 +15,7 @@ const BUCKETS: {
   bg: string;
   dot: string;
 }[] = [
-  { key: "healthy",  label: "Healthy",  color: "#86BC25", bg: "bg-[#86BC25]", dot: "bg-[#86BC25]" },
+  { key: "healthy",  label: "Healthy",  color: "#0B5CD6", bg: "bg-[#0B5CD6]", dot: "bg-[#0B5CD6]" },
   { key: "warning",  label: "Warning",  color: "#f59e0b", bg: "bg-amber-400",  dot: "bg-amber-400" },
   { key: "critical", label: "Critical", color: "#ef4444", bg: "bg-red-500",    dot: "bg-red-500" },
 ];

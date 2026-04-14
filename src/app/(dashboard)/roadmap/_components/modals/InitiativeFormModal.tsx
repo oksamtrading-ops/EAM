@@ -332,7 +332,7 @@ export function InitiativeFormModal({
               required
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+              className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
               placeholder="Initiative name"
             />
           </div>
@@ -345,7 +345,7 @@ export function InitiativeFormModal({
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25] resize-none"
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6] resize-none"
               placeholder="What does this initiative deliver?"
             />
           </div>
@@ -469,7 +469,7 @@ export function InitiativeFormModal({
                 min={0}
                 value={form.budgetUsd}
                 onChange={(e) => setForm((f) => ({ ...f, budgetUsd: e.target.value }))}
-                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
                 placeholder="e.g. 500000"
               />
             </div>
@@ -480,7 +480,7 @@ export function InitiativeFormModal({
               <input
                 value={form.businessSponsor}
                 onChange={(e) => setForm((f) => ({ ...f, businessSponsor: e.target.value }))}
-                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#86BC25]"
+                className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
                 placeholder="Sponsor name"
               />
             </div>
@@ -535,7 +535,7 @@ export function InitiativeFormModal({
             form="initiative-form"
             onClick={handleSubmit}
             disabled={isPending || !form.name}
-            className="flex items-center gap-2 px-4 py-2 bg-[#86BC25] text-white text-sm font-semibold rounded-md hover:bg-[#76a820] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#0B5CD6] text-white text-sm font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50 transition-colors"
           >
             {(create.isPending || update.isPending) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {isEdit ? "Save Changes" : "Create Initiative"}

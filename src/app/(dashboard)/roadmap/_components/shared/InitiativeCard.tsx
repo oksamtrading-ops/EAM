@@ -31,7 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-slate-50 border-slate-200 text-slate-700",
   PLANNED: "bg-blue-50 border-blue-200 text-blue-700",
-  IN_PROGRESS: "bg-[#86BC25]/5 border-[#86BC25]/30 text-green-800",
+  IN_PROGRESS: "bg-[#0B5CD6]/5 border-[#0B5CD6]/30 text-green-800",
   ON_HOLD: "bg-amber-50 border-amber-200 text-amber-700",
   COMPLETE: "bg-emerald-50 border-emerald-200 text-emerald-700",
   CANCELLED: "bg-rose-50 border-rose-200 text-rose-500 opacity-80",
