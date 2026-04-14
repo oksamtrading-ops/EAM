@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, ChevronRight } from "lucide-react";
+import {
+  X, Trash2, ChevronRight, Copy, Target, Link2, Unlink,
+  Users, Building2, Workflow, Plus, ArrowRight, DollarSign,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,31 +30,34 @@ import { CapabilityAIInsights } from "./CapabilityAIInsights";
 type Props = {
   capabilityId: string;
   onClose: () => void;
+  onSelect?: (id: string) => void;
   autoOpenAI?: boolean;
 };
 
 const MATURITY_OPTIONS = [
-  "NOT_ASSESSED",
-  "INITIAL",
-  "DEVELOPING",
-  "DEFINED",
-  "MANAGED",
-  "OPTIMIZING",
+  "NOT_ASSESSED", "INITIAL", "DEVELOPING", "DEFINED", "MANAGED", "OPTIMIZING",
 ] as const;
 
 const IMPORTANCE_OPTIONS = [
-  "NOT_ASSESSED",
-  "LOW",
-  "MEDIUM",
-  "HIGH",
-  "CRITICAL",
+  "NOT_ASSESSED", "LOW", "MEDIUM", "HIGH", "CRITICAL",
 ] as const;
 
-export function CapabilityDetailPanel({ capabilityId, onClose, autoOpenAI }: Props) {
+const ALIGNMENT_OPTIONS = [
+  { value: "STRONG", label: "Strong", color: "#16a34a" },
+  { value: "MODERATE", label: "Moderate", color: "#ca8a04" },
+  { value: "WEAK", label: "Weak", color: "#94a3b8" },
+] as const;
+
+export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpenAI }: Props) {
   const utils = trpc.useUtils();
-  const { data: cap, isLoading } = trpc.capability.getById.useQuery({
-    id: capabilityId,
-  });
+  const { data: cap, isLoading } = trpc.capability.getById.useQuery({ id: capabilityId });
+  const { data: valueStreams } = trpc.capability.listValueStreams.useQuery();
+  const { data: objectives } = trpc.objective.list.useQuery();
+  const { data: tree } = trpc.capability.getTree.useQuery();
+  const { data: costRollup } = trpc.capability.getCostRollup.useQuery();
+
+  const [showObjectivePicker, setShowObjectivePicker] = useState(false);
+  const [showDependencyPicker, setShowDependencyPicker] = useState(false);
 
   const updateMutation = trpc.capability.update.useMutation({
     onSuccess: () => {
@@ -80,245 +86,607 @@ export function CapabilityDetailPanel({ capabilityId, onClose, autoOpenAI }: Pro
     onError: (err) => toast.error(err.message),
   });
 
+  const cloneMutation = trpc.capability.clone.useMutation({
+    onSuccess: (data) => {
+      utils.capability.getTree.invalidate();
+      toast.success("Capability cloned");
+      onSelect?.(data.id);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const linkObjectiveMutation = trpc.capability.linkObjective.useMutation({
+    onSuccess: () => {
+      utils.capability.getById.invalidate({ id: capabilityId });
+      setShowObjectivePicker(false);
+      toast.success("Objective linked");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const unlinkObjectiveMutation = trpc.capability.unlinkObjective.useMutation({
+    onSuccess: () => {
+      utils.capability.getById.invalidate({ id: capabilityId });
+      toast.success("Objective unlinked");
+    },
+  });
+
+  const addDependencyMutation = trpc.capability.addDependency.useMutation({
+    onSuccess: () => {
+      utils.capability.getById.invalidate({ id: capabilityId });
+      setShowDependencyPicker(false);
+      toast.success("Dependency added");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const removeDependencyMutation = trpc.capability.removeDependency.useMutation({
+    onSuccess: () => {
+      utils.capability.getById.invalidate({ id: capabilityId });
+      toast.success("Dependency removed");
+    },
+  });
+
   if (isLoading || !cap) {
     return (
-      <aside className="fixed right-0 top-0 h-screen w-96 z-40 border-l bg-background p-4 shadow-xl">
-        <div className="animate-pulse">Loading...</div>
+      <aside className="fixed right-0 top-0 h-screen w-[420px] z-40 border-l bg-background p-4 shadow-xl">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-muted rounded w-3/4" />
+          <div className="h-4 bg-muted rounded w-1/2" />
+          <div className="h-20 bg-muted rounded" />
+        </div>
       </aside>
     );
   }
 
-  const gap =
-    MATURITY_NUMERIC[cap.targetMaturity] - MATURITY_NUMERIC[cap.currentMaturity];
+  const gap = MATURITY_NUMERIC[cap.targetMaturity] - MATURITY_NUMERIC[cap.currentMaturity];
+  const linkedObjectiveIds = new Set((cap as any).objectives?.map((o: any) => o.objectiveId) ?? []);
+  const dependsOnIds = new Set((cap as any).dependsOn?.map((d: any) => d.prerequisiteId) ?? []);
+
+  // Flatten tree for dependency picker
+  const flatCaps: { id: string; name: string; level: string }[] = [];
+  function flattenTree(nodes: any[]) {
+    for (const n of nodes) {
+      if (n.id !== capabilityId) flatCaps.push({ id: n.id, name: n.name, level: n.level });
+      if (n.children) flattenTree(n.children);
+    }
+  }
+  if (tree) flattenTree(tree);
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-96 z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-[420px] z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
-      <div className="p-4 border-b flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="text-[10px]">
-              {cap.level}
-            </Badge>
-            {cap.parent && (
-              <>
-                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground truncate">
-                  {cap.parent.name}
-                </span>
-              </>
-            )}
+      <div className="px-5 pt-5 pb-4 border-b bg-white">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Badge variant="outline" className="text-[10px] font-mono">
+                {cap.level}
+              </Badge>
+              {cap.parent && (
+                <>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground truncate">
+                    {cap.parent.name}
+                  </span>
+                </>
+              )}
+            </div>
+            <EditableField
+              value={cap.name}
+              onSave={(name) => updateMutation.mutate({ id: cap.id, name })}
+              className="font-semibold text-lg leading-tight"
+            />
           </div>
-          <EditableField
-            value={cap.name}
-            onSave={(name) => updateMutation.mutate({ id: cap.id, name })}
-            className="font-semibold text-lg"
-          />
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-[#0B5CD6]"
+              title="Clone capability"
+              onClick={() => cloneMutation.mutate({ id: cap.id })}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <Button size="icon" variant="ghost" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4 space-y-6">
-        {/* Description */}
-        <section>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            Description
-          </label>
-          <Textarea
-            defaultValue={cap.description ?? ""}
-            placeholder="Add a description..."
-            rows={3}
-            onBlur={(e) => {
-              if (e.target.value !== (cap.description ?? "")) {
-                updateMutation.mutate({
-                  id: cap.id,
-                  description: e.target.value || null,
-                });
-              }
-            }}
-          />
-        </section>
-
-        <Separator />
-
-        {/* Assessment */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-medium">Assessment</h3>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Current Maturity
-              </label>
-              <Select
-                value={cap.currentMaturity}
-                onValueChange={(v) =>
-                  assessMutation.mutate({
-                    capabilityId: cap.id,
-                    currentMaturity: v as any,
-                    targetMaturity: cap.targetMaturity as any,
-                    strategicImportance: cap.strategicImportance as any,
-                  })
+      <div className="flex-1 overflow-auto">
+        <div className="p-5 space-y-5">
+          {/* Description */}
+          <section>
+            <SectionLabel>Description</SectionLabel>
+            <Textarea
+              defaultValue={cap.description ?? ""}
+              placeholder="Add a description..."
+              rows={3}
+              className="text-sm"
+              onBlur={(e) => {
+                if (e.target.value !== (cap.description ?? "")) {
+                  updateMutation.mutate({ id: cap.id, description: e.target.value || null });
                 }
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MATURITY_OPTIONS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: MATURITY_COLORS[m] }}
-                        />
-                        {MATURITY_LABELS[m]}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              }}
+            />
+          </section>
 
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Target Maturity
-              </label>
-              <Select
-                value={cap.targetMaturity}
-                onValueChange={(v) =>
-                  assessMutation.mutate({
-                    capabilityId: cap.id,
-                    currentMaturity: cap.currentMaturity as any,
-                    targetMaturity: v as any,
-                    strategicImportance: cap.strategicImportance as any,
-                  })
-                }
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MATURITY_OPTIONS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: MATURITY_COLORS[m] }}
-                        />
-                        {MATURITY_LABELS[m]}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <Separator />
 
-          {/* Gap indicator */}
-          {gap !== 0 && cap.currentMaturity !== "NOT_ASSESSED" && (
-            <div className="text-xs p-2 rounded bg-muted">
-              Maturity gap:{" "}
-              <span className={gap > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>
-                {gap > 0 ? `+${gap} levels to close` : "Target reached"}
-              </span>
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Strategic Importance
-            </label>
+          {/* Value Stream */}
+          <section>
+            <SectionLabel icon={<Workflow className="h-3.5 w-3.5" />}>Value Stream</SectionLabel>
             <Select
-              value={cap.strategicImportance}
+              value={cap.valueStreamId ?? "__none__"}
               onValueChange={(v) =>
-                assessMutation.mutate({
-                  capabilityId: cap.id,
-                  currentMaturity: cap.currentMaturity as any,
-                  targetMaturity: cap.targetMaturity as any,
-                  strategicImportance: v as any,
-                })
+                updateMutation.mutate({ id: cap.id, valueStreamId: v === "__none__" ? null : v })
               }
             >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Assign value stream..." />
               </SelectTrigger>
               <SelectContent>
-                {IMPORTANCE_OPTIONS.map((i) => (
-                  <SelectItem key={i} value={i}>
-                    {IMPORTANCE_LABELS[i]}
+                <SelectItem value="__none__">
+                  <span className="text-muted-foreground">None</span>
+                </SelectItem>
+                {valueStreams?.map((vs) => (
+                  <SelectItem key={vs.id} value={vs.id}>
+                    <span className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: vs.color }} />
+                      {vs.name}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </section>
+            {(cap as any).valueStream && (
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: (cap as any).valueStream.color }}
+                />
+                <span className="text-xs font-medium">{(cap as any).valueStream.name}</span>
+              </div>
+            )}
+          </section>
 
-        <Separator />
+          <Separator />
 
-        {/* AI Insights */}
-        <section>
-          <CapabilityAIInsights capabilityId={cap.id} autoOpen={autoOpenAI} />
-        </section>
-
-        <Separator />
-
-        {/* Sub-capabilities */}
-        {cap.children && cap.children.length > 0 && (
+          {/* Investment / Cost Rollup */}
           <section>
-            <h3 className="text-sm font-medium mb-2">
-              Sub-capabilities ({cap.children.length})
-            </h3>
-            <div className="space-y-1">
-              {cap.children.map((child: any) => (
-                <div
-                  key={child.id}
-                  className="text-sm p-2 rounded hover:bg-muted cursor-pointer"
-                >
-                  <Badge variant="outline" className="text-[10px] mr-2">
-                    {child.level}
-                  </Badge>
-                  {child.name}
+            <SectionLabel icon={<DollarSign className="h-3.5 w-3.5" />}>Investment</SectionLabel>
+            {(() => {
+              const capCost = costRollup?.[capabilityId];
+              if (!capCost || capCost.totalCost === 0) {
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    No application costs mapped to this capability.
+                  </p>
+                );
+              }
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-bold text-[#1a1f2e]">
+                      ${capCost.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-xs text-muted-foreground">/year (weighted)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    From {capCost.appCount} application{capCost.appCount !== 1 ? "s" : ""}
+                  </p>
+                  <div className="space-y-1">
+                    {capCost.apps
+                      .sort((a, b) => b.cost - a.cost)
+                      .slice(0, 5)
+                      .map((app) => (
+                        <div key={app.id} className="flex items-center gap-2 text-xs">
+                          <span className="flex-1 truncate font-medium">{app.name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                            app.lifecycle === "ACTIVE" ? "bg-green-100 text-green-700" :
+                            app.lifecycle === "SUNSET" || app.lifecycle === "RETIRED" ? "bg-red-100 text-red-700" :
+                            "bg-gray-100 text-gray-600"
+                          }`}>
+                            {app.lifecycle}
+                          </span>
+                          <span className="text-muted-foreground tabular-nums">
+                            ${app.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
+                          {app.weight < 1 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              ({Math.round(app.weight * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    {capCost.apps.length > 5 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        +{capCost.apps.length - 5} more
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </section>
-        )}
 
-        {/* Tags */}
-        {cap.tags && cap.tags.length > 0 && (
+          <Separator />
+
+          {/* Ownership */}
           <section>
-            <h3 className="text-sm font-medium mb-2">Tags</h3>
-            <div className="flex flex-wrap gap-1">
-              {cap.tags.map((t: any) => (
-                <Badge
-                  key={t.tag.id}
-                  variant="secondary"
-                  style={{ borderColor: t.tag.color }}
+            <SectionLabel icon={<Users className="h-3.5 w-3.5" />}>Ownership</SectionLabel>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Organization</label>
+                <Select
+                  value={cap.organizationId ?? "__none__"}
+                  onValueChange={(v) =>
+                    updateMutation.mutate({ id: cap.id, organizationId: v === "__none__" ? null : v })
+                  }
                 >
-                  {t.tag.name}
-                </Badge>
-              ))}
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Assign org..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">
+                      <span className="text-muted-foreground">None</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <OwnerField
+                  label="Business Owner"
+                  owner={(cap as any).businessOwner}
+                  onChange={(id) => updateMutation.mutate({ id: cap.id, businessOwnerId: id })}
+                />
+                <OwnerField
+                  label="IT Owner"
+                  owner={(cap as any).itOwner}
+                  onChange={(id) => updateMutation.mutate({ id: cap.id, itOwnerId: id })}
+                />
+              </div>
             </div>
           </section>
-        )}
+
+          <Separator />
+
+          {/* Assessment */}
+          <section className="space-y-3">
+            <SectionLabel>Assessment</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Current Maturity</label>
+                <Select
+                  value={cap.currentMaturity}
+                  onValueChange={(v) =>
+                    assessMutation.mutate({
+                      capabilityId: cap.id,
+                      currentMaturity: v as any,
+                      targetMaturity: cap.targetMaturity as any,
+                      strategicImportance: cap.strategicImportance as any,
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MATURITY_OPTIONS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MATURITY_COLORS[m] }} />
+                          {MATURITY_LABELS[m]}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Target Maturity</label>
+                <Select
+                  value={cap.targetMaturity}
+                  onValueChange={(v) =>
+                    assessMutation.mutate({
+                      capabilityId: cap.id,
+                      currentMaturity: cap.currentMaturity as any,
+                      targetMaturity: v as any,
+                      strategicImportance: cap.strategicImportance as any,
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MATURITY_OPTIONS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MATURITY_COLORS[m] }} />
+                          {MATURITY_LABELS[m]}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Gap indicator */}
+            {gap !== 0 && cap.currentMaturity !== "NOT_ASSESSED" && (
+              <div className="text-xs px-3 py-2 rounded-lg bg-muted/60 flex items-center gap-2">
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                Maturity gap:{" "}
+                <span className={gap > 0 ? "text-orange-600 font-semibold" : "text-green-600 font-semibold"}>
+                  {gap > 0 ? `${gap} level${gap > 1 ? "s" : ""} to close` : "Target reached"}
+                </span>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Strategic Importance</label>
+              <Select
+                value={cap.strategicImportance}
+                onValueChange={(v) =>
+                  assessMutation.mutate({
+                    capabilityId: cap.id,
+                    currentMaturity: cap.currentMaturity as any,
+                    targetMaturity: cap.targetMaturity as any,
+                    strategicImportance: v as any,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IMPORTANCE_OPTIONS.map((i) => (
+                    <SelectItem key={i} value={i}>{IMPORTANCE_LABELS[i]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Strategic Objectives */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <SectionLabel icon={<Target className="h-3.5 w-3.5" />}>Strategic Objectives</SectionLabel>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-[#0B5CD6] hover:text-[#094cb0]"
+                onClick={() => setShowObjectivePicker(!showObjectivePicker)}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Link
+              </Button>
+            </div>
+
+            {showObjectivePicker && (
+              <div className="mb-3 p-3 rounded-lg border bg-muted/30 space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Select an objective to link:</p>
+                {objectives?.filter((o) => !linkedObjectiveIds.has(o.id)).map((obj) => (
+                  <button
+                    key={obj.id}
+                    onClick={() => linkObjectiveMutation.mutate({ capabilityId, objectiveId: obj.id })}
+                    className="w-full text-left px-3 py-2 rounded-md text-xs hover:bg-white transition flex items-center gap-2"
+                  >
+                    <Target className="h-3 w-3 text-[#0B5CD6] shrink-0" />
+                    <span className="truncate">{obj.name}</span>
+                  </button>
+                ))}
+                {objectives?.filter((o) => !linkedObjectiveIds.has(o.id)).length === 0 && (
+                  <p className="text-xs text-muted-foreground px-3 py-2">
+                    All objectives already linked, or none exist yet.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {(cap as any).objectives?.length > 0 ? (
+              <div className="space-y-1.5">
+                {(cap as any).objectives.map((link: any) => (
+                  <div
+                    key={link.objectiveId}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white group"
+                  >
+                    <Target className="h-3.5 w-3.5 text-[#0B5CD6] shrink-0" />
+                    <span className="text-xs font-medium flex-1 truncate">
+                      {link.objective.name}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px]"
+                      style={{
+                        color: ALIGNMENT_OPTIONS.find((a) => a.value === link.alignment)?.color,
+                        borderColor: ALIGNMENT_OPTIONS.find((a) => a.value === link.alignment)?.color,
+                      }}
+                    >
+                      {link.alignment}
+                    </Badge>
+                    <button
+                      onClick={() =>
+                        unlinkObjectiveMutation.mutate({ capabilityId, objectiveId: link.objectiveId })
+                      }
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+                    >
+                      <Unlink className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                No strategic objectives linked. Link objectives to track alignment.
+              </p>
+            )}
+          </section>
+
+          <Separator />
+
+          {/* Dependencies */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <SectionLabel icon={<Link2 className="h-3.5 w-3.5" />}>Dependencies</SectionLabel>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-[#0B5CD6] hover:text-[#094cb0]"
+                onClick={() => setShowDependencyPicker(!showDependencyPicker)}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            {showDependencyPicker && (
+              <div className="mb-3 p-3 rounded-lg border bg-muted/30 max-h-48 overflow-auto space-y-1">
+                <p className="text-xs font-medium text-muted-foreground mb-2">This capability depends on:</p>
+                {flatCaps.filter((c) => !dependsOnIds.has(c.id)).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() =>
+                      addDependencyMutation.mutate({ dependentId: capabilityId, prerequisiteId: c.id })
+                    }
+                    className="w-full text-left px-3 py-1.5 rounded-md text-xs hover:bg-white transition flex items-center gap-2"
+                  >
+                    <Badge variant="outline" className="text-[9px] font-mono shrink-0">{c.level}</Badge>
+                    <span className="truncate">{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {(cap as any).dependsOn?.length > 0 && (
+              <div className="space-y-1.5 mb-3">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Depends on</p>
+                {(cap as any).dependsOn.map((dep: any) => (
+                  <div
+                    key={dep.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white group cursor-pointer hover:border-[#0B5CD6]/30"
+                    onClick={() => onSelect?.(dep.prerequisiteId)}
+                  >
+                    <Badge variant="outline" className="text-[9px] font-mono shrink-0">
+                      {dep.prerequisite.level}
+                    </Badge>
+                    <span className="text-xs font-medium flex-1 truncate">
+                      {dep.prerequisite.name}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeDependencyMutation.mutate({ id: dep.id });
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(cap as any).dependedOnBy?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Depended on by</p>
+                {(cap as any).dependedOnBy.map((dep: any) => (
+                  <div
+                    key={dep.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30 cursor-pointer hover:border-[#0B5CD6]/30"
+                    onClick={() => onSelect?.(dep.dependentId)}
+                  >
+                    <Badge variant="outline" className="text-[9px] font-mono shrink-0">
+                      {dep.dependent.level}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground flex-1 truncate">
+                      {dep.dependent.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!(cap as any).dependsOn?.length && !(cap as any).dependedOnBy?.length && (
+              <p className="text-xs text-muted-foreground">
+                No dependencies defined.
+              </p>
+            )}
+          </section>
+
+          <Separator />
+
+          {/* AI Insights */}
+          <section>
+            <CapabilityAIInsights capabilityId={cap.id} autoOpen={autoOpenAI} />
+          </section>
+
+          <Separator />
+
+          {/* Sub-capabilities */}
+          {cap.children && cap.children.length > 0 && (
+            <section>
+              <SectionLabel>Sub-capabilities ({cap.children.length})</SectionLabel>
+              <div className="space-y-1">
+                {cap.children.map((child: any) => (
+                  <div
+                    key={child.id}
+                    className="text-sm px-3 py-2 rounded-lg hover:bg-muted cursor-pointer transition flex items-center gap-2"
+                    onClick={() => onSelect?.(child.id)}
+                  >
+                    <Badge variant="outline" className="text-[10px] font-mono">{child.level}</Badge>
+                    <span className="truncate">{child.name}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Tags */}
+          {cap.tags && cap.tags.length > 0 && (
+            <section>
+              <SectionLabel>Tags</SectionLabel>
+              <div className="flex flex-wrap gap-1.5">
+                {cap.tags.map((t: any) => (
+                  <Badge
+                    key={t.tag.id}
+                    variant="secondary"
+                    className="text-xs"
+                    style={{ borderColor: t.tag.color, color: t.tag.color }}
+                  >
+                    {t.tag.name}
+                  </Badge>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t">
+      <div className="px-5 py-3 border-t bg-white flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 text-xs"
+          onClick={() => cloneMutation.mutate({ id: cap.id })}
+        >
+          <Copy className="h-3.5 w-3.5 mr-1.5" />
+          Clone
+        </Button>
         <Button
           variant="destructive"
           size="sm"
-          className="w-full"
+          className="flex-1 text-xs"
           onClick={() => {
             if (confirm("Delete this capability?")) {
-              deleteMutation.mutate({
-                id: cap.id,
-                cascade: (cap.children?.length ?? 0) > 0,
-              });
+              deleteMutation.mutate({ id: cap.id, cascade: (cap.children?.length ?? 0) > 0 });
             }
           }}
         >
@@ -327,6 +695,69 @@ export function CapabilityDetailPanel({ capabilityId, onClose, autoOpenAI }: Pro
         </Button>
       </div>
     </aside>
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+
+function SectionLabel({
+  children,
+  icon,
+}: {
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <h3 className="flex items-center gap-1.5 text-xs font-semibold text-[#1a1f2e] uppercase tracking-wider mb-2">
+      {icon}
+      {children}
+    </h3>
+  );
+}
+
+function OwnerField({
+  label,
+  owner,
+  onChange,
+}: {
+  label: string;
+  owner: { id: string; name: string | null; avatarUrl: string | null } | null;
+  onChange: (id: string | null) => void;
+}) {
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
+      {owner ? (
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-white group">
+          {owner.avatarUrl ? (
+            <img src={owner.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+          ) : (
+            <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-[#0B5CD6]">
+                {(owner.name ?? "?")[0]?.toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="text-xs font-medium truncate flex-1">{owner.name ?? "Unknown"}</span>
+          <button
+            onClick={() => onChange(null)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            // For POC: assign current user — in production, open a user picker
+            toast.info(`${label} assignment coming in next release`);
+          }}
+          className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left"
+        >
+          + Assign {label.toLowerCase()}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -350,16 +781,11 @@ function EditableField({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
           setEditing(false);
-          if (draft !== value && draft.trim()) {
-            onSave(draft.trim());
-          }
+          if (draft !== value && draft.trim()) onSave(draft.trim());
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          if (e.key === "Escape") {
-            setDraft(value);
-            setEditing(false);
-          }
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
         }}
         className={className}
       />
@@ -368,18 +794,15 @@ function EditableField({
 
   return (
     <h2
-      className={`cursor-pointer hover:text-primary ${className}`}
+      className={`cursor-pointer hover:text-[#0B5CD6] transition-colors ${className}`}
       tabIndex={0}
       role="button"
-      aria-label={`Edit ${value}. Press Enter or double-click to edit.`}
+      aria-label={`Edit ${value}. Double-click to edit.`}
       onDoubleClick={() => setEditing(true)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setEditing(true);
-        }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditing(true); }
       }}
-      title="Press Enter or double-click to edit"
+      title="Double-click to edit"
     >
       {value}
     </h2>

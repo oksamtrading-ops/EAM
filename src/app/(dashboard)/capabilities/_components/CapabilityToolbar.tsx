@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown, History } from "lucide-react";
+import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown, History, DollarSign, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ViewMode } from "./CapabilityPageClient";
 
@@ -10,6 +10,7 @@ type Props = {
   onCreateNew: () => void;
   onImport: () => void;
   onExport: () => void;
+  onBulkAssess: () => void;
   onAI: () => void;
   showAI: boolean;
   onVersions: () => void;
@@ -23,6 +24,7 @@ export function CapabilityToolbar({
   onCreateNew,
   onImport,
   onExport,
+  onBulkAssess,
   onAI,
   showAI,
   onVersions,
@@ -78,6 +80,17 @@ export function CapabilityToolbar({
             <Flame className="h-3.5 w-3.5" />
             Heatmap
           </button>
+          <button
+            onClick={() => onViewChange("investment")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              view === "investment"
+                ? "bg-white shadow-sm text-[#1a1f2e]"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <DollarSign className="h-3.5 w-3.5" />
+            Investment
+          </button>
         </div>
 
         <div className="w-px h-6 bg-border mx-1" />
@@ -100,6 +113,16 @@ export function CapabilityToolbar({
         >
           <History className="h-3.5 w-3.5 mr-1.5" />
           Versions
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onBulkAssess}
+          className="h-9 text-xs"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+          Bulk Assess
         </Button>
 
         <Button

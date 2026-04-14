@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const MODEL = "claude-sonnet-4-20250514";
-const PROMPT_VERSION = "v1.1-capability-insights";
+const PROMPT_VERSION = "v1.2-capability-insights";
 
 export const maxDuration = 30;
 
@@ -21,13 +21,24 @@ You receive a JSON object:
   "capability": {
     "id", "name", "description", "level" ("L1"|"L2"|"L3"),
     "maturity": { "current": int|null, "target": int|null, "gap": int|null },
-    "ownerName": string|null
+    "ownerName": string|null,
+    "businessOwnerName": string|null,
+    "itOwnerName": string|null,
+    "valueStream": string|null,
+    "totalInvestmentUsd": number|null
   },
   "applications": [
-    { "id", "name", "vendor", "lifecycle", "businessValue", "technicalHealth" }
+    { "id", "name", "vendor", "lifecycle", "businessValue", "technicalHealth",
+      "annualCostUsd": number|null, "relationshipType": "PRIMARY"|"SUPPORTING"|"ENABLING" }
   ],
   "risks": [
     { "id", "title", "status", "riskScore", "category" }
+  ],
+  "initiatives": [
+    { "id", "name", "status", "category", "progressPct", "impactType", "targetMaturity" }
+  ],
+  "objectives": [
+    { "id", "name", "alignment": "STRONG"|"MODERATE"|"WEAK" }
   ],
   "organization": {
     "industry", "subIndustry"|null, "region"|null
@@ -51,7 +62,11 @@ You receive a JSON object:
 - ORPHAN: 0 apps mapped
 - REDUNDANT: 5+ apps mapped (potential consolidation candidate)
 - FRAGILE: 1 app mapped AND it's SUNSET/RETIRED
-- UNOWNED: ownerName is null (also add as quick-win recommendation)
+- UNOWNED: ownerName AND businessOwnerName are both null (quick-win recommendation)
+- OVERSPEND: totalInvestmentUsd > $1M AND maturity gap ≥ 2 (investing heavily but underperforming)
+- UNDERFUNDED: totalInvestmentUsd is null/0 AND strategicImportance is CRITICAL/HIGH
+- STALLED_INITIATIVE: linked initiative has progressPct < 20 AND status IN_PROGRESS for > 6 months
+- UNALIGNED: no objectives linked (no strategic alignment visibility)
 
 ## OUTPUT FORMAT (strict JSON, no streaming, no markdown code fences)
 
@@ -159,17 +174,24 @@ export async function POST(req: Request) {
     return Response.json({ error: "Rate limit: 15 per minute" }, { status: 429 });
   }
 
-  // Load capability + mapped apps + linked risks
+  // Load capability + mapped apps + linked risks + initiatives
   const capability = await db.businessCapability.findFirst({
     where: { id: capabilityId, workspaceId, isActive: true },
     include: {
       owner: { select: { name: true } },
+      businessOwner: { select: { name: true } },
+      itOwner: { select: { name: true } },
+      valueStream: { select: { name: true } },
+      objectives: {
+        include: { objective: { select: { id: true, name: true } } },
+      },
       applicationMappings: {
         include: {
           application: {
             select: {
               id: true, name: true, vendor: true, lifecycle: true,
               businessValue: true, technicalHealth: true,
+              annualCostUsd: true,
             },
           },
         },
@@ -191,6 +213,20 @@ export async function POST(req: Request) {
     take: 20,
   }).catch(() => []);
 
+  // Load initiatives that target this capability
+  const initiativeLinks = await db.initiativeCapabilityMap.findMany({
+    where: { capabilityId, workspaceId },
+    include: {
+      initiative: {
+        select: {
+          id: true, name: true, status: true, category: true,
+          progressPct: true, startDate: true, endDate: true,
+        },
+      },
+    },
+    take: 10,
+  }).catch(() => [] as any[]);
+
   // Convert MaturityLevel enum ("LEVEL_0".."LEVEL_5" / "NOT_ASSESSED") to numeric
   function maturityNum(m: string | null | undefined): number | null {
     if (!m || m === "NOT_ASSESSED") return null;
@@ -201,6 +237,14 @@ export async function POST(req: Request) {
   const target = maturityNum(capability.targetMaturity);
   const gap = current !== null && target !== null ? Math.max(0, target - current) : null;
 
+  // Compute total weighted investment
+  const WEIGHTS: Record<string, number> = { PRIMARY: 1.0, SUPPORTING: 0.5, ENABLING: 0.25 };
+  const totalInvestment = capability.applicationMappings.reduce((sum, m) => {
+    const cost = m.application.annualCostUsd ? Number(m.application.annualCostUsd) : 0;
+    const weight = WEIGHTS[m.relationshipType] ?? 1.0;
+    return sum + cost * weight;
+  }, 0);
+
   const input = {
     capability: {
       id: capability.id,
@@ -209,9 +253,31 @@ export async function POST(req: Request) {
       level: capability.level,
       maturity: { current, target, gap },
       ownerName: capability.owner?.name ?? null,
+      businessOwnerName: capability.businessOwner?.name ?? null,
+      itOwnerName: capability.itOwner?.name ?? null,
+      valueStream: capability.valueStream?.name ?? null,
+      totalInvestmentUsd: totalInvestment > 0 ? totalInvestment : null,
     },
-    applications: capability.applicationMappings.map((m) => m.application),
+    applications: capability.applicationMappings.map((m) => ({
+      ...m.application,
+      annualCostUsd: m.application.annualCostUsd ? Number(m.application.annualCostUsd) : null,
+      relationshipType: m.relationshipType,
+    })),
     risks,
+    initiatives: initiativeLinks.map((il: any) => ({
+      id: il.initiative.id,
+      name: il.initiative.name,
+      status: il.initiative.status,
+      category: il.initiative.category,
+      progressPct: il.initiative.progressPct,
+      impactType: il.impactType,
+      targetMaturity: il.targetMaturity,
+    })),
+    objectives: capability.objectives.map((o: any) => ({
+      id: o.objective.id,
+      name: o.objective.name,
+      alignment: o.alignment,
+    })),
     organization: {
       industry: workspace.industry,
       subIndustry: (workspace as any).subIndustry ?? null,

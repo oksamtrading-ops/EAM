@@ -178,6 +178,8 @@ model User {
 
   workspaces          Workspace[]
   ownedCapabilities   BusinessCapability[]  @relation("CapabilityOwner")
+  businessOwnedCaps   BusinessCapability[]  @relation("CapabilityBusinessOwner")
+  itOwnedCaps         BusinessCapability[]  @relation("CapabilityITOwner")
   auditLogs           AuditLog[]
   createdVersions     CapabilityMapVersion[]
   ownedApplications   Application[]         @relation("AppOwner")
@@ -236,6 +238,7 @@ model Workspace {
   aiMappingFeedback  AIMappingFeedback[]
   aiMappingRuns      AIMappingRun[]
   savedPaletteQueries SavedPaletteQuery[]
+  valueStreams       ValueStream[]
 
   @@map("workspaces")
 }
@@ -263,6 +266,28 @@ model Organization {
 }
 
 // ============================================================
+// VALUE STREAM
+// ============================================================
+
+model ValueStream {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  color       String   @default("#0B5CD6")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  capabilities BusinessCapability[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("value_streams")
+}
+
+// ============================================================
 // BUSINESS CAPABILITY
 // ============================================================
 
@@ -274,7 +299,10 @@ model BusinessCapability {
   name                String
   description         String?
   ownerId             String?
+  businessOwnerId     String?
+  itOwnerId           String?
   organizationId      String?
+  valueStreamId       String?
   strategicImportance StrategicImportance @default(NOT_ASSESSED)
   currentMaturity     MaturityLevel       @default(NOT_ASSESSED)
   targetMaturity      MaturityLevel       @default(NOT_ASSESSED)
@@ -291,10 +319,16 @@ model BusinessCapability {
   parent       BusinessCapability?  @relation("CapabilityTree", fields: [parentId], references: [id])
   children     BusinessCapability[] @relation("CapabilityTree")
   owner        User?                @relation("CapabilityOwner", fields: [ownerId], references: [id])
+  businessOwner User?               @relation("CapabilityBusinessOwner", fields: [businessOwnerId], references: [id])
+  itOwner      User?                @relation("CapabilityITOwner", fields: [itOwnerId], references: [id])
   organization Organization?        @relation(fields: [organizationId], references: [id])
+  valueStream  ValueStream?         @relation(fields: [valueStreamId], references: [id])
   tags         CapabilityTagMap[]
   assessments  CapabilityAssessment[]
   applicationMappings ApplicationCapabilityMap[]
+  objectives   CapabilityObjectiveMap[]
+  dependsOn    CapabilityDependency[] @relation("DependentCapability")
+  dependedOnBy CapabilityDependency[] @relation("PrerequisiteCapability")
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
@@ -350,6 +384,50 @@ model CapabilityAssessment {
 
   @@index([capabilityId])
   @@map("capability_assessments")
+}
+
+// ============================================================
+// CAPABILITY ↔ OBJECTIVE (direct strategic alignment)
+// ============================================================
+
+enum AlignmentStrength {
+  STRONG
+  MODERATE
+  WEAK
+}
+
+model CapabilityObjectiveMap {
+  capabilityId String
+  objectiveId  String
+  alignment    AlignmentStrength @default(MODERATE)
+  notes        String?
+  assignedAt   DateTime          @default(now())
+
+  capability BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  objective  Objective          @relation(fields: [objectiveId],  references: [id], onDelete: Cascade)
+
+  @@id([capabilityId, objectiveId])
+  @@map("capability_objective_maps")
+}
+
+// ============================================================
+// CAPABILITY ↔ CAPABILITY DEPENDENCY
+// ============================================================
+
+model CapabilityDependency {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  dependentId    String
+  prerequisiteId String
+  description    String?
+  createdAt      DateTime @default(now())
+
+  dependent    BusinessCapability @relation("DependentCapability",    fields: [dependentId],    references: [id], onDelete: Cascade)
+  prerequisite BusinessCapability @relation("PrerequisiteCapability", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentId, prerequisiteId])
+  @@index([workspaceId])
+  @@map("capability_dependencies")
 }
 
 // ============================================================
@@ -621,6 +699,7 @@ model Objective {
   workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   owner       User?                  @relation("ObjectiveOwner", fields: [ownerId], references: [id])
   initiatives InitiativeObjectiveMap[]
+  capabilities CapabilityObjectiveMap[]
 
   @@index([workspaceId])
   @@map("objectives")

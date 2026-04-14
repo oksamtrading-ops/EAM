@@ -9,6 +9,9 @@ const CapabilityCreateInput = z.object({
   parentId: z.string().optional(),
   level: z.enum(["L1", "L2", "L3"]),
   organizationId: z.string().optional(),
+  valueStreamId: z.string().optional(),
+  businessOwnerId: z.string().optional(),
+  itOwnerId: z.string().optional(),
   strategicImportance: z
     .enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "NOT_ASSESSED"])
     .default("NOT_ASSESSED"),
@@ -43,6 +46,9 @@ const CapabilityUpdateInput = z.object({
   parentId: z.string().nullable().optional(),
   level: z.enum(["L1", "L2", "L3"]).optional(),
   organizationId: z.string().nullable().optional(),
+  valueStreamId: z.string().nullable().optional(),
+  businessOwnerId: z.string().nullable().optional(),
+  itOwnerId: z.string().nullable().optional(),
   strategicImportance: z
     .enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "NOT_ASSESSED"])
     .optional(),
@@ -106,6 +112,9 @@ export const capabilityRouter = router({
         tags: { include: { tag: true } },
         organization: { select: { id: true, name: true } },
         owner: { select: { id: true, name: true, avatarUrl: true } },
+        businessOwner: { select: { id: true, name: true, avatarUrl: true } },
+        itOwner: { select: { id: true, name: true, avatarUrl: true } },
+        valueStream: { select: { id: true, name: true, color: true } },
         assessments: {
           orderBy: { assessedAt: "desc" },
           take: 1,
@@ -128,6 +137,9 @@ export const capabilityRouter = router({
           tags: { include: { tag: true } },
           organization: true,
           owner: true,
+          businessOwner: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          itOwner: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          valueStream: true,
           parent: { select: { id: true, name: true, level: true } },
           children: {
             where: { isActive: true },
@@ -136,6 +148,15 @@ export const capabilityRouter = router({
           assessments: {
             orderBy: { assessedAt: "desc" },
             take: 5,
+          },
+          objectives: {
+            include: { objective: { select: { id: true, name: true, targetDate: true } } },
+          },
+          dependsOn: {
+            include: { prerequisite: { select: { id: true, name: true, level: true } } },
+          },
+          dependedOnBy: {
+            include: { dependent: { select: { id: true, name: true, level: true } } },
           },
         },
       });
@@ -556,6 +577,217 @@ export const capabilityRouter = router({
       });
 
       return { imported: templates.length };
+    }),
+
+  // ── Investment / Cost Rollup ────────────────────────────────
+
+  getCostRollup: workspaceProcedure.query(async ({ ctx }) => {
+    // Weight by relationship type: PRIMARY=100%, SUPPORTING=50%, ENABLING=25%
+    const WEIGHTS: Record<string, number> = { PRIMARY: 1.0, SUPPORTING: 0.5, ENABLING: 0.25 };
+
+    const mappings = await ctx.db.applicationCapabilityMap.findMany({
+      where: { workspaceId: ctx.workspaceId },
+      include: {
+        application: { select: { id: true, name: true, annualCostUsd: true, lifecycle: true } },
+      },
+    });
+
+    const rollup: Record<string, {
+      totalCost: number;
+      appCount: number;
+      apps: { id: string; name: string; cost: number; weight: number; lifecycle: string }[];
+    }> = {};
+
+    for (const m of mappings) {
+      const cost = m.application.annualCostUsd ? Number(m.application.annualCostUsd) : 0;
+      const weight = WEIGHTS[m.relationshipType] ?? 1.0;
+      const weightedCost = cost * weight;
+
+      if (!rollup[m.capabilityId]) {
+        rollup[m.capabilityId] = { totalCost: 0, appCount: 0, apps: [] };
+      }
+      rollup[m.capabilityId].totalCost += weightedCost;
+      rollup[m.capabilityId].appCount += 1;
+      rollup[m.capabilityId].apps.push({
+        id: m.application.id,
+        name: m.application.name,
+        cost: weightedCost,
+        weight,
+        lifecycle: m.application.lifecycle,
+      });
+    }
+
+    return rollup;
+  }),
+
+  // ── Value Streams ──────────────────────────────────────────
+
+  listValueStreams: workspaceProcedure.query(async ({ ctx }) => {
+    return ctx.db.valueStream.findMany({
+      where: { workspaceId: ctx.workspaceId },
+      orderBy: { sortOrder: "asc" },
+      include: { _count: { select: { capabilities: true } } },
+    });
+  }),
+
+  createValueStream: workspaceProcedure
+    .input(z.object({
+      name: z.string().min(1).max(100),
+      description: z.string().optional(),
+      color: z.string().default("#0B5CD6"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.valueStream.create({
+        data: { ...input, workspaceId: ctx.workspaceId },
+      });
+    }),
+
+  updateValueStream: workspaceProcedure
+    .input(z.object({
+      id: z.string(),
+      name: z.string().min(1).max(100).optional(),
+      description: z.string().nullable().optional(),
+      color: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.db.valueStream.update({
+        where: { id, workspaceId: ctx.workspaceId },
+        data,
+      });
+    }),
+
+  deleteValueStream: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.valueStream.delete({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+      });
+      return { success: true };
+    }),
+
+  // ── Capability ↔ Objective linking ─────────────────────────
+
+  linkObjective: workspaceProcedure
+    .input(z.object({
+      capabilityId: z.string(),
+      objectiveId: z.string(),
+      alignment: z.enum(["STRONG", "MODERATE", "WEAK"]).default("MODERATE"),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.capabilityObjectiveMap.create({ data: input });
+    }),
+
+  unlinkObjective: workspaceProcedure
+    .input(z.object({ capabilityId: z.string(), objectiveId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.capabilityObjectiveMap.delete({
+        where: { capabilityId_objectiveId: input },
+      });
+      return { success: true };
+    }),
+
+  // ── Capability Dependencies ────────────────────────────────
+
+  addDependency: workspaceProcedure
+    .input(z.object({
+      dependentId: z.string(),
+      prerequisiteId: z.string(),
+      description: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.dependentId === input.prerequisiteId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "A capability cannot depend on itself" });
+      }
+      return ctx.db.capabilityDependency.create({
+        data: { ...input, workspaceId: ctx.workspaceId },
+      });
+    }),
+
+  removeDependency: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.capabilityDependency.delete({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+      });
+      return { success: true };
+    }),
+
+  // ── Clone capability (with children + tags) ────────────────
+
+  clone: workspaceProcedure
+    .input(z.object({
+      id: z.string(),
+      newName: z.string().optional(),
+      newParentId: z.string().nullable().optional(),
+      includeChildren: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const source = await ctx.db.businessCapability.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+        include: {
+          tags: true,
+          children: {
+            where: { isActive: true },
+            include: {
+              tags: true,
+              children: {
+                where: { isActive: true },
+                include: { tags: true },
+              },
+            },
+          },
+        },
+      });
+      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+
+      async function cloneNode(
+        tx: any,
+        node: any,
+        parentId: string | null,
+        nameOverride?: string,
+      ): Promise<string> {
+        const cloned = await tx.businessCapability.create({
+          data: {
+            workspaceId: ctx.workspaceId,
+            name: nameOverride ?? `${node.name} (Copy)`,
+            description: node.description,
+            level: node.level,
+            parentId,
+            organizationId: node.organizationId,
+            valueStreamId: node.valueStreamId,
+            businessOwnerId: node.businessOwnerId,
+            itOwnerId: node.itOwnerId,
+            strategicImportance: node.strategicImportance,
+            currentMaturity: node.currentMaturity,
+            targetMaturity: node.targetMaturity,
+            sortOrder: node.sortOrder + 1,
+            tags: node.tags?.length
+              ? { create: node.tags.map((t: any) => ({ tagId: t.tagId })) }
+              : undefined,
+          },
+        });
+
+        if (input.includeChildren && node.children?.length) {
+          for (const child of node.children) {
+            await cloneNode(tx, child, cloned.id);
+          }
+        }
+        return cloned.id;
+      }
+
+      const newId = await ctx.db.$transaction(async (tx: any) => {
+        return cloneNode(
+          tx,
+          source,
+          input.newParentId !== undefined ? input.newParentId : source.parentId,
+          input.newName,
+        );
+      });
+
+      auditLog(ctx, { action: "CREATE", entityType: "BusinessCapability", entityId: newId, after: { clonedFrom: input.id } as any });
+      return { id: newId };
     }),
 });
 
