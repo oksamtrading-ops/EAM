@@ -62,6 +62,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
   const { data: tree } = trpc.capability.getTree.useQuery();
   const { data: costRollup } = trpc.capability.getCostRollup.useQuery();
 
+  const { data: organizations } = trpc.organization.list.useQuery();
   const { data: workspaceUsers } = trpc.workspace.listUsers.useQuery();
 
   const [showObjectivePicker, setShowObjectivePicker] = useState(false);
@@ -394,6 +395,11 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                     <SelectItem value="__none__">
                       <span className="text-muted-foreground">None</span>
                     </SelectItem>
+                    {organizations?.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
