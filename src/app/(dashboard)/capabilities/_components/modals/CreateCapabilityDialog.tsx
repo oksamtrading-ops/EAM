@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Plus, X } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -40,6 +40,19 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
   const [parentId, setParentId] = useState<string>("");
   const [valueStreamId, setValueStreamId] = useState<string>("");
   const [suggestingDesc, setSuggestingDesc] = useState(false);
+  const [showNewVS, setShowNewVS] = useState(false);
+  const [newVSName, setNewVSName] = useState("");
+
+  const createVSMutation = trpc.capability.createValueStream.useMutation({
+    onSuccess: (vs) => {
+      utils.capability.listValueStreams.invalidate();
+      setValueStreamId(vs.id);
+      setShowNewVS(false);
+      setNewVSName("");
+      toast.success("Value stream created");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const createMutation = trpc.capability.create.useMutation({
     onSuccess: () => {
@@ -77,6 +90,8 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
     setParentId("");
     setValueStreamId("");
     setSuggestingDesc(false);
+    setShowNewVS(false);
+    setNewVSName("");
     onClose();
   }
 
@@ -150,6 +165,43 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
                     ))}
                   </SelectContent>
                 </Select>
+                {showNewVS ? (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Input
+                      value={newVSName}
+                      onChange={(e) => setNewVSName(e.target.value)}
+                      placeholder="Stream name..."
+                      className="h-7 text-xs flex-1"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newVSName.trim()) createVSMutation.mutate({ name: newVSName.trim() });
+                        if (e.key === "Escape") { setShowNewVS(false); setNewVSName(""); }
+                      }}
+                    />
+                    <button
+                      onClick={() => newVSName.trim() && createVSMutation.mutate({ name: newVSName.trim() })}
+                      disabled={!newVSName.trim() || createVSMutation.isPending}
+                      className="h-7 px-2 text-xs bg-[#0B5CD6] text-white rounded hover:bg-[#094cb0] disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={() => { setShowNewVS(false); setNewVSName(""); }}
+                      className="h-7 px-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewVS(true)}
+                    className="mt-1.5 text-xs text-[#0B5CD6] hover:text-[#094cb0] flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Create new
+                  </button>
+                )}
               </div>
             )}
           </div>

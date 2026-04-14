@@ -12,6 +12,7 @@ import { riskRouter } from "./risk";
 import { techRadarRouter } from "./techRadar";
 import { complianceRouter } from "./compliance";
 import { eolRouter } from "./eol";
+import { organizationRouter } from "./organization";
 import { dashboardRouter } from "./dashboard";
 import { searchRouter } from "./search";
 import { paletteQueryRouter } from "./paletteQuery";
@@ -21,6 +22,7 @@ export const appRouter = router({
   search: searchRouter,
   paletteQuery: paletteQueryRouter,
   capability: capabilityRouter,
+  organization: organizationRouter,
   workspace: workspaceRouter,
   tag: tagRouter,
   version: versionRouter,

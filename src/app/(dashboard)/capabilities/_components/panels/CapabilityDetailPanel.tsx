@@ -26,6 +26,12 @@ import {
 } from "@/lib/constants/maturity-colors";
 import { toast } from "sonner";
 import { CapabilityAIInsights } from "./CapabilityAIInsights";
+import { ObjectiveFormModal } from "@/components/shared/ObjectiveFormModal";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type Props = {
   capabilityId: string;
@@ -56,8 +62,13 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
   const { data: tree } = trpc.capability.getTree.useQuery();
   const { data: costRollup } = trpc.capability.getCostRollup.useQuery();
 
+  const { data: workspaceUsers } = trpc.workspace.listUsers.useQuery();
+
   const [showObjectivePicker, setShowObjectivePicker] = useState(false);
   const [showDependencyPicker, setShowDependencyPicker] = useState(false);
+  const [showCreateObjective, setShowCreateObjective] = useState(false);
+  const [showCreateVS, setShowCreateVS] = useState(false);
+  const [newVSName, setNewVSName] = useState("");
 
   const updateMutation = trpc.capability.update.useMutation({
     onSuccess: () => {
@@ -91,6 +102,17 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
       utils.capability.getTree.invalidate();
       toast.success("Capability cloned");
       onSelect?.(data.id);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const createVSMutation = trpc.capability.createValueStream.useMutation({
+    onSuccess: (vs) => {
+      utils.capability.listValueStreams.invalidate();
+      updateMutation.mutate({ id: capabilityId, valueStreamId: vs.id });
+      setShowCreateVS(false);
+      setNewVSName("");
+      toast.success("Value stream created & assigned");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -251,6 +273,44 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 <span className="text-xs font-medium">{(cap as any).valueStream.name}</span>
               </div>
             )}
+            {showCreateVS ? (
+              <div className="mt-2 flex items-center gap-1.5">
+                <input
+                  value={newVSName}
+                  onChange={(e) => setNewVSName(e.target.value)}
+                  placeholder="Stream name..."
+                  className="flex-1 h-7 text-xs border rounded px-2 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newVSName.trim()) {
+                      createVSMutation.mutate({ name: newVSName.trim() });
+                    }
+                    if (e.key === "Escape") { setShowCreateVS(false); setNewVSName(""); }
+                  }}
+                />
+                <button
+                  onClick={() => newVSName.trim() && createVSMutation.mutate({ name: newVSName.trim() })}
+                  disabled={!newVSName.trim() || createVSMutation.isPending}
+                  className="h-7 px-2 text-xs bg-[#0B5CD6] text-white rounded hover:bg-[#094cb0] disabled:opacity-50"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => { setShowCreateVS(false); setNewVSName(""); }}
+                  className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCreateVS(true)}
+                className="mt-2 text-xs text-[#0B5CD6] hover:text-[#094cb0] flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                Create new value stream
+              </button>
+            )}
           </section>
 
           <Separator />
@@ -342,11 +402,13 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                   label="Business Owner"
                   owner={(cap as any).businessOwner}
                   onChange={(id) => updateMutation.mutate({ id: cap.id, businessOwnerId: id })}
+                  users={workspaceUsers}
                 />
                 <OwnerField
                   label="IT Owner"
                   owner={(cap as any).itOwner}
                   onChange={(id) => updateMutation.mutate({ id: cap.id, itOwnerId: id })}
+                  users={workspaceUsers}
                 />
               </div>
             </div>
@@ -458,15 +520,26 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           <section>
             <div className="flex items-center justify-between mb-2">
               <SectionLabel icon={<Target className="h-3.5 w-3.5" />}>Strategic Objectives</SectionLabel>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-[#0B5CD6] hover:text-[#094cb0]"
-                onClick={() => setShowObjectivePicker(!showObjectivePicker)}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Link
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-[#7c3aed] hover:text-[#6d28d9]"
+                  onClick={() => setShowCreateObjective(true)}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  New
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-[#0B5CD6] hover:text-[#094cb0]"
+                  onClick={() => setShowObjectivePicker(!showObjectivePicker)}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Link
+                </Button>
+              </div>
             </div>
 
             {showObjectivePicker && (
@@ -694,6 +767,14 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           Delete
         </Button>
       </div>
+
+      <ObjectiveFormModal
+        open={showCreateObjective}
+        onClose={() => {
+          setShowCreateObjective(false);
+          utils.objective.list.invalidate();
+        }}
+      />
     </aside>
   );
 }
@@ -719,11 +800,24 @@ function OwnerField({
   label,
   owner,
   onChange,
+  users,
 }: {
   label: string;
   owner: { id: string; name: string | null; avatarUrl: string | null } | null;
   onChange: (id: string | null) => void;
+  users?: { id: string; name: string | null; email: string; avatarUrl: string | null }[];
 }) {
+  const [search, setSearch] = useState("");
+
+  const filtered = (users ?? []).filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (u.name?.toLowerCase().includes(q)) ||
+      u.email.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
@@ -747,15 +841,54 @@ function OwnerField({
           </button>
         </div>
       ) : (
-        <button
-          onClick={() => {
-            // For POC: assign current user — in production, open a user picker
-            toast.info(`${label} assignment coming in next release`);
-          }}
-          className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left"
-        >
-          + Assign {label.toLowerCase()}
-        </button>
+        <Popover>
+          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left">
+              + Assign {label.toLowerCase()}
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0" align="start">
+            <div className="p-2 border-b">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users..."
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-auto p-1">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-2 py-3 text-center">
+                  No users found
+                </p>
+              ) : (
+                filtered.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      onChange(u.id);
+                      setSearch("");
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-muted transition"
+                  >
+                    {u.avatarUrl ? (
+                      <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-[#0B5CD6]">
+                          {(u.name ?? u.email)[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{u.name ?? "Unnamed"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   );

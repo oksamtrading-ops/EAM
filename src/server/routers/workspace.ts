@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "@/server/trpc";
+import { router, protectedProcedure, workspaceProcedure } from "@/server/trpc";
 
 export const workspaceRouter = router({
   /**
@@ -16,6 +16,24 @@ export const workspaceRouter = router({
     return ctx.db.workspace.findMany({
       where: { userId: user.id },
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    });
+  }),
+
+  /**
+   * List users with any footprint in this workspace.
+   */
+  listUsers: workspaceProcedure.query(async ({ ctx }) => {
+    return ctx.db.user.findMany({
+      where: {
+        OR: [
+          { workspaces: { some: { id: ctx.workspaceId } } },
+          { ownedCapabilities: { some: { workspaceId: ctx.workspaceId } } },
+          { businessOwnedCaps: { some: { workspaceId: ctx.workspaceId } } },
+          { itOwnedCaps: { some: { workspaceId: ctx.workspaceId } } },
+        ],
+      },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+      orderBy: { name: "asc" },
     });
   }),
 
@@ -67,6 +85,11 @@ export const workspaceRouter = router({
             "HEALTHCARE",
             "GENERIC",
             "ENTERPRISE_BCM",
+            "INSURANCE",
+            "TELECOM",
+            "ENERGY_UTILITIES",
+            "PUBLIC_SECTOR",
+            "PHARMA_LIFESCIENCES",
           ])
           .optional()
           .default("GENERIC"),
@@ -119,12 +142,19 @@ export const workspaceRouter = router({
             "HEALTHCARE",
             "GENERIC",
             "ENTERPRISE_BCM",
+            "INSURANCE",
+            "TELECOM",
+            "ENERGY_UTILITIES",
+            "PUBLIC_SECTOR",
+            "PHARMA_LIFESCIENCES",
           ])
           .optional(),
         subIndustry: z.string().max(200).nullable().optional(),
         region: z.enum(["NA", "EMEA", "APAC", "LATAM", "GLOBAL"]).nullable().optional(),
         regulatoryRegime: z.string().max(200).nullable().optional(),
         businessModelHint: z.string().max(800).nullable().optional(),
+        itVision: z.string().max(2000).nullable().optional(),
+        missionStatement: z.string().max(2000).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

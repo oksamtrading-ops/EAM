@@ -211,6 +211,8 @@ model Workspace {
   region            Region?
   regulatoryRegime  String?
   businessModelHint String?
+  itVision          String?
+  missionStatement  String?
   logoUrl     String?
   isDefault   Boolean      @default(false)
   isActive    Boolean      @default(true)

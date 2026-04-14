@@ -9,7 +9,6 @@ import {
   Settings,
   Tags,
   Building2,
-  Briefcase,
   AppWindow,
   Map,
   ShieldAlert,
@@ -48,7 +47,7 @@ const navItems = [
     icon: ShieldAlert,
   },
   {
-    label: "Organizations",
+    label: "Organization",
     href: "/organizations",
     icon: Building2,
   },
@@ -56,11 +55,6 @@ const navItems = [
     label: "Tags",
     href: "/tags",
     icon: Tags,
-  },
-  {
-    label: "Organization Profile",
-    href: "/settings/organization-profile",
-    icon: Briefcase,
   },
   {
     label: "Settings",
