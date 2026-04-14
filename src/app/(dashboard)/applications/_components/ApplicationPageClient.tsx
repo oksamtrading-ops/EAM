@@ -71,8 +71,6 @@ export function ApplicationPageClient() {
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
-          onRationalize={() => { openAI("rationalization"); }}
-          showRationalize={showAI && aiDefaultTab === "rationalization"}
           onAI={() => { if (showAI) { setShowAI(false); } else { openAI(aiDefaultTab); } }}
           showAI={showAI}
           onAutoMap={() => { setShowAutoMap(!showAutoMap); setAutoMapAppId(null); setShowAI(false); }}

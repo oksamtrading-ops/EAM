@@ -1,6 +1,6 @@
 "use client";
 
-import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3, Sparkles, Network } from "lucide-react";
+import { Table2, LayoutGrid, ScatterChart, Plus, FileUp, Sparkles, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppViewMode } from "./ApplicationPageClient";
 
@@ -10,8 +10,6 @@ type Props = {
   onCreateNew: () => void;
   onImport: () => void;
   onExport: () => void;
-  onRationalize: () => void;
-  showRationalize: boolean;
   onAI: () => void;
   showAI: boolean;
   onAutoMap: () => void;
@@ -25,8 +23,6 @@ export function ApplicationToolbar({
   onCreateNew,
   onImport,
   onExport,
-  onRationalize,
-  showRationalize,
   onAI,
   showAI,
   onAutoMap,
@@ -55,16 +51,6 @@ export function ApplicationToolbar({
         </div>
 
         <div className="w-px h-6 bg-border mx-1" />
-
-        <Button
-          size="sm"
-          variant={showRationalize ? "default" : "outline"}
-          onClick={onRationalize}
-          className={`h-9 text-xs ${showRationalize ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
-        >
-          <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-          Rationalize
-        </Button>
 
         <Button
           size="sm"
