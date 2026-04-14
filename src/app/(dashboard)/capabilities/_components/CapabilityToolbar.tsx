@@ -15,6 +15,13 @@ import {
   SlidersHorizontal,
   Search,
   X,
+  Palette,
+  BarChart3,
+  Star,
+  TrendingUp,
+  User,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
@@ -31,11 +38,11 @@ const VIEW_OPTIONS: {
   { value: "investment", label: "Investment", Icon: DollarSign },
 ];
 
-const COLOR_BY_OPTIONS: { value: ColorByMode; label: string }[] = [
-  { value: "maturity", label: "Maturity" },
-  { value: "importance", label: "Importance" },
-  { value: "gap", label: "Gap" },
-  { value: "owner", label: "Owner" },
+const COLOR_BY_OPTIONS: { value: ColorByMode; label: string; Icon: React.ElementType }[] = [
+  { value: "maturity", label: "Maturity", Icon: BarChart3 },
+  { value: "importance", label: "Importance", Icon: Star },
+  { value: "gap", label: "Maturity Gap", Icon: TrendingUp },
+  { value: "owner", label: "Owner", Icon: User },
 ];
 
 type Props = {
@@ -158,7 +165,7 @@ export function CapabilityToolbar({
       <div className="w-px h-6 bg-border mx-1 shrink-0 hidden sm:block" />
 
       {/* Search (compact) */}
-      <div className="hidden sm:flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-[#f9fafb] min-w-0 flex-1 max-w-[200px]">
+      <div className="hidden sm:flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-[#f9fafb] min-w-0 flex-1 max-w-[280px]">
         <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <input
           type="text"
@@ -188,23 +195,8 @@ export function CapabilityToolbar({
         onSearchChange={onSearchChange}
       />
 
-      {/* Color-by selector (inline, hidden on small screens) */}
-      <div className="hidden md:flex items-center gap-px bg-[#f1f3f5] rounded-lg p-0.5 shrink-0">
-        {COLOR_BY_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => onColorByChange(opt.value)}
-            className={cn(
-              "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap",
-              colorBy === opt.value
-                ? "bg-[#0B5CD6] text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {/* Color-by dropdown (compact) */}
+      <ColorByDropdown colorBy={colorBy} onColorByChange={onColorByChange} />
 
       {/* Spacer */}
       <div className="flex-1 min-w-0" />
@@ -426,6 +418,75 @@ function FilterPopover({
               </button>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Color-by Dropdown ─── */
+function ColorByDropdown({
+  colorBy,
+  onColorByChange,
+}: {
+  colorBy: ColorByMode;
+  onColorByChange: (c: ColorByMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, [open]);
+
+  const current = COLOR_BY_OPTIONS.find((o) => o.value === colorBy) ?? COLOR_BY_OPTIONS[0];
+
+  return (
+    <div ref={ref} className="relative shrink-0 hidden sm:block">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-medium transition-all",
+          open
+            ? "border-[#0B5CD6] text-[#0B5CD6] bg-[#eff6ff]"
+            : "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+        )}
+      >
+        <Palette className="h-3.5 w-3.5" />
+        <span>{current.label}</span>
+        <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute top-[calc(100%+6px)] left-0 bg-white border rounded-xl shadow-lg py-1 min-w-[160px] z-[100]">
+          {COLOR_BY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                onColorByChange(opt.value);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium transition-colors text-left",
+                colorBy === opt.value
+                  ? "text-[#0B5CD6] bg-[#eff6ff]"
+                  : "text-foreground hover:bg-[#f9fafb]"
+              )}
+            >
+              <opt.Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">{opt.label}</span>
+              {colorBy === opt.value && (
+                <Check className="h-3.5 w-3.5 text-[#0B5CD6]" />
+              )}
+            </button>
+          ))}
         </div>
       )}
     </div>
