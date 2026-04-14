@@ -153,6 +153,15 @@ export const IFACE_DIRECTION_LABELS: Record<string, string> = {
   BIDIRECTIONAL: "Bidirectional",
 };
 
+export const COST_MODEL_LABELS: Record<string, string> = {
+  LICENSE_PER_USER: "License per User",
+  LICENSE_FLAT: "Flat License",
+  SUBSCRIPTION: "Subscription",
+  USAGE_BASED: "Usage-Based",
+  OPEN_SOURCE: "Open Source",
+  INTERNAL: "Internal",
+};
+
 // Numeric mapping for quadrant positioning
 export const BV_NUMERIC: Record<string, number> = {
   BV_UNKNOWN: 0, LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4,
