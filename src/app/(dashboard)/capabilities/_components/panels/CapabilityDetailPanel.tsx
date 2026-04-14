@@ -152,7 +152,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
 
   if (isLoading || !cap) {
     return (
-      <aside className="fixed right-0 top-0 h-screen w-[420px] z-40 border-l bg-background p-4 shadow-xl">
+      <aside className="fixed right-0 top-0 h-screen w-[480px] z-40 border-l bg-background p-4 shadow-xl">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-muted rounded w-3/4" />
           <div className="h-4 bg-muted rounded w-1/2" />
@@ -177,7 +177,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
   if (tree) flattenTree(tree);
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-[420px] z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-[480px] z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 border-b bg-white">
         <div className="flex items-start justify-between gap-2">

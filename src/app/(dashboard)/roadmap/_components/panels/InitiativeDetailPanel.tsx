@@ -93,7 +93,7 @@ export function InitiativeDetailPanel({
 
   return (
     <>
-      <aside className="fixed right-0 top-0 h-screen w-[400px] z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
+      <aside className="fixed right-0 top-0 h-screen w-[480px] z-40 border-l bg-background flex flex-col overflow-hidden shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-2 min-w-0">
