@@ -2,7 +2,6 @@
 
 import { Table2, LayoutGrid, ScatterChart, Plus, FileDown, FileUp, BarChart3, Sparkles, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 import type { AppViewMode } from "./ApplicationPageClient";
 
 type Props = {
@@ -45,7 +44,6 @@ export function ApplicationToolbar({
             {appCount} applications catalogued
           </p>
         </div>
-        <PageSearchTrigger />
       </div>
 
       <div className="flex items-center gap-2">

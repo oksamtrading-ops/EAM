@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Save, Sparkles, Building2, Globe, Scale, Lightbulb } from "lucide-react";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const INDUSTRIES = [
   { value: "BANKING", label: "Banking & Financial Services" },
@@ -108,7 +107,6 @@ export default function OrganizationProfilePage() {
             across every module — the more specific, the better the results.
           </p>
         </div>
-        <PageSearchTrigger />
       </div>
 
       {/* AI context banner */}

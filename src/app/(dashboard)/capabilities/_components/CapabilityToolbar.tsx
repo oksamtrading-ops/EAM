@@ -2,7 +2,6 @@
 
 import { LayoutGrid, Flame, Plus, Download, Sparkles, GitBranch, FileDown, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 import type { ViewMode } from "./CapabilityPageClient";
 
 type Props = {
@@ -41,7 +40,6 @@ export function CapabilityToolbar({
             {capabilityCount} capabilities mapped
           </p>
         </div>
-        <PageSearchTrigger />
       </div>
 
       <div className="flex items-center gap-2">

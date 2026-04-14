@@ -17,7 +17,6 @@ import { ActivityFeed } from "./ActivityFeed";
 import { PinnedItemsCard } from "./PinnedItemsCard";
 import { CostByDomainChart } from "./CostByDomainChart";
 import { DashboardAIPanel } from "./DashboardAIPanel";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 export function DashboardPageClient() {
   const [dateRange, setDateRange] = useState<DateRangeKey>("30d");
@@ -51,7 +50,6 @@ export function DashboardPageClient() {
               Real-time overview of architecture portfolio and health metrics
             </p>
           </div>
-          <PageSearchTrigger />
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
           <Button

@@ -15,7 +15,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Building2, Edit } from "lucide-react";
 import { toast } from "sonner";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 // We need an org router — let's add inline fetch for now
 // using the capability router's workspace context
@@ -60,7 +59,6 @@ export default function OrganizationsPage() {
               Manage organizational units that own capabilities.
             </p>
           </div>
-          <PageSearchTrigger />
         </div>
         <Button
           onClick={() => setShowCreate(true)}

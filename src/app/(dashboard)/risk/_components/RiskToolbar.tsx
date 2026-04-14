@@ -19,7 +19,6 @@ import { useRiskContext, type ViewMode } from "./RiskContext";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const VIEWS: { id: ViewMode; label: string; icon: React.ElementType }[] = [
   { id: "radar", label: "Tech Radar", icon: Radar },
@@ -80,7 +79,6 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             <h1 className="font-semibold text-[15px]">Technology Risk & Compliance</h1>
             <p className="text-xs text-muted-foreground">Module 4</p>
           </div>
-          <PageSearchTrigger />
         </div>
 
         <div className="flex items-center gap-2">

@@ -23,7 +23,6 @@ import {
   Trash2,
   Star,
 } from "lucide-react";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const INDUSTRIES = [
   { value: "BANKING", label: "Banking & Financial Services" },
@@ -129,7 +128,6 @@ export default function SettingsPage() {
             Configure your workspace details and industry context.
           </p>
         </div>
-        <PageSearchTrigger />
       </div>
 
       {/* General settings */}

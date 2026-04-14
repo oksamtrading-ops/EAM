@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
 import { CmdPaletteProvider } from "./CmdPaletteProvider";
+import { SidebarSearchPill } from "./PageSearchTrigger";
 
 const navItems = [
   {
@@ -86,6 +87,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       >
         {/* Workspace Switcher */}
         <WorkspaceSwitcher onCreateNew={() => setShowCreate(true)} />
+
+        {/* Search */}
+        <SidebarSearchPill />
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">

@@ -87,14 +87,14 @@ export function CapabilityAIInsights({
   const verdict = data ? VERDICT_META[data.healthVerdict] : null;
 
   return (
-    <div className="rounded-xl border border-[#e5e5e7] bg-white overflow-hidden">
+    <div className="rounded-xl border border-[#7c3aed]/25 bg-[#7c3aed]/[0.04] overflow-hidden">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-black/[0.02] transition"
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-[#7c3aed]/[0.08] transition"
       >
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#7c3aed]" />
-          <span className="text-[13px] font-semibold text-[#1d1d1f]">AI Insights</span>
+          <span className="text-[13px] font-semibold text-[#7c3aed]">AI Insights</span>
           {verdict && (
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${verdict.bg} ${verdict.text}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${verdict.dot}`} />

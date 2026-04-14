@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Tags as TagsIcon, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { PageSearchTrigger } from "@/app/(dashboard)/_components/PageSearchTrigger";
 
 const PRESET_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
@@ -75,7 +74,6 @@ export default function TagsPage() {
             Create tags to classify and filter capabilities across your map.
           </p>
         </div>
-        <PageSearchTrigger />
       </div>
 
       {/* Create new tag */}
