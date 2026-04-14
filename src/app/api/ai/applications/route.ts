@@ -293,7 +293,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
     "paybackPeriod": "string (e.g. '6-12 months')",
     "netAssessment": "string (1-2 sentences)"
   },
-  "recommendation": "RETIRE | MIGRATE | KEEP | CONSOLIDATE",
+  "recommendation": "TOLERATE | INVEST | MIGRATE | ELIMINATE",
   "transitionPlan": [
     {
       "phase": 1,

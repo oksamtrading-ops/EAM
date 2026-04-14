@@ -113,12 +113,10 @@ enum TechnicalHealthScore {
 }
 
 enum RationalizationStatus {
-  KEEP
+  TOLERATE
   INVEST
   MIGRATE
-  RETIRE
-  CONSOLIDATE
-  EVALUATE
+  ELIMINATE
   RAT_NOT_ASSESSED
 }
 

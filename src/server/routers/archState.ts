@@ -235,11 +235,11 @@ function applyToBeChanges(
   const applications = asIs.applications
     .filter((a) => {
       const change = appChanges.find((ch) => ch.applicationId === a.id);
-      return change?.changeType !== "RETIRE";
+      return change?.changeType !== "ELIMINATE";
     })
     .map((a) => {
       const change = appChanges.find((ch) => ch.applicationId === a.id);
-      return change?.changeType === "KEEP" || !change
+      return change?.changeType === "TOLERATE" || !change
         ? a
         : { ...a, lifecycle: "PHASING_OUT" };
     });

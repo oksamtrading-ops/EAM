@@ -49,22 +49,18 @@ export const TH_LABELS: Record<string, string> = {
 };
 
 export const RAT_COLORS: Record<string, string> = {
-  KEEP: "#16a34a",
+  TOLERATE: "#16a34a",
   INVEST: "#3b82f6",
   MIGRATE: "#f97316",
-  RETIRE: "#dc2626",
-  CONSOLIDATE: "#8b5cf6",
-  EVALUATE: "#eab308",
+  ELIMINATE: "#dc2626",
   RAT_NOT_ASSESSED: "#cbd5e1",
 };
 
 export const RAT_LABELS: Record<string, string> = {
-  KEEP: "Keep",
+  TOLERATE: "Tolerate",
   INVEST: "Invest",
   MIGRATE: "Migrate",
-  RETIRE: "Retire",
-  CONSOLIDATE: "Consolidate",
-  EVALUATE: "Evaluate",
+  ELIMINATE: "Eliminate",
   RAT_NOT_ASSESSED: "Not Assessed",
 };
 

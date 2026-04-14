@@ -11,8 +11,8 @@ type Props = {
 
 // TIME Model quadrants:
 // High BV + Low TH = INVEST (top-left)
-// High BV + High TH = KEEP (top-right)
-// Low BV + Low TH = RETIRE (bottom-left)
+// High BV + High TH = TOLERATE (top-right)
+// Low BV + Low TH = ELIMINATE (bottom-left)
 // Low BV + High TH = MIGRATE (bottom-right)
 
 export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
@@ -49,10 +49,10 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
               <span className="text-blue-600 font-bold text-lg opacity-20">INVEST</span>
             </div>
             <div className="bg-green-50/50 flex items-center justify-center">
-              <span className="text-green-600 font-bold text-lg opacity-20">KEEP</span>
+              <span className="text-green-600 font-bold text-lg opacity-20">TOLERATE</span>
             </div>
             <div className="bg-red-50/50 flex items-center justify-center">
-              <span className="text-red-600 font-bold text-lg opacity-20">RETIRE</span>
+              <span className="text-red-600 font-bold text-lg opacity-20">ELIMINATE</span>
             </div>
             <div className="bg-orange-50/50 flex items-center justify-center">
               <span className="text-orange-600 font-bold text-lg opacity-20">MIGRATE</span>

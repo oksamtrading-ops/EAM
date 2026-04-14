@@ -120,7 +120,7 @@ export function ArchStatePanel({
   });
 
   const MATURITIES = ["INITIAL", "DEVELOPING", "DEFINED", "MANAGED", "OPTIMISING"];
-  const CHANGE_TYPES = ["KEEP", "RETIRE", "PHASE_OUT", "REPLACE"];
+  const CHANGE_TYPES = ["TOLERATE", "ELIMINATE", "PHASE_OUT", "REPLACE"];
 
   if (!open) return null;
 
@@ -321,7 +321,7 @@ export function ArchStatePanel({
                   <label className="text-xs font-medium text-muted-foreground">Application Changes</label>
                   <button
                     type="button"
-                    onClick={() => setAppChanges((prev) => [...prev, { applicationId: "", changeType: "KEEP" }])}
+                    onClick={() => setAppChanges((prev) => [...prev, { applicationId: "", changeType: "TOLERATE" }])}
                     className="flex items-center gap-1 text-[11px] text-[#0B5CD6] hover:underline"
                   >
                     <Plus className="h-3 w-3" /> Add

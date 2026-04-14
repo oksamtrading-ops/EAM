@@ -15,7 +15,7 @@ const COLUMNS = [
   { header: "Lifecycle", key: "lifecycle", allowed: "PLANNED, ACTIVE, PHASING_OUT, RETIRED, SUNSET" },
   { header: "Business Value", key: "businessValue", allowed: "CRITICAL, HIGH, MEDIUM, LOW, BV_UNKNOWN" },
   { header: "Technical Health", key: "technicalHealth", allowed: "EXCELLENT, GOOD, FAIR, POOR, TH_CRITICAL, TH_UNKNOWN" },
-  { header: "Rationalization", key: "rationalizationStatus", allowed: "KEEP, INVEST, MIGRATE, RETIRE, CONSOLIDATE, EVALUATE, RAT_NOT_ASSESSED" },
+  { header: "Rationalization", key: "rationalizationStatus", allowed: "TOLERATE, INVEST, MIGRATE, ELIMINATE, RAT_NOT_ASSESSED" },
   { header: "Annual Cost", key: "annualCostUsd" },
   { header: "Cost Currency", key: "costCurrency" },
   { header: "Cost Model", key: "costModel", allowed: "LICENSE_PER_USER, LICENSE_FLAT, SUBSCRIPTION, USAGE_BASED, OPEN_SOURCE, INTERNAL" },

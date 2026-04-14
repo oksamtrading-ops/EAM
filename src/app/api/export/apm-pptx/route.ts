@@ -98,9 +98,9 @@ export async function POST(req: Request) {
     colW: [2.5, 1.3, 1, 0.8, 0.8, 1, 1.1], rowH: 0.3, autoPage: true,
   });
 
-  // Slide 3: Retire/Migrate Candidates
+  // Slide 3: Eliminate/Migrate Candidates
   const retireCandidates = apps.filter(
-    (a) => a.rationalizationStatus === "RETIRE" || a.rationalizationStatus === "MIGRATE"
+    (a) => a.rationalizationStatus === "ELIMINATE" || a.rationalizationStatus === "MIGRATE"
   );
   if (retireCandidates.length > 0) {
     const s3 = pptx.addSlide();
