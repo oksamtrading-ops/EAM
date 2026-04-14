@@ -88,7 +88,7 @@ export function CapabilityToolbar({
           size="sm"
           variant={showAI ? "default" : "outline"}
           onClick={onAI}
-          className={`h-9 text-xs ${showAI ? "bg-[#0B5CD6] hover:bg-[#094cb0] text-white" : ""}`}
+          className={`h-9 text-xs border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5 hover:text-[#7c3aed] ${showAI ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white hover:text-white border-transparent" : ""}`}
         >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
           AI Assistant

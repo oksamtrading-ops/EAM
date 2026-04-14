@@ -102,7 +102,7 @@ export function TechRadarView() {
             </Button>
             <Button
               size="sm"
-              className="gap-1.5 bg-[#0B5CD6] hover:bg-[#75a821] text-white"
+              className="gap-1.5 bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
               onClick={() => { setSelectedEntryId(null); setShowPanel(true); }}
             >
               <Plus className="h-3.5 w-3.5" />

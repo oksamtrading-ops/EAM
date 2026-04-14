@@ -107,7 +107,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             <Sparkles className="h-3.5 w-3.5" />
             AI Assistant
           </Button>
-          <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#0B5CD6] hover:bg-[#75a821] text-white">
+          <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
             <Plus className="h-4 w-4" />
             New Risk
           </Button>
