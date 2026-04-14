@@ -64,7 +64,7 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="max-w-2xl p-6 space-y-6">
+    <div className="max-w-2xl p-3 sm:p-6 space-y-6">
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">

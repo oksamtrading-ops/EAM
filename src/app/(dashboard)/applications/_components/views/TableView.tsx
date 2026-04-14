@@ -37,8 +37,8 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
   });
 
   return (
-    <div className="bg-white rounded-xl border overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="bg-white rounded-xl border overflow-x-auto">
+      <table className="w-full text-sm min-w-[900px]">
         <thead>
           <tr className="border-b bg-[#fafbfc]">
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Application</th>

@@ -32,10 +32,10 @@ export function CapabilityToolbar({
   capabilityCount,
 }: Props) {
   return (
-    <div className="bg-white border-b px-6 py-4 flex items-center justify-between gap-4">
+    <div className="bg-white border-b px-3 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+          <h1 className="text-lg sm:text-xl font-bold text-[#1a1f2e] tracking-tight">
             Business Capability Map
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -44,7 +44,7 @@ export function CapabilityToolbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* View toggle */}
         <div className="flex bg-[#f1f3f5] rounded-lg p-0.5">
           <button
@@ -93,7 +93,7 @@ export function CapabilityToolbar({
           </button>
         </div>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
         <Button
           size="sm"

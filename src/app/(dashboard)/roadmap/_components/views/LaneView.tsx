@@ -89,7 +89,7 @@ export function LaneView() {
     <div className="flex-1 overflow-auto">
       {/* Header */}
       <div className="flex border-b sticky top-0 bg-background z-10">
-        <div className="w-56 shrink-0 p-2 font-semibold text-xs border-r text-muted-foreground uppercase tracking-wide">
+        <div className="w-32 sm:w-56 shrink-0 p-2 font-semibold text-xs border-r text-muted-foreground uppercase tracking-wide">
           Capability Domain
         </div>
         {HORIZONS.map((h) => (
@@ -107,7 +107,7 @@ export function LaneView() {
         const domainInitiatives = initiativesByDomain.get(domain.id) ?? [];
         return (
           <div key={domain.id} className="flex border-b min-h-[80px]">
-            <div className="w-56 shrink-0 p-3 text-xs font-medium border-r flex items-start text-gray-700">
+            <div className="w-32 sm:w-56 shrink-0 p-3 text-xs font-medium border-r flex items-start text-gray-700">
               {domain.name}
             </div>
             {HORIZONS.map((horizon) => (

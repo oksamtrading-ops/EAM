@@ -85,7 +85,7 @@ export function OrgFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative bg-background rounded-xl shadow-2xl w-[440px] overflow-hidden">
+      <div className="relative bg-background rounded-xl shadow-2xl w-[calc(100%-1.5rem)] sm:w-[440px] overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="font-semibold text-sm">
             {isEdit ? "Edit Business Unit" : "New Business Unit"}

@@ -23,7 +23,7 @@ export function RoadmapToolbar({
   onArchState: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b bg-background shrink-0">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-3 sm:px-4 border-b bg-background shrink-0 gap-2">
       <div className="flex items-center gap-2">
         <h1 className="text-base font-semibold">Architecture Roadmap</h1>
         <span className="text-xs text-muted-foreground hidden sm:inline">
@@ -31,7 +31,7 @@ export function RoadmapToolbar({
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* View toggle */}
         <div className="flex items-center rounded-md border bg-muted/30 p-0.5 gap-0.5">
           {VIEW_OPTIONS.map(({ value, label, Icon }) => (

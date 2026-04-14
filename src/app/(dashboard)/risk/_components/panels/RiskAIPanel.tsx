@@ -631,7 +631,7 @@ export function RiskAIPanel({ onClose }: Props) {
     <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
         side="right"
-        className="w-[520px] max-w-full p-0 flex flex-col gap-0 overflow-hidden"
+        className="w-full sm:w-[520px] max-w-full p-0 flex flex-col gap-0 overflow-hidden"
       >
         {/* Purple gradient header */}
         <SheetHeader className="shrink-0 bg-gradient-to-r from-purple-600 to-indigo-600 px-5 pt-4 pb-0">

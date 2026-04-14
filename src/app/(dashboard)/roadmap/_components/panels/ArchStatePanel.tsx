@@ -136,7 +136,7 @@ export function ArchStatePanel({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-background border-l shadow-xl w-[500px] h-full flex flex-col overflow-hidden">
+      <div className="relative bg-background border-l shadow-xl w-full sm:w-[500px] h-full flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b shrink-0">
           <h2 className="font-semibold">Architecture States</h2>

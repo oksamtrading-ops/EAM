@@ -40,12 +40,12 @@ export function DashboardPageClient() {
 
   return (
   <>
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Executive Dashboard</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Executive Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Real-time overview of architecture portfolio and health metrics
             </p>

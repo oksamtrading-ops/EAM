@@ -101,14 +101,14 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
 
   if (isLoading || !app) {
     return (
-      <aside className="w-96 border-l bg-white p-4">
+      <aside className="w-full sm:w-96 border-l bg-white p-4">
         <div className="animate-pulse">Loading...</div>
       </aside>
     );
   }
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-[480px] z-40 border-l bg-white flex flex-col overflow-hidden shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-40 border-l bg-white flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
       <div className="p-4 border-b flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

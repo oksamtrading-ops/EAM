@@ -42,7 +42,7 @@ export function LandscapeView({ apps, capTree, onSelect, selectedId }: Props) {
       </div>
 
       {/* Capability columns */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {capTree.map((l1: any) => (
           <div key={l1.id} className="bg-white rounded-xl border overflow-hidden">
             <div className="px-4 py-3 border-b bg-[#1a1f2e]">

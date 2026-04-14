@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
@@ -13,6 +13,8 @@ import {
   Map,
   ShieldAlert,
   LayoutDashboard,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
@@ -66,19 +68,60 @@ const navItems = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [showCreate, setShowCreate] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   return (
     <CmdPaletteProvider>
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile header bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-md border-b md:hidden">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-1.5 rounded-lg hover:bg-black/5 transition-colors"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5 text-[#3a3a3c]" />
+        </button>
+        <span className="text-sm font-bold text-[#1a1f2e] truncate">
+          {navItems.find((n) => pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/")))?.label ?? "EAM"}
+        </span>
+      </div>
+
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar — glass panel */}
       <aside
-        className="w-[240px] shrink-0 flex flex-col glass-sidebar"
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[240px] flex flex-col glass-sidebar transition-transform duration-200 ease-in-out",
+          "md:relative md:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
         style={{
-          background: "rgba(255, 255, 255, 0.65)",
+          background: "rgba(255, 255, 255, 0.92)",
           borderRight: "1px solid rgba(255, 255, 255, 0.30)",
           boxShadow: "1px 0 0 rgba(0,0,0,0.04), 4px 0 24px rgba(0,0,0,0.04)",
         }}
       >
+        {/* Mobile close button */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="absolute top-3 right-3 p-1 rounded-lg hover:bg-black/5 transition-colors md:hidden"
+          aria-label="Close menu"
+        >
+          <X className="h-4 w-4 text-[#86868b]" />
+        </button>
+
         {/* Workspace Switcher */}
         <WorkspaceSwitcher onCreateNew={() => setShowCreate(true)} />
 
@@ -132,7 +175,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto flex flex-col">
+      <main className="flex-1 overflow-auto flex flex-col pt-[52px] md:pt-0">
         <div className="flex-1 overflow-auto">{children}</div>
       </main>
 

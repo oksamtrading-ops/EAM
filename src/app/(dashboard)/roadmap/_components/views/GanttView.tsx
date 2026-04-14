@@ -8,7 +8,7 @@ import { HorizonBands } from "../shared/HorizonBands";
 import { DependencyArrows } from "../shared/DependencyArrows";
 
 const MONTH_PX = 70;       // pixels per month in the bar area
-const LABEL_W = 200;       // px — label column width
+const LABEL_W = 160;       // px — label column width
 const MIN_MONTHS = 18;     // always show at least 18 months
 const ROW_H = 44;          // h-10 (40) + mb-1 (4)
 

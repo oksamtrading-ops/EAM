@@ -78,7 +78,7 @@ export function ApplicationPageClient() {
           appCount={apps?.length ?? 0}
         />
 
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-6">
           {error ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <p className="text-sm text-red-600 mb-2">Failed to load applications</p>

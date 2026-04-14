@@ -70,7 +70,7 @@ export function RiskHeatMapView({ onSelectRisk }: Props) {
           </div>
           <div className="flex ml-16 gap-1 mb-1">
             {IMPACTS.map((imp) => (
-              <div key={imp} className="w-32 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <div key={imp} className="w-20 sm:w-32 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 {imp}
               </div>
             ))}
@@ -108,7 +108,7 @@ export function RiskHeatMapView({ onSelectRisk }: Props) {
                           setActiveCell(isActive ? null : { likelihood: lik, impact: imp })
                         }
                         className={cn(
-                          "w-32 h-24 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-all",
+                          "w-20 sm:w-32 h-20 sm:h-24 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-all",
                           CELL_BG[label],
                           isActive ? "border-foreground shadow-md scale-105" : "border-transparent"
                         )}

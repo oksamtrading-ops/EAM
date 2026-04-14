@@ -59,7 +59,7 @@ function KpiCard({
 export function KpiStripV2({ kpis, loading, isError }: Props) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i} className="p-5 h-24 animate-pulse bg-muted/50" />
         ))}
@@ -69,7 +69,7 @@ export function KpiStripV2({ kpis, loading, isError }: Props) {
 
   if (isError || !kpis) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {["Total Applications", "Business Capabilities", "Open Risks", "Compliance Score", "Annual IT Cost"].map((label) => (
           <Card key={label} className="p-5 flex flex-col gap-2">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
@@ -83,7 +83,7 @@ export function KpiStripV2({ kpis, loading, isError }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard
           label="Total Applications"
           value={kpis.totalApplications}

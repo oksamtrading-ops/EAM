@@ -72,7 +72,7 @@ export function InvestmentChart({ tree, onSelect }: Props) {
   return (
     <div className="space-y-6">
       {/* Summary strip */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard
           icon={<DollarSign className="h-4 w-4 text-[#0B5CD6]" />}
           label="Total Investment"

@@ -86,7 +86,7 @@ export function AppPortfolioHealthChart({ data, loading }: Props) {
       </div>
 
       {/* Breakdown list */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {BUCKETS.map((b) => {
           const value = data[b.key];
           const pct = data.total > 0 ? Math.round((value / data.total) * 100) : 0;

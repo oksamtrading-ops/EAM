@@ -294,7 +294,7 @@ export function InitiativeFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative bg-background rounded-xl shadow-2xl w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative bg-background rounded-xl shadow-2xl w-[calc(100%-1.5rem)] sm:w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b shrink-0">
           <h2 className="font-semibold">

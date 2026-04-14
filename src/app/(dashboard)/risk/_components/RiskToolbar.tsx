@@ -70,7 +70,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
   return (
     <div className="shrink-0 border-b bg-background">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-3 sm:px-6 gap-3">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
             <ShieldAlert className="h-4 w-4 text-red-600" />
@@ -81,7 +81,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -114,7 +114,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
 
       {/* Stats strip */}
       {stats && (
-        <div className="px-6 pb-3 grid grid-cols-5 gap-3">
+        <div className="px-3 pb-3 sm:px-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             { label: "Total Risks", value: stats.total, color: "text-foreground" },
             { label: "Open", value: stats.open, color: "text-red-500" },

@@ -133,7 +133,7 @@ export function CapabilityPageClient() {
         />
 
         {/* Filter & Color-by sub-bar */}
-        <div className="border-b bg-background px-6 py-2 flex items-center gap-4 shrink-0">
+        <div className="border-b bg-background px-3 sm:px-6 py-2 flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
           {/* Search */}
           <div className="relative w-56">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -217,7 +217,7 @@ export function CapabilityPageClient() {
           )}
         </div>
 
-        <div className={`flex-1 overflow-auto ${view === "tree" ? "p-2" : "p-6"}`}>
+        <div className={`flex-1 overflow-auto ${view === "tree" ? "p-2" : "p-3 sm:p-6"}`}>
           {error ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <p className="text-sm text-red-600 mb-2">Failed to load capabilities</p>

@@ -30,10 +30,10 @@ export function ApplicationToolbar({
   appCount,
 }: Props) {
   return (
-    <div className="bg-white border-b px-6 py-4 flex items-center justify-between gap-4">
+    <div className="bg-white border-b px-3 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+          <h1 className="text-lg sm:text-xl font-bold text-[#1a1f2e] tracking-tight">
             Application Portfolio
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -42,7 +42,7 @@ export function ApplicationToolbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* View toggle */}
         <div className="flex bg-[#f1f3f5] rounded-lg p-0.5">
           <ViewBtn active={view === "table"} onClick={() => onViewChange("table")} icon={<Table2 className="h-3.5 w-3.5" />} label="Table" />
@@ -50,7 +50,7 @@ export function ApplicationToolbar({
           <ViewBtn active={view === "matrix"} onClick={() => onViewChange("matrix")} icon={<ScatterChart className="h-3.5 w-3.5" />} label="Matrix" />
         </div>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
         <Button
           size="sm"
@@ -59,8 +59,8 @@ export function ApplicationToolbar({
           title="AI suggests which capabilities each app supports"
           className={`h-9 text-xs ${showAutoMap ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
         >
-          <Network className="h-3.5 w-3.5 mr-1.5" />
-          AI Auto-Map
+          <Network className="h-3.5 w-3.5 sm:mr-1.5" />
+          <span className="hidden sm:inline">AI Auto-Map</span>
         </Button>
 
         <Button
@@ -69,18 +69,18 @@ export function ApplicationToolbar({
           onClick={onAI}
           className={`h-9 text-xs ${showAI ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
         >
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-          AI Assistant
+          <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
+          <span className="hidden sm:inline">AI Assistant</span>
         </Button>
 
         <Button size="sm" variant="outline" onClick={onImport} className="h-9 text-xs">
-          <FileUp className="h-3.5 w-3.5 mr-1.5" />
-          Import / Export
+          <FileUp className="h-3.5 w-3.5 sm:mr-1.5" />
+          <span className="hidden sm:inline">Import / Export</span>
         </Button>
 
         <Button size="sm" onClick={onCreateNew} className="h-9 text-xs bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Add Application
+          <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
+          <span className="hidden sm:inline">Add Application</span>
         </Button>
       </div>
     </div>

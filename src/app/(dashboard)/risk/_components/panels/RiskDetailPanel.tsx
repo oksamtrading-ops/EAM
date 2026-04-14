@@ -73,7 +73,7 @@ export function RiskDetailPanel({ riskId, onClose }: Props) {
   return (
     <>
       <Sheet open onOpenChange={(open) => !open && onClose()}>
-        <SheetContent className="w-[480px] sm:max-w-[480px] p-0 flex flex-col">
+        <SheetContent className="w-full sm:w-[480px] sm:max-w-[480px] p-0 flex flex-col">
           <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">

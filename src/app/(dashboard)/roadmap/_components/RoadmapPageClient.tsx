@@ -76,8 +76,8 @@ export function RoadmapPageClient() {
           />
 
           {/* Snapshot header */}
-          <div className="px-6 pt-4 pb-4 border-b bg-background shrink-0">
-            <div className="grid grid-cols-5 gap-4">
+          <div className="px-3 pt-4 pb-4 sm:px-6 border-b bg-background shrink-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
               {[
                 { label: "Active Initiatives", value: stats.active, color: "text-foreground" },
                 { label: "Completed", value: stats.completed, color: "text-emerald-500" },
