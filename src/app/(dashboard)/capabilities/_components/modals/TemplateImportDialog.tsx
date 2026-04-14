@@ -205,7 +205,7 @@ export function TemplateImportDialog({ open, onClose }: Props) {
         {/* ── STEP 1: Template selection ──────────────────────────────────── */}
         {step === 1 && (
           <>
-            <div className="grid grid-cols-2 gap-3 my-4">
+            <div className="grid grid-cols-2 gap-2 my-3 max-h-[60vh] overflow-y-auto pr-1">
               {INDUSTRIES.map((ind) => {
                 const disabled = !ind.templatesAvailable;
                 return (
@@ -213,7 +213,7 @@ export function TemplateImportDialog({ open, onClose }: Props) {
                     key={ind.value}
                     onClick={() => !disabled && setSelectedIndustry(ind.value)}
                     disabled={disabled}
-                    className={`relative p-4 border rounded-lg text-left transition-all ${
+                    className={`relative flex items-center gap-2.5 px-3 py-2.5 border rounded-lg text-left transition-all ${
                       disabled
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:border-primary/50"
@@ -223,22 +223,19 @@ export function TemplateImportDialog({ open, onClose }: Props) {
                         : "border-border"
                     } ${ind.value === "ENTERPRISE_BCM" ? "col-span-2" : ""}`}
                   >
-                    {ind.value === "ENTERPRISE_BCM" && (
-                      <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">
-                        18 domains · 600+ capabilities
-                      </span>
-                    )}
+                    <span className="text-lg shrink-0">{ind.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-tight">{ind.label}</p>
+                      {ind.value === "ENTERPRISE_BCM" && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
+                          18 domains · 600+ caps · Grow / Run / Protect bands
+                        </p>
+                      )}
+                    </div>
                     {disabled && (
-                      <span className="absolute top-2 right-2 text-[10px] bg-[#f2f2f7] text-[#86868b] font-semibold px-2 py-0.5 rounded-full">
-                        Coming soon
+                      <span className="text-[10px] bg-[#f2f2f7] text-[#86868b] font-semibold px-1.5 py-0.5 rounded-full shrink-0">
+                        Soon
                       </span>
-                    )}
-                    <span className="text-2xl">{ind.icon}</span>
-                    <p className="text-sm font-medium mt-2">{ind.label}</p>
-                    {ind.value === "ENTERPRISE_BCM" && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Full L1/L2 + selective L3 · Grow / Run / Protect bands · strategic importance pre-set
-                      </p>
                     )}
                   </button>
                 );
