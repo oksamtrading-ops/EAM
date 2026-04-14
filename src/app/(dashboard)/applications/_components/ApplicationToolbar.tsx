@@ -1,7 +1,6 @@
 "use client";
 
 import { Table2, LayoutGrid, ScatterChart, Plus, FileUp, Sparkles, Network } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
 import type { AppViewMode } from "./ApplicationPageClient";
 
@@ -77,40 +76,61 @@ export function ApplicationToolbar({
           <ViewBtn active={view === "matrix"} onClick={() => onViewChange("matrix")} icon={<ScatterChart className="h-3.5 w-3.5" />} label="Matrix" />
         </div>
 
-        {/* Full buttons — hidden below lg */}
-        <div className="hidden lg:flex items-center gap-2">
+        {/* Icon buttons — hidden below lg */}
+        <div className="hidden lg:flex items-center gap-1">
           <div className="w-px h-6 bg-border mx-1" />
 
-          <Button
-            size="sm"
-            variant={showAutoMap ? "default" : "outline"}
+          <button
             onClick={onAutoMap}
-            title="AI suggests which capabilities each app supports"
-            className={`h-9 text-xs ${showAutoMap ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
+            title="AI Auto-Map"
+            className={`relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
+              showAutoMap
+                ? "bg-[#7c3aed] text-white border-[#7c3aed]"
+                : "border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5"
+            }`}
           >
-            <Network className="h-3.5 w-3.5 mr-1.5" />
-            AI Auto-Map
-          </Button>
+            <Network className="h-[15px] w-[15px]" />
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              AI Auto-Map
+            </span>
+          </button>
 
-          <Button
-            size="sm"
-            variant={showAI ? "default" : "outline"}
+          <button
             onClick={onAI}
-            className={`h-9 text-xs ${showAI ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
+            title="AI Assistant"
+            className={`relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
+              showAI
+                ? "bg-[#7c3aed] text-white border-[#7c3aed]"
+                : "border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5"
+            }`}
           >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            AI Assistant
-          </Button>
+            <Sparkles className="h-[15px] w-[15px]" />
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              AI Assistant
+            </span>
+          </button>
 
-          <Button size="sm" variant="outline" onClick={onImport} className="h-9 text-xs">
-            <FileUp className="h-3.5 w-3.5 mr-1.5" />
-            Import / Export
-          </Button>
+          <button
+            onClick={onImport}
+            title="Import / Export"
+            className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+          >
+            <FileUp className="h-[15px] w-[15px]" />
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              Import / Export
+            </span>
+          </button>
 
-          <Button size="sm" onClick={onCreateNew} className="h-9 text-xs bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Add Application
-          </Button>
+          <button
+            onClick={onCreateNew}
+            title="Add Application"
+            className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              Add Application
+            </span>
+          </button>
         </div>
 
         {/* Overflow menu — visible below lg */}

@@ -38,9 +38,9 @@ export function RoadmapToolbar({
   ];
 
   return (
-    <div className="flex items-center justify-between px-3 py-3 sm:px-4 border-b bg-background shrink-0 gap-2">
+    <div className="flex items-center justify-between px-3 py-2.5 sm:px-4 border-b bg-background shrink-0 gap-2">
       <div className="flex items-center gap-2 min-w-0">
-        <h1 className="text-base font-semibold truncate">Architecture Roadmap</h1>
+        <h1 className="text-[15px] font-bold truncate">Architecture Roadmap</h1>
         <span className="text-xs text-muted-foreground hidden sm:inline whitespace-nowrap">
           Strategic initiatives and transformation timeline
         </span>
@@ -53,6 +53,7 @@ export function RoadmapToolbar({
             <button
               key={value}
               onClick={() => onViewChange(value)}
+              title={label}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-all",
                 view === value
@@ -66,22 +67,28 @@ export function RoadmapToolbar({
           ))}
         </div>
 
-        {/* Full buttons — hidden below lg */}
-        <div className="hidden lg:flex items-center gap-2">
+        {/* Icon buttons — hidden below lg */}
+        <div className="hidden lg:flex items-center gap-1">
           <button
             onClick={onArchState}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+            title="Capture Architecture State"
+            className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
           >
-            <Camera className="h-3.5 w-3.5" />
-            Arch State
+            <Camera className="h-[15px] w-[15px]" />
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              Arch State
+            </span>
           </button>
 
           <button
             onClick={onNewInitiative}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0B5CD6] hover:bg-[#094cb0] text-white text-xs font-semibold transition-colors"
+            title="New Initiative"
+            className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
           >
-            <Plus className="h-3.5 w-3.5" />
-            New Initiative
+            <Plus className="h-4 w-4" />
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              New Initiative
+            </span>
           </button>
         </div>
 

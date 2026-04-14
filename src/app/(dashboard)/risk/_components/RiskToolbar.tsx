@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Plus,
   ShieldAlert,
@@ -105,36 +104,50 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Full buttons — hidden below lg */}
-          <div className="hidden lg:flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Icon buttons — hidden below lg */}
+          <div className="hidden lg:flex items-center gap-1">
+            <button
               onClick={() => { setScanning(true); autoScan.mutate(); }}
               disabled={scanning}
-              className="gap-1.5"
+              title={scanning ? "Scanning..." : "Auto-scan Risks"}
+              className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all disabled:opacity-50"
             >
-              <ScanLine className="h-3.5 w-3.5" />
-              {scanning ? "Scanning..." : "Auto-scan"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
-              <Download className="h-3.5 w-3.5" />
-              Export PPTX
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              <ScanLine className="h-[15px] w-[15px]" />
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+                {scanning ? "Scanning..." : "Auto-scan"}
+              </span>
+            </button>
+            <button
+              onClick={handleExport}
+              title="Export PPTX"
+              className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+            >
+              <Download className="h-[15px] w-[15px]" />
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+                Export PPTX
+              </span>
+            </button>
+            <button
               onClick={onAI}
-              className="gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
+              title="AI Assistant"
+              className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-all"
             >
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Assistant
-            </Button>
-            <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
+              <Sparkles className="h-[15px] w-[15px]" />
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+                AI Assistant
+              </span>
+            </button>
+            <button
+              onClick={onNewRisk}
+              title="New Risk"
+              className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
+            >
               <Plus className="h-4 w-4" />
-              New Risk
-            </Button>
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+                New Risk
+              </span>
+            </button>
           </div>
 
           {/* Overflow menu — visible below lg */}
