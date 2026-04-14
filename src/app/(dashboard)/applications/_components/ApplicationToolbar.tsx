@@ -10,8 +10,8 @@ type Props = {
   onCreateNew: () => void;
   onImport: () => void;
   onExport: () => void;
-  onRationalization: () => void;
-  showRationalization: boolean;
+  onRationalize: () => void;
+  showRationalize: boolean;
   onAI: () => void;
   showAI: boolean;
   onAutoMap: () => void;
@@ -25,8 +25,8 @@ export function ApplicationToolbar({
   onCreateNew,
   onImport,
   onExport,
-  onRationalization,
-  showRationalization,
+  onRationalize,
+  showRationalize,
   onAI,
   showAI,
   onAutoMap,
@@ -58,9 +58,9 @@ export function ApplicationToolbar({
 
         <Button
           size="sm"
-          variant={showRationalization ? "default" : "outline"}
-          onClick={onRationalization}
-          className={`h-9 text-xs ${showRationalization ? "bg-[#1a1f2e] hover:bg-[#2a2f3e] text-white" : ""}`}
+          variant={showRationalize ? "default" : "outline"}
+          onClick={onRationalize}
+          className={`h-9 text-xs ${showRationalize ? "bg-[#7c3aed] hover:bg-[#6d28d9] text-white" : "text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5"}`}
         >
           <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
           Rationalize

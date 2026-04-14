@@ -9,7 +9,6 @@ import { TableView } from "./views/TableView";
 import { LandscapeView } from "./views/LandscapeView";
 import { RationalizationMatrix } from "./views/RationalizationMatrix";
 import { ApplicationDetailPanel } from "./panels/ApplicationDetailPanel";
-import { RationalizationPanel } from "./panels/RationalizationPanel";
 import { AppAIPanel } from "./panels/AppAIPanel";
 import { AppMappingPanel } from "./panels/AppMappingPanel";
 import { CreateApplicationDialog } from "./modals/CreateApplicationDialog";
@@ -17,14 +16,15 @@ import { ImportExcelDialog } from "./modals/ImportExcelDialog";
 import { AppWindow } from "lucide-react";
 
 export type AppViewMode = "table" | "landscape" | "matrix";
+export type AIDefaultTab = "rationalization" | "impact" | "tech-recs";
 
 export function ApplicationPageClient() {
   const [view, setView] = useState<AppViewMode>("table");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [showRationalization, setShowRationalization] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [aiDefaultTab, setAiDefaultTab] = useState<AIDefaultTab>("rationalization");
   const [showAutoMap, setShowAutoMap] = useState(false);
   const [autoMapAppId, setAutoMapAppId] = useState<string | null>(null);
 
@@ -33,6 +33,12 @@ export function ApplicationPageClient() {
   const { data: capTree } = trpc.capability.getTree.useQuery();
 
   const isEmpty = !isLoading && !error && (!apps || apps.length === 0);
+
+  function openAI(tab: AIDefaultTab = "rationalization") {
+    setAiDefaultTab(tab);
+    setShowAI(true);
+    setShowAutoMap(false);
+  }
 
   async function handleExport() {
     toast.info("Generating APM PowerPoint...");
@@ -65,11 +71,11 @@ export function ApplicationPageClient() {
           onCreateNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
-          onRationalization={() => { setShowRationalization(!showRationalization); setShowAI(false); setShowAutoMap(false); }}
-          showRationalization={showRationalization}
-          onAI={() => { setShowAI(!showAI); setShowRationalization(false); setShowAutoMap(false); }}
+          onRationalize={() => { openAI("rationalization"); }}
+          showRationalize={showAI && aiDefaultTab === "rationalization"}
+          onAI={() => { if (showAI) { setShowAI(false); } else { openAI(aiDefaultTab); } }}
           showAI={showAI}
-          onAutoMap={() => { setShowAutoMap(!showAutoMap); setAutoMapAppId(null); setShowAI(false); setShowRationalization(false); }}
+          onAutoMap={() => { setShowAutoMap(!showAutoMap); setAutoMapAppId(null); setShowAI(false); }}
           showAutoMap={showAutoMap && !autoMapAppId}
           appCount={apps?.length ?? 0}
         />
@@ -115,7 +121,7 @@ export function ApplicationPageClient() {
         </div>
       </div>
 
-      {selectedId && !showRationalization && !showAI && !showAutoMap && (
+      {selectedId && !showAI && !showAutoMap && (
         <ApplicationDetailPanel
           applicationId={selectedId}
           onClose={() => setSelectedId(null)}
@@ -131,17 +137,12 @@ export function ApplicationPageClient() {
         apps={apps ?? []}
       />
 
-      <RationalizationPanel
-        open={showRationalization}
-        onClose={() => setShowRationalization(false)}
-        apps={apps ?? []}
-      />
-
       <AppAIPanel
         open={showAI}
         onClose={() => setShowAI(false)}
         apps={apps ?? []}
         capTree={capTree ?? []}
+        defaultTab={aiDefaultTab}
       />
 
       <CreateApplicationDialog

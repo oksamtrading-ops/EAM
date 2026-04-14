@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, Target, Cpu, Loader2, AlertTriangle, CalendarPlus } from "lucide-react";
+import { X, Sparkles, Target, Cpu, Loader2, AlertTriangle, CalendarPlus, DollarSign, BarChart3 } from "lucide-react";
+import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,6 +18,7 @@ import {
   BV_LABELS,
   TH_LABELS,
   RAT_LABELS,
+  RAT_COLORS,
   LIFECYCLE_LABELS,
   APP_TYPE_LABELS,
 } from "@/lib/constants/application-colors";
@@ -27,12 +29,20 @@ type Props = {
   onClose: () => void;
   apps: any[];
   capTree: any[];
+  defaultTab?: AITab;
 };
 
 type AITab = "rationalization" | "impact" | "tech-recs";
 
-export function AppAIPanel({ open, onClose, apps, capTree }: Props) {
-  const [tab, setTab] = useState<AITab>("rationalization");
+export function AppAIPanel({ open, onClose, apps, capTree, defaultTab }: Props) {
+  const [tab, setTab] = useState<AITab>(defaultTab ?? "rationalization");
+
+  // Sync when defaultTab changes from parent (e.g. toolbar Rationalize vs AI Assistant)
+  const [prevDefaultTab, setPrevDefaultTab] = useState(defaultTab);
+  if (defaultTab !== prevDefaultTab) {
+    setPrevDefaultTab(defaultTab);
+    if (defaultTab) setTab(defaultTab);
+  }
   const [roadmapDefaults, setRoadmapDefaults] = useState<InitiativeFormDefaults | null>(null);
   const { workspaceId } = useWorkspace();
 
@@ -124,6 +134,8 @@ const TIME_CONFIG: Record<string, { label: string; color: string; bg: string; bo
 function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspaceId: string; onAddToRoadmap: (d: InitiativeFormDefaults) => void }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RatResult | null>(null);
+  const { data: stats } = trpc.application.getStats.useQuery();
+  const { data: matrix } = trpc.application.getRationalizationMatrix.useQuery();
 
   async function run() {
     setLoading(true);
@@ -175,13 +187,78 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
 
   const timeOrder = ["INVEST", "TOLERATE", "MIGRATE", "ELIMINATE", "CONSOLIDATE"];
 
+  const totalCost = stats?.totalCost ?? 0;
+  const eliminateCandidates = matrix?.retireCandidates ?? [];
+  const eliminateCost = eliminateCandidates.reduce((sum: number, a: any) => sum + Number(a.annualCostUsd ?? 0), 0);
+  const redundancyCount = matrix?.redundancies?.length ?? 0;
+  const orphanCount = matrix?.orphanedApps?.length ?? 0;
+
   return (
     <div className="p-5">
-      <p className="text-sm text-muted-foreground mb-4">
-        Analyze the entire portfolio using the Gartner TIME model. Every application will be assessed and categorized.
-      </p>
+      {/* Portfolio Overview */}
+      <div className="mb-5 space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border bg-[#fafbfc] p-2.5">
+            <div className="flex items-center gap-1 text-muted-foreground mb-0.5">
+              <BarChart3 className="h-3 w-3" />
+              <span className="text-[10px] font-medium">Total Apps</span>
+            </div>
+            <p className="text-lg font-bold text-[#1a1f2e]">{stats?.totalApps ?? apps.length}</p>
+          </div>
+          <div className="rounded-lg border bg-[#fafbfc] p-2.5">
+            <div className="flex items-center gap-1 text-muted-foreground mb-0.5">
+              <DollarSign className="h-3 w-3" />
+              <span className="text-[10px] font-medium">Annual Spend</span>
+            </div>
+            <p className="text-lg font-bold text-[#1a1f2e]">${totalCost.toLocaleString()}</p>
+          </div>
+        </div>
+
+        {/* Current TIME breakdown */}
+        {stats && Object.keys(stats.byRationalization).length > 0 && (
+          <div className="rounded-lg border bg-[#fafbfc] p-3 space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Current Rationalization</p>
+            {Object.entries(stats.byRationalization).map(([status, count]) => (
+              <div key={status} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RAT_COLORS[status] ?? "#cbd5e1" }} />
+                  <span className="text-[#1a1f2e]">{RAT_LABELS[status] ?? status}</span>
+                </div>
+                <span className="font-medium text-[#1a1f2e] tabular-nums">{count as number}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Quick insights row */}
+        {(eliminateCandidates.length > 0 || redundancyCount > 0 || orphanCount > 0) && (
+          <div className="flex gap-2 text-[10px]">
+            {eliminateCandidates.length > 0 && (
+              <div className="flex-1 rounded-md border border-red-200 bg-red-50 p-2 text-center">
+                <p className="font-bold text-red-700">{eliminateCandidates.length}</p>
+                <p className="text-red-600">Eliminate candidates</p>
+                {eliminateCost > 0 && <p className="text-red-500 mt-0.5">${eliminateCost.toLocaleString()} potential savings</p>}
+              </div>
+            )}
+            {redundancyCount > 0 && (
+              <div className="flex-1 rounded-md border border-orange-200 bg-orange-50 p-2 text-center">
+                <p className="font-bold text-orange-700">{redundancyCount}</p>
+                <p className="text-orange-600">Redundancies</p>
+              </div>
+            )}
+            {orphanCount > 0 && (
+              <div className="flex-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-center">
+                <p className="font-bold text-amber-700">{orphanCount}</p>
+                <p className="text-amber-600">Unmapped apps</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Run AI */}
       <Button onClick={run} disabled={loading} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
-        {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing portfolio...</> : <><Sparkles className="h-4 w-4 mr-2" />Run Rationalization</>}
+        {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing portfolio...</> : <><Sparkles className="h-4 w-4 mr-2" />Run TIME Analysis</>}
       </Button>
 
       {result && (
