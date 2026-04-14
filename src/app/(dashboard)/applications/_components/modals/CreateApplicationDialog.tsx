@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import {
   APP_TYPE_LABELS, LIFECYCLE_LABELS, DEPLOY_LABELS,
@@ -45,8 +47,8 @@ const INITIAL = {
   costRenewalDate: "",
   licensedUsers: "",
   actualUsers: "",
-  businessOwner: "",
-  itOwner: "",
+  businessOwnerId: "",
+  itOwnerId: "",
   replacementAppId: "",
 };
 
@@ -69,6 +71,7 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
   const [form, setForm] = useState(INITIAL);
   const [selectedCaps, setSelectedCaps] = useState<string[]>([]);
   const { data: allApps } = trpc.application.listForMapping.useQuery();
+  const { data: workspaceUsers } = trpc.workspace.listUsers.useQuery();
 
   const createMutation = trpc.application.create.useMutation({
     onSuccess: () => {
@@ -125,8 +128,8 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
       costRenewalDate: form.costRenewalDate || undefined,
       licensedUsers: form.licensedUsers ? parseInt(form.licensedUsers) : undefined,
       actualUsers: form.actualUsers ? parseInt(form.actualUsers) : undefined,
-      businessOwnerName: form.businessOwner.trim() || undefined,
-      itOwnerName: form.itOwner.trim() || undefined,
+      businessOwnerId: form.businessOwnerId || undefined,
+      itOwnerId: form.itOwnerId || undefined,
       replacementAppId: form.replacementAppId || undefined,
       capabilityIds: selectedCaps.length > 0 ? selectedCaps : undefined,
     });
@@ -305,14 +308,18 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
           {/* ── Ownership ── */}
           <SectionLabel>Ownership</SectionLabel>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Business Owner</Label>
-              <Input value={form.businessOwner} onChange={(e) => set("businessOwner", e.target.value)} placeholder="e.g. Jane Smith" className="mt-1" />
-            </div>
-            <div>
-              <Label>IT Owner</Label>
-              <Input value={form.itOwner} onChange={(e) => set("itOwner", e.target.value)} placeholder="e.g. John Doe" className="mt-1" />
-            </div>
+            <OwnerFieldInline
+              label="Business Owner"
+              selectedId={form.businessOwnerId}
+              onChange={(id) => set("businessOwnerId", id ?? "")}
+              users={workspaceUsers}
+            />
+            <OwnerFieldInline
+              label="IT Owner"
+              selectedId={form.itOwnerId}
+              onChange={(id) => set("itOwnerId", id ?? "")}
+              users={workspaceUsers}
+            />
           </div>
 
           {/* ── Replacement App ── */}
@@ -373,5 +380,98 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OwnerFieldInline({
+  label,
+  selectedId,
+  onChange,
+  users,
+}: {
+  label: string;
+  selectedId: string;
+  onChange: (id: string | null) => void;
+  users?: { id: string; name: string | null; email: string; avatarUrl: string | null }[];
+}) {
+  const [search, setSearch] = useState("");
+  const selected = selectedId ? (users ?? []).find((u) => u.id === selectedId) : null;
+
+  const filtered = (users ?? []).filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (u.name?.toLowerCase().includes(q)) || u.email.toLowerCase().includes(q);
+  });
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      {selected ? (
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-white group mt-1">
+          {selected.avatarUrl ? (
+            <img src={selected.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+          ) : (
+            <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-[#0B5CD6]">
+                {(selected.name ?? "?")[0]?.toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="text-xs font-medium truncate flex-1">{selected.name ?? "Unknown"}</span>
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <Popover>
+          <PopoverTrigger className="w-full h-9 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left mt-1">
+            + Assign {label.toLowerCase()}
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0" align="start">
+            <div className="p-2 border-b">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users..."
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-auto p-1">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-2 py-3 text-center">No users found</p>
+              ) : (
+                filtered.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => { onChange(u.id); setSearch(""); }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-muted transition"
+                  >
+                    {u.avatarUrl ? (
+                      <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-[#0B5CD6]">
+                          {(u.name ?? u.email)[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{u.name ?? "Unnamed"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 }

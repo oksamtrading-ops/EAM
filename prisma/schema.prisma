@@ -237,6 +237,8 @@ model User {
   auditLogs           AuditLog[]
   createdVersions     CapabilityMapVersion[]
   ownedApplications   Application[]         @relation("AppOwner")
+  businessOwnedApps   Application[]         @relation("AppBusinessOwner")
+  itOwnedApps         Application[]         @relation("AppITOwner")
   ownedInitiatives    Initiative[]          @relation("InitiativeOwner")
   ownedObjectives     Objective[]           @relation("ObjectiveOwner")
   ownedMilestones     Milestone[]           @relation("MilestoneOwner")
@@ -538,6 +540,8 @@ model Application {
   licensedUsers         Int?
   businessOwnerName     String?
   itOwnerName           String?
+  businessOwnerId       String?
+  itOwnerId             String?
   ownerId               String?
   // --- AI-critical fields for TIME rationalization ---
   functionalFit         FunctionalFitScore    @default(FF_UNKNOWN)
@@ -551,6 +555,8 @@ model Application {
 
   workspace       Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   owner           User?                    @relation("AppOwner", fields: [ownerId], references: [id])
+  businessOwner   User?                    @relation("AppBusinessOwner", fields: [businessOwnerId], references: [id])
+  itOwner         User?                    @relation("AppITOwner", fields: [itOwnerId], references: [id])
   replacementApp  Application?             @relation("ReplacementTarget", fields: [replacementAppId], references: [id])
   replacedBy      Application[]            @relation("ReplacementTarget")
   capabilities    ApplicationCapabilityMap[]
