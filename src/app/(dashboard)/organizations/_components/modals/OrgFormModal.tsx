@@ -107,7 +107,7 @@ export function OrgFormModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="e.g. Retail Banking Division"
             />
           </div>
@@ -132,7 +132,7 @@ export function OrgFormModal({
             <select
               value={parentId}
               onChange={(e) => setParentId(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6] bg-background"
+              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary bg-background"
             >
               <option value="">None (top-level)</option>
               {parentOptions.map((o) => (
@@ -154,7 +154,7 @@ export function OrgFormModal({
             <button
               type="submit"
               disabled={isPending || !name.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-[#0B5CD6] text-white text-sm font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isEdit ? "Save Changes" : "Create Unit"}

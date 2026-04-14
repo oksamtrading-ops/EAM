@@ -102,8 +102,8 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
       onDrop={handleDropOnRoot}
     >
       {/* Legend */}
-      <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-[#1a1f2e]">
+      <div className="glass-chart !p-4 flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">
           {LEGEND_TITLE[colorBy]}
         </span>
         <div className="flex items-center gap-4">
@@ -139,9 +139,9 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
           <div
             key={l1.id}
             className={cn(
-              "rounded-xl border bg-white overflow-hidden shadow-sm transition-all hover:shadow-md",
-              selectedId === l1.id && "ring-2 ring-[#0B5CD6]",
-              isDragOver && "ring-2 ring-[#0B5CD6] border-[#0B5CD6]"
+              "rounded-xl border bg-card overflow-hidden shadow-sm transition-all hover:shadow-md",
+              selectedId === l1.id && "ring-2 ring-primary",
+              isDragOver && "ring-2 ring-primary border-primary"
             )}
             onDragOver={(e) => {
               if (draggingRef.current && draggingRef.current.level !== "L1") {
@@ -164,15 +164,15 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
             {/* L1 header */}
             <button
               onClick={() => onSelect(l1.id)}
-              className="w-full p-4 text-left border-b transition-colors hover:bg-[#f8f9fa]"
+              className="w-full p-4 text-left border-b transition-colors hover:bg-muted/30"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px] font-bold text-white bg-[#1a1f2e] px-1.5 py-0.5 rounded">
+                <span className="text-[9px] font-bold text-background bg-foreground px-1.5 py-0.5 rounded">
                   L1
                 </span>
                 <div className="flex items-center gap-2">
                   {isDragOver && (
-                    <span className="text-[10px] text-[#0B5CD6] font-medium animate-pulse">
+                    <span className="text-[10px] text-primary font-medium animate-pulse">
                       Drop here
                     </span>
                   )}
@@ -181,13 +181,13 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
                   </span>
                 </div>
               </div>
-              <h3 className="font-semibold text-sm text-[#1a1f2e] leading-tight">
+              <h3 className="font-semibold text-sm text-foreground leading-tight">
                 {l1.name}
               </h3>
             </button>
 
             {/* L2 heat tiles */}
-            <div className="p-2.5 grid grid-cols-2 gap-2 bg-[#fafbfc]">
+            <div className="p-2.5 grid grid-cols-2 gap-2 bg-muted/20">
               {(l1.children ?? []).map((l2: any) => {
                 const color = getColor(l2, colorBy);
                 const isNotAssessed =
@@ -211,7 +211,7 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
                           selectedId === l2.id &&
                             "ring-2 ring-white ring-offset-2",
                           isNotAssessed
-                            ? "border-2 border-dashed border-[#cbd5e1] bg-[#f8f9fa] text-[#64748b]"
+                            ? "border-2 border-dashed border-[#cbd5e1] bg-muted/30 text-[#64748b]"
                             : "text-white"
                         )}
                         style={
@@ -275,7 +275,7 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
 
             {/* L3 tiles — shown for any L2 that has children */}
             {(l1.children ?? []).some((l2: any) => l2.children?.length > 0) && (
-              <div className="px-2.5 pb-2.5 space-y-1.5 bg-[#fafbfc] border-t border-dashed border-[#e9ecef]">
+              <div className="px-2.5 pb-2.5 space-y-1.5 bg-muted/20 border-t border-dashed border-border">
                 <p className="text-[9px] font-semibold text-muted-foreground pt-2 px-0.5 uppercase tracking-wide">
                   L3 Capabilities
                 </p>
@@ -293,8 +293,8 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
                             className={cn(
                               "w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
                               selectedId === l3.id
-                                ? "bg-[#0B5CD6]/10 ring-1 ring-[#0B5CD6]/40"
-                                : "hover:bg-[#f1f3f5]"
+                                ? "bg-primary/10 ring-1 ring-primary/40"
+                                : "hover:bg-muted"
                             )}
                           >
                             <span
@@ -305,7 +305,7 @@ export function HeatMapView({ tree, colorBy, onSelect, selectedId, onMove }: Pro
                               }}
                             />
                             <span className="text-[10px] text-muted-foreground text-left truncate">
-                              <span className="font-medium text-[#495057]">{l3.name}</span>
+                              <span className="font-medium text-muted-foreground">{l3.name}</span>
                               <span className="ml-1 opacity-60">— {l2.name}</span>
                             </span>
                           </button>

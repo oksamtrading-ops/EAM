@@ -38,9 +38,9 @@ export function RoadmapToolbar({
   ];
 
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 sm:px-4 border-b bg-background shrink-0 gap-2">
+    <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 border-b glass-toolbar shrink-0 gap-2">
       <div className="flex items-center gap-2 min-w-0">
-        <h1 className="text-[15px] font-bold truncate">Architecture Roadmap</h1>
+        <h1 className="text-md font-semibold text-foreground truncate">Architecture Roadmap</h1>
         <span className="text-xs text-muted-foreground hidden sm:inline whitespace-nowrap">
           Strategic initiatives and transformation timeline
         </span>
@@ -48,7 +48,7 @@ export function RoadmapToolbar({
 
       <div className="flex items-center gap-2 shrink-0">
         {/* View toggle */}
-        <div className="flex items-center rounded-md border bg-muted/30 p-0.5 gap-0.5">
+        <div className="flex items-center rounded-lg bg-muted/40 p-0.5 gap-0.5">
           {VIEW_OPTIONS.map(({ value, label, Icon }) => (
             <button
               key={value}
@@ -75,7 +75,7 @@ export function RoadmapToolbar({
             className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
           >
             <Camera className="h-[15px] w-[15px]" />
-            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
               Arch State
             </span>
           </button>
@@ -83,10 +83,10 @@ export function RoadmapToolbar({
           <button
             onClick={onNewInitiative}
             title="New Initiative"
-            className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
+            className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
               New Initiative
             </span>
           </button>

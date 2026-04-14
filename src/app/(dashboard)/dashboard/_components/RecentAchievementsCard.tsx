@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { CheckCircle2, ShieldCheck, Clock } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -36,7 +35,7 @@ function AchievementRow({ item }: { item: RecentAchievement }) {
           <Icon className={`h-3.5 w-3.5 ${color}`} />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium leading-snug truncate group-hover:text-[#0076A8] transition-colors">
+          <p className="text-sm font-medium leading-snug truncate group-hover:text-[var(--link)] transition-colors">
             {item.title}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -56,7 +55,7 @@ export function RecentAchievementsCard({ items, loading }: Props) {
 
   return (
     <>
-      <Card className="p-5 flex flex-col gap-4">
+      <div className="glass-chart flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           <h3 className="font-semibold text-sm">Recent Achievements</h3>
@@ -88,14 +87,14 @@ export function RecentAchievementsCard({ items, loading }: Props) {
             {hasMore && (
               <button
                 onClick={() => setShowAll(true)}
-                className="text-xs font-medium text-[#0076A8] hover:underline self-start"
+                className="text-xs font-medium text-[var(--link)] hover:underline self-start"
               >
                 See all {items.length} achievements &rarr;
               </button>
             )}
           </>
         )}
-      </Card>
+      </div>
 
       {/* Full list sheet */}
       <Sheet open={showAll} onOpenChange={setShowAll}>

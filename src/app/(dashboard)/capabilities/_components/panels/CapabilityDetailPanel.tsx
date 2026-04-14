@@ -180,7 +180,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
   return (
     <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-background flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 border-b bg-white">
+      <div className="px-5 pt-5 pb-4 border-b bg-card">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
@@ -206,7 +206,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8 text-muted-foreground hover:text-[#0B5CD6]"
+              className="h-8 w-8 text-muted-foreground hover:text-primary"
               title="Clone capability"
               onClick={() => cloneMutation.mutate({ id: cap.id })}
             >
@@ -286,7 +286,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                   value={newVSName}
                   onChange={(e) => setNewVSName(e.target.value)}
                   placeholder="Stream name..."
-                  className="flex-1 h-7 text-xs border rounded px-2 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                  className="flex-1 h-7 text-xs border rounded px-2 focus:outline-none focus:ring-1 focus:ring-primary"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newVSName.trim()) {
@@ -298,7 +298,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 <button
                   onClick={() => newVSName.trim() && createVSMutation.mutate({ name: newVSName.trim() })}
                   disabled={!newVSName.trim() || createVSMutation.isPending}
-                  className="h-7 px-2 text-xs bg-[#0B5CD6] text-white rounded hover:bg-[#094cb0] disabled:opacity-50"
+                  className="h-7 px-2 text-xs bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -312,7 +312,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
             ) : (
               <button
                 onClick={() => setShowCreateVS(true)}
-                className="mt-2 text-xs text-[#0B5CD6] hover:text-[#094cb0] flex items-center gap-1"
+                className="mt-2 text-xs text-primary hover:text-primary/90 flex items-center gap-1"
               >
                 <Plus className="h-3 w-3" />
                 Create new value stream
@@ -336,7 +336,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
               return (
                 <div className="space-y-2">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-[#1a1f2e]">
+                    <span className="text-xl font-bold text-foreground">
                       ${capCost.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                     <span className="text-xs text-muted-foreground">/year (weighted)</span>
@@ -540,7 +540,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-xs text-[#7c3aed] hover:text-[#6d28d9]"
+                  className="h-7 text-xs text-[var(--ai)] hover:text-[var(--ai)]/90"
                   onClick={() => setShowCreateObjective(true)}
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -549,7 +549,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-xs text-[#0B5CD6] hover:text-[#094cb0]"
+                  className="h-7 text-xs text-primary hover:text-primary/90"
                   onClick={() => setShowObjectivePicker(!showObjectivePicker)}
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -566,9 +566,9 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                   <button
                     key={obj.id}
                     onClick={() => linkObjectiveMutation.mutate({ capabilityId, objectiveId: obj.id })}
-                    className="w-full text-left px-3 py-2 rounded-md text-xs hover:bg-white transition flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 rounded-md text-xs hover:bg-card transition flex items-center gap-2"
                   >
-                    <Target className="h-3 w-3 text-[#0B5CD6] shrink-0" />
+                    <Target className="h-3 w-3 text-primary shrink-0" />
                     <span className="truncate">{obj.name}</span>
                   </button>
                 ))}
@@ -585,9 +585,9 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 {(cap as any).objectives.map((link: any) => (
                   <div
                     key={link.objectiveId}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white group"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card group"
                   >
-                    <Target className="h-3.5 w-3.5 text-[#0B5CD6] shrink-0" />
+                    <Target className="h-3.5 w-3.5 text-primary shrink-0" />
                     <span className="text-xs font-medium flex-1 truncate">
                       {link.objective.name}
                     </span>
@@ -629,7 +629,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs text-[#0B5CD6] hover:text-[#094cb0]"
+                className="h-7 text-xs text-primary hover:text-primary/90"
                 onClick={() => setShowDependencyPicker(!showDependencyPicker)}
               >
                 <Plus className="h-3 w-3 mr-1" />
@@ -647,7 +647,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                     onClick={() =>
                       addDependencyMutation.mutate({ dependentId: capabilityId, prerequisiteId: c.id })
                     }
-                    className="w-full text-left px-3 py-1.5 rounded-md text-xs hover:bg-white transition flex items-center gap-2"
+                    className="w-full text-left px-3 py-1.5 rounded-md text-xs hover:bg-card transition flex items-center gap-2"
                   >
                     <Badge variant="outline" className="text-[9px] font-mono shrink-0">{c.level}</Badge>
                     <span className="truncate">{c.name}</span>
@@ -662,7 +662,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 {(cap as any).dependsOn.map((dep: any) => (
                   <div
                     key={dep.id}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white group cursor-pointer hover:border-[#0B5CD6]/30"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card group cursor-pointer hover:border-primary/30"
                     onClick={() => onSelect?.(dep.prerequisiteId)}
                   >
                     <Badge variant="outline" className="text-[9px] font-mono shrink-0">
@@ -691,7 +691,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 {(cap as any).dependedOnBy.map((dep: any) => (
                   <div
                     key={dep.id}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30 cursor-pointer hover:border-[#0B5CD6]/30"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30 cursor-pointer hover:border-primary/30"
                     onClick={() => onSelect?.(dep.dependentId)}
                   >
                     <Badge variant="outline" className="text-[9px] font-mono shrink-0">
@@ -761,7 +761,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t bg-white flex items-center gap-2">
+      <div className="px-5 py-3 border-t bg-card flex items-center gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -807,7 +807,7 @@ function SectionLabel({
   icon?: React.ReactNode;
 }) {
   return (
-    <h3 className="flex items-center gap-1.5 text-xs font-semibold text-[#1a1f2e] uppercase tracking-wider mb-2">
+    <h3 className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
       {icon}
       {children}
     </h3>
@@ -840,12 +840,12 @@ function OwnerField({
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
       {owner ? (
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-white group">
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-card group">
           {owner.avatarUrl ? (
             <img src={owner.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
           ) : (
-            <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-              <span className="text-[9px] font-bold text-[#0B5CD6]">
+            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-primary">
                 {(owner.name ?? "?")[0]?.toUpperCase()}
               </span>
             </div>
@@ -860,7 +860,7 @@ function OwnerField({
         </div>
       ) : (
         <Popover>
-          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left">
+          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition text-left">
               + Assign {label.toLowerCase()}
           </PopoverTrigger>
           <PopoverContent className="w-56 p-0" align="start">
@@ -869,7 +869,7 @@ function OwnerField({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search users..."
-                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
                 autoFocus
               />
             </div>
@@ -891,8 +891,8 @@ function OwnerField({
                     {u.avatarUrl ? (
                       <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-                        <span className="text-[9px] font-bold text-[#0B5CD6]">
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-primary">
                           {(u.name ?? u.email)[0]?.toUpperCase()}
                         </span>
                       </div>
@@ -945,7 +945,7 @@ function EditableField({
 
   return (
     <h2
-      className={`cursor-pointer hover:text-[#0B5CD6] transition-colors ${className}`}
+      className={`cursor-pointer hover:text-primary transition-colors ${className}`}
       tabIndex={0}
       role="button"
       aria-label={`Edit ${value}. Double-click to edit.`}

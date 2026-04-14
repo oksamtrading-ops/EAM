@@ -22,7 +22,7 @@ export function InitiativeChip({
       onClick={onClick}
       className={cn(
         "text-xs px-2 py-1 rounded border font-medium max-w-[160px] truncate hover:shadow-sm transition-shadow flex items-center gap-1",
-        STATUS_BG[initiative.status] ?? "bg-white border-gray-200"
+        STATUS_BG[initiative.status] ?? "bg-card border-gray-200"
       )}
     >
       <RAGStatusDot status={initiative.ragStatus} />

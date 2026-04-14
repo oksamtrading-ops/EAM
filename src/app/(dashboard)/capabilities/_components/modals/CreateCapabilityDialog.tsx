@@ -181,7 +181,7 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
                     <button
                       onClick={() => newVSName.trim() && createVSMutation.mutate({ name: newVSName.trim() })}
                       disabled={!newVSName.trim() || createVSMutation.isPending}
-                      className="h-7 px-2 text-xs bg-[#0B5CD6] text-white rounded hover:bg-[#094cb0] disabled:opacity-50"
+                      className="h-7 px-2 text-xs bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
                     >
                       Add
                     </button>
@@ -196,7 +196,7 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
                   <button
                     type="button"
                     onClick={() => setShowNewVS(true)}
-                    className="mt-1.5 text-xs text-[#0B5CD6] hover:text-[#094cb0] flex items-center gap-1"
+                    className="mt-1.5 text-xs text-primary hover:text-primary/90 flex items-center gap-1"
                   >
                     <Plus className="h-3 w-3" />
                     Create new
@@ -223,7 +223,7 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
                 type="button"
                 onClick={suggestDescription}
                 disabled={suggestingDesc || !name.trim()}
-                className="inline-flex items-center gap-1 text-xs text-[#7c3aed] hover:text-[#6d28d9] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="inline-flex items-center gap-1 text-xs text-[var(--ai)] hover:text-[var(--ai)] disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 <Sparkles className="h-3 w-3" />
                 {suggestingDesc ? "Generating..." : "AI Suggest"}
@@ -253,7 +253,7 @@ export function CreateCapabilityDialog({ open, onClose, parentOptions }: Props) 
                 })
               }
               disabled={!name.trim() || createMutation.isPending}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {createMutation.isPending ? "Creating..." : "Create Capability"}
             </Button>

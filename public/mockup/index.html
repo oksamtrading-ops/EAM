@@ -3,209 +3,261 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Status Badge Unification — Before / After</title>
+<title>Phase 2 — Glass Sidebar: Before / After</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f1f3; color: #1a1f2e; padding: 32px; }
-
-  h1 { font-size: 22px; margin-bottom: 24px; }
-  h2 { font-size: 16px; margin-bottom: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px; }
-  .col { background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; }
-  .col.before { border-left: 4px solid #dc2626; }
-  .col.after  { border-left: 4px solid #16a34a; }
-  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
-  .label.red  { color: #dc2626; }
-  .label.green { color: #16a34a; }
-
-  /* L1 group card */
-  .l1-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-  .l1-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f1f3f5; }
-  .l1-left { display: flex; align-items: center; gap: 12px; }
-  .l1-bar { width: 6px; height: 40px; border-radius: 999px; background: #94a3b8; flex-shrink: 0; }
-  .l1-tag { font-size: 10px; font-weight: 700; color: white; background: #1a1f2e; padding: 2px 6px; border-radius: 4px; }
-  .l1-name { font-size: 15px; font-weight: 600; }
-  .l1-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-  .l1-right { display: flex; align-items: center; gap: 12px; }
-  .l1-right.wrap { flex-wrap: wrap; }
-
-  /* BEFORE: inconsistent badges */
-  .maturity-pill-before {
-    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px;
-    border: 1px solid #94a3b8; color: #94a3b8; white-space: nowrap;
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1a1a1a; min-height: 100vh;
+    background-color: #e6ecf3;
+    background-image:
+      radial-gradient(ellipse at 15% 50%, rgba(11,92,214,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 15%, rgba(14,165,233,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 90%, rgba(56,189,248,0.08) 0%, transparent 50%),
+      linear-gradient(155deg, #edf2f9 0%, #e8ecf3 35%, #e2e8f0 100%);
+    background-attachment: fixed;
+    padding: 32px;
   }
-  .maturity-chip-before {
-    font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px;
-    border: 1px solid rgba(148,163,184,0.38); color: #94a3b8;
-    display: inline-flex; align-items: center; gap: 4px;
+
+  h1 { font-size: 22px; margin-bottom: 8px; font-weight: 600; }
+  .subtitle { font-size: 14px; color: #44495a; margin-bottom: 28px; }
+  h2 { font-size: 15px; margin-bottom: 12px; color: #44495a; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 36px; }
+
+  .shell {
+    display: flex; height: 520px; border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   }
-  .maturity-chip-before .dot { width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; }
 
-  /* AFTER: unified StatusBadge */
-  .status-badge {
-    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px;
-    border: 1px solid; white-space: nowrap; flex-shrink: 0;
-    display: inline-flex; align-items: center; gap: 4px;
+  /* BEFORE sidebar — dark gradient */
+  .sidebar-before {
+    width: 240px; display: flex; flex-direction: column; shrink: 0;
+    background: linear-gradient(180deg, #0a0e1a 0%, #111827 100%);
   }
-  .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
 
-  .sub-cap { font-size: 12px; color: #94a3b8; background: #f1f3f5; padding: 4px 8px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
-  .chevron { width: 16px; height: 16px; color: #94a3b8; flex-shrink: 0; }
-
-  /* L2 grid */
-  .l2-grid { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #fafbfc; }
-  .l2-card { background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 14px; }
-  .l2-top { display: flex; align-items: start; justify-content: space-between; margin-bottom: 8px; }
-  .l2-tag { font-size: 9px; font-weight: 700; color: #0B5CD6; background: rgba(11,92,214,0.1); padding: 2px 6px; border-radius: 4px; }
-  .l2-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .l2-name { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
-
-  /* Color variants */
-  .c-slate    { border-color: #94a3b8; color: #94a3b8; }
-  .c-orange   { border-color: #ea580c; color: #ea580c; }
-  .c-red      { border-color: #dc2626; color: #dc2626; }
-  .c-yellow   { border-color: #ca8a04; color: #ca8a04; }
-  .c-initial  { border-color: #dc2626; color: #dc2626; }
-
-  .note { font-size: 13px; color: #64748b; line-height: 1.6; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
-  .note strong { color: #1a1f2e; }
-
-  @media (max-width: 700px) {
-    .columns { grid-template-columns: 1fr; }
+  /* AFTER sidebar — glass */
+  .sidebar-after {
+    width: 240px; display: flex; flex-direction: column; shrink: 0;
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    background: rgba(255,255,255,0.68);
+    border-right: 1px solid rgba(255,255,255,0.30);
   }
+
+  .sidebar-header {
+    height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px;
+    shrink: 0;
+  }
+  .sidebar-before .sidebar-header { border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-after .sidebar-header { border-bottom: 1px solid rgba(0,0,0,0.08); }
+
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px; background: #0B5CD6;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; shrink: 0;
+  }
+  .sidebar-before .logo-icon { color: #fff; }
+  .sidebar-after .logo-icon { color: #fff; }
+
+  .logo-text { font-size: 14px; font-weight: 600; }
+  .sidebar-before .logo-text { color: #fff; }
+  .sidebar-after .logo-text { color: #1a1a1a; }
+
+  /* Search pill */
+  .search-pill {
+    margin: 12px 12px 0; height: 36px; border-radius: 8px; display: flex;
+    align-items: center; gap: 8px; padding: 0 12px; font-size: 13px;
+  }
+  .sidebar-before .search-pill {
+    border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.4);
+  }
+  .sidebar-after .search-pill {
+    border: 1px solid rgba(0,0,0,0.08); background: rgba(100,100,100,0.06);
+    color: #44495a;
+  }
+  .search-pill kbd {
+    margin-left: auto; font-size: 10px; font-family: monospace;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .sidebar-before .search-pill kbd { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.3); }
+  .sidebar-after .search-pill kbd { background: rgba(100,100,100,0.09); color: rgba(68,73,90,0.6); }
+
+  /* Nav */
+  .nav { flex: 1; padding: 12px 8px; overflow-y: auto; }
+  .nav-label { padding: 4px 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .sidebar-before .nav-label { color: rgba(255,255,255,0.3); }
+  .sidebar-after .nav-label { color: rgba(68,73,90,0.5); }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: 12px; font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16,1,0.3,1); margin-bottom: 2px;
+    position: relative;
+  }
+  .nav-dot { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+  /* Before nav colors */
+  .sidebar-before .nav-item { color: rgba(255,255,255,0.5); }
+  .sidebar-before .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+  .sidebar-before .nav-item.active {
+    background: #0B5CD6; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .sidebar-before .nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: #fff; border-radius: 0 4px 4px 0;
+  }
+
+  /* After nav colors */
+  .sidebar-after .nav-item { color: #44495a; }
+  .sidebar-after .nav-item:hover { background: rgba(100,100,100,0.07); color: #1a1a1a; transform: translateX(3px); }
+  .sidebar-after .nav-item.active {
+    background: #0B5CD6; color: #fff; box-shadow: 0 1px 3px rgba(11,92,214,0.3);
+  }
+  .sidebar-after .nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: #fff; border-radius: 0 4px 4px 0;
+  }
+
+  /* User section */
+  .user-section {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  }
+  .sidebar-before .user-section { border-top: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-after .user-section { border-top: 1px solid rgba(0,0,0,0.08); }
+
+  .avatar { width: 32px; height: 32px; border-radius: 12px; background: #94a3b8; }
+  .user-label { font-size: 12px; }
+  .sidebar-before .user-label { color: rgba(255,255,255,0.4); }
+  .sidebar-after .user-label { color: #44495a; }
+
+  /* Main content area */
+  .main-content {
+    flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 12px;
+    overflow: hidden;
+  }
+  .content-card {
+    border-radius: 14px; padding: 16px; flex: 1;
+    backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(255,255,255,0.30);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.55);
+  }
+  .content-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .content-card p { font-size: 12px; color: #44495a; }
+
+  .label-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+  .label-tag.red { color: #dc2626; }
+  .label-tag.green { color: #16a34a; }
+
+  .note { font-size: 12px; color: #44495a; line-height: 1.6; padding: 12px; background: rgba(255,255,255,0.5); border-radius: 10px; border: 1px solid rgba(0,0,0,0.06); margin-top: 16px; }
+  .note code { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .note strong { color: #1a1a1a; }
+
+  @media (max-width: 900px) { .comparison { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
-<h1>Status Badge Unification — Before / After</h1>
+<h1>Phase 2 — Glass Sidebar & Shell</h1>
+<p class="subtitle">Frosted glass sidebar replacing dark gradient, semantic color tokens, smooth transitions</p>
 
-<!-- ───── SECTION 1: L1 HEADERS ───── -->
-<h2>L1 Capability Headers</h2>
-<div class="columns">
-  <div class="col before">
-    <div class="label red">BEFORE — MaturityPill (11px, pill) vs inconsistent wrapping</div>
-    <div class="l1-card">
-      <div class="l1-header">
-        <div class="l1-left">
-          <div class="l1-bar"></div>
-          <div>
-            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Procurement & Sourcing</span></div>
-            <div class="l1-desc">Supplier selection, contract management...</div>
-          </div>
+<h2>Full Shell Comparison</h2>
+<div class="comparison">
+  <!-- BEFORE -->
+  <div>
+    <div class="label-tag red">BEFORE — Dark gradient sidebar</div>
+    <div class="shell">
+      <div class="sidebar-before">
+        <div class="sidebar-header">
+          <div class="logo-icon">E</div>
+          <span class="logo-text">EAM Platform</span>
         </div>
-        <div class="l1-right">
-          <span class="maturity-pill-before">Not Assessed</span>
-          <span class="sub-cap">2 sub-capabilities</span>
-          <span class="chevron">&#8250;</span>
+        <div class="search-pill">
+          <span style="font-size:14px">&#128269;</span>
+          Search...
+          <kbd>⌘K</kbd>
+        </div>
+        <div class="nav">
+          <div class="nav-label">Modules</div>
+          <div class="nav-item active"><span class="nav-dot">&#9632;</span> Dashboard</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Capabilities</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Applications</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Roadmap</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Risk & Compliance</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Organization</div>
+        </div>
+        <div class="user-section">
+          <div class="avatar"></div>
+          <span class="user-label">Signed in</span>
+        </div>
+      </div>
+      <div class="main-content" style="background:#f0f3f7;">
+        <div class="content-card">
+          <h3>Capability Map</h3>
+          <p>22 capabilities catalogued across 6 domains</p>
+        </div>
+        <div class="content-card">
+          <h3>Application Portfolio</h3>
+          <p>12 applications tracked</p>
         </div>
       </div>
     </div>
-    <div class="l1-card">
-      <div class="l1-header">
-        <div class="l1-left">
-          <div class="l1-bar" style="background:#ea580c"></div>
-          <div>
-            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Order Management</span></div>
-            <div class="l1-desc">Order capture, fulfillment...</div>
-          </div>
-        </div>
-        <div class="l1-right">
-          <span class="maturity-pill-before" style="border-color:#ea580c;color:#ea580c">Developing</span>
-          <span class="sub-cap">3 sub-capabilities</span>
-          <span class="chevron">&#8250;</span>
-        </div>
-      </div>
-    </div>
-    <div class="note"><strong>Issue:</strong> L1 right-side container has no <code>flex-wrap</code>. On narrow screens, badges clip/overflow instead of wrapping. No <code>shrink-0</code> on badges.</div>
   </div>
 
-  <div class="col after">
-    <div class="label green">AFTER — Unified StatusBadge + flex-wrap</div>
-    <div class="l1-card">
-      <div class="l1-header">
-        <div class="l1-left">
-          <div class="l1-bar"></div>
-          <div>
-            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Procurement & Sourcing</span></div>
-            <div class="l1-desc">Supplier selection, contract management...</div>
-          </div>
+  <!-- AFTER -->
+  <div>
+    <div class="label-tag green">AFTER — Frosted glass sidebar</div>
+    <div class="shell">
+      <div class="sidebar-after">
+        <div class="sidebar-header">
+          <div class="logo-icon">E</div>
+          <span class="logo-text">EAM Platform</span>
         </div>
-        <div class="l1-right wrap">
-          <span class="status-badge c-slate">Not Assessed</span>
-          <span class="sub-cap">2 sub-capabilities</span>
-          <span class="chevron">&#8250;</span>
+        <div class="search-pill">
+          <span style="font-size:14px">&#128269;</span>
+          Search...
+          <kbd>⌘K</kbd>
+        </div>
+        <div class="nav">
+          <div class="nav-label">Modules</div>
+          <div class="nav-item active"><span class="nav-dot">&#9632;</span> Dashboard</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Capabilities</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Applications</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Roadmap</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Risk & Compliance</div>
+          <div class="nav-item"><span class="nav-dot">&#9671;</span> Organization</div>
+        </div>
+        <div class="user-section">
+          <div class="avatar"></div>
+          <span class="user-label">Signed in</span>
+        </div>
+      </div>
+      <div class="main-content" style="background:#f0f3f7;">
+        <div class="content-card">
+          <h3>Capability Map</h3>
+          <p>22 capabilities catalogued across 6 domains</p>
+        </div>
+        <div class="content-card">
+          <h3>Application Portfolio</h3>
+          <p>12 applications tracked</p>
         </div>
       </div>
     </div>
-    <div class="l1-card">
-      <div class="l1-header">
-        <div class="l1-left">
-          <div class="l1-bar" style="background:#ea580c"></div>
-          <div>
-            <div style="display:flex;align-items:center;gap:8px"><span class="l1-tag">L1</span><span class="l1-name">Order Management</span></div>
-            <div class="l1-desc">Order capture, fulfillment...</div>
-          </div>
-        </div>
-        <div class="l1-right wrap">
-          <span class="status-badge c-orange">Not Assessed</span>
-          <span class="sub-cap">3 sub-capabilities</span>
-          <span class="chevron">&#8250;</span>
-        </div>
-      </div>
-    </div>
-    <div class="note"><strong>Fixed:</strong> Container now has <code>flex-wrap</code>. All badges use <code>shrink-0</code> + <code>whitespace-nowrap</code>. Consistent <code>rounded-full</code> pill shape everywhere.</div>
-  </div>
-</div>
-
-<!-- ───── SECTION 2: L2 CARDS ───── -->
-<h2>L2 Capability Cards</h2>
-<div class="columns">
-  <div class="col before">
-    <div class="label red">BEFORE — MaturityChip (10px, rounded rect, lowercase "a")</div>
-    <div class="l2-grid" style="border-radius:8px;border:1px solid #e9ecef">
-      <div class="l2-card">
-        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#94a3b8"></div></div>
-        <div class="l2-name">Returns Management</div>
-        <span class="maturity-chip-before"><span class="dot"></span>Not assessed</span>
-      </div>
-      <div class="l2-card">
-        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#ca8a04"></div></div>
-        <div class="l2-name">Order Fulfillment</div>
-        <span class="maturity-chip-before" style="border-color:rgba(202,138,4,0.38);color:#ca8a04"><span class="dot" style="background:#ca8a04"></span>Defined</span>
-      </div>
-    </div>
-    <div class="note"><strong>Issues:</strong> Different font size (10px vs 11px), smaller padding (px-1.5 vs px-2), rounded-rect not pill, hardcoded "Not assessed" (lowercase "a").</div>
-  </div>
-
-  <div class="col after">
-    <div class="label green">AFTER — StatusBadge with dot (11px, pill, "Not Assessed")</div>
-    <div class="l2-grid" style="border-radius:8px;border:1px solid #e9ecef">
-      <div class="l2-card">
-        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#94a3b8"></div></div>
-        <div class="l2-name">Returns Management</div>
-        <span class="status-badge c-slate"><span class="dot" style="background:#94a3b8"></span>Not Assessed</span>
-      </div>
-      <div class="l2-card">
-        <div class="l2-top"><span class="l2-tag">L2</span><div class="l2-dot" style="background:#ca8a04"></div></div>
-        <div class="l2-name">Order Fulfillment</div>
-        <span class="status-badge c-yellow"><span class="dot" style="background:#ca8a04"></span>Defined</span>
-      </div>
-    </div>
-    <div class="note"><strong>Fixed:</strong> Same <code>StatusBadge</code> component. Pill shape, 11px, consistent padding. <code>dot</code> prop adds colored indicator. Label from constants (capital "A").</div>
   </div>
 </div>
 
-<!-- ───── SECTION 3: SUMMARY ───── -->
 <h2>Changes Summary</h2>
-<div style="background:white;border-radius:12px;padding:24px;border:1px solid #e5e7eb;max-width:700px;">
-  <table style="width:100%;font-size:13px;border-collapse:collapse;">
-    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0;font-weight:600">Component</td><td style="padding:8px 0">Before</td><td style="padding:8px 0">After</td></tr>
-    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">L1 maturity</td><td style="padding:8px 0;color:#94a3b8">MaturityPill (11px, pill)</td><td style="padding:8px 0;color:#16a34a">StatusBadge (11px, pill)</td></tr>
-    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">L1 importance</td><td style="padding:8px 0;color:#94a3b8">ImportancePill (11px, pill)</td><td style="padding:8px 0;color:#16a34a">StatusBadge (11px, pill)</td></tr>
-    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">L2 maturity</td><td style="padding:8px 0;color:#dc2626">MaturityChip (10px, rect)</td><td style="padding:8px 0;color:#16a34a">StatusBadge + dot (11px, pill)</td></tr>
-    <tr style="border-bottom:1px solid #f1f3f5"><td style="padding:8px 0">Label text</td><td style="padding:8px 0;color:#dc2626">"Not assessed" (mixed case)</td><td style="padding:8px 0;color:#16a34a">"Not Assessed" (consistent)</td></tr>
-    <tr><td style="padding:8px 0">L1 wrapping</td><td style="padding:8px 0;color:#dc2626">No flex-wrap (clips)</td><td style="padding:8px 0;color:#16a34a">flex-wrap + shrink-0</td></tr>
-  </table>
+<div class="note">
+  <strong>Sidebar:</strong> Removed <code>linear-gradient(180deg, #0a0e1a, #111827)</code> inline style. Now uses <code>.glass-sidebar</code> utility — translucent frosted glass with <code>backdrop-filter: blur(40px)</code>. Background content subtly visible through sidebar.<br><br>
+  <strong>Colors:</strong> All <code>text-white/50</code>, <code>bg-white/[0.06]</code>, <code>bg-[#0B5CD6]</code> replaced with semantic tokens: <code>text-muted-foreground</code>, <code>hover:bg-muted/50</code>, <code>bg-primary</code>. Works in both light and dark mode automatically.<br><br>
+  <strong>Borders:</strong> All 3 inline <code>style={{ borderTop/Bottom: "1px solid rgba(255,255,255,0.08)" }}</code> replaced with <code>border-t border-border</code> / <code>border-b border-border</code> CSS classes.<br><br>
+  <strong>Mobile header:</strong> <code>bg-white/80 backdrop-blur-md</code> replaced with <code>glass-toolbar</code> utility.<br><br>
+  <strong>Tooltips:</strong> <code>bg-[#1a1f2e] text-white</code> replaced with <code>bg-foreground text-background</code> (auto dark-mode).<br><br>
+  <strong>Transition:</strong> Sidebar width uses <code>ease-[var(--ease-out-expo)]</code> for smoother expand/collapse.<br><br>
+  <strong>Nav hover:</strong> No more 3D rotateY. Simple <code>translateX(3px)</code> via <code>data-active</code> attribute selector in globals.css.<br><br>
+  <strong>Files modified:</strong> DashboardShell.tsx, WorkspaceSwitcher.tsx, PageSearchTrigger.tsx
 </div>
 
 </body>

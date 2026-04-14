@@ -25,11 +25,11 @@ export function SidebarSearchPill() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Search (${isMac ? "⌘K" : "Ctrl K"})`}
-        className="w-full inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[13px] text-white/40 transition"
+        className="w-full inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 text-[13px] text-muted-foreground transition"
       >
         <Search className="h-3.5 w-3.5" />
         <span className="flex-1 text-left">Search...</span>
-        <kbd className="text-[10px] font-mono bg-white/10 rounded px-1.5 py-0.5 text-white/30">
+        <kbd className="text-[10px] font-mono bg-muted/50 rounded px-1.5 py-0.5 text-muted-foreground/60">
           {isMac ? "⌘K" : "Ctrl K"}
         </kbd>
       </button>

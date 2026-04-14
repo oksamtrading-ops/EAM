@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import type { AppHealthDistribution } from "@/lib/contracts/dashboard";
 
 interface Props {
@@ -15,7 +14,7 @@ const BUCKETS: {
   bg: string;
   dot: string;
 }[] = [
-  { key: "healthy",  label: "Healthy",  color: "#0B5CD6", bg: "bg-[#0B5CD6]", dot: "bg-[#0B5CD6]" },
+  { key: "healthy",  label: "Healthy",  color: "#0B5CD6", bg: "bg-primary", dot: "bg-primary" },
   { key: "warning",  label: "Warning",  color: "#f59e0b", bg: "bg-amber-400",  dot: "bg-amber-400" },
   { key: "critical", label: "Critical", color: "#ef4444", bg: "bg-red-500",    dot: "bg-red-500" },
 ];
@@ -23,19 +22,19 @@ const BUCKETS: {
 export function AppPortfolioHealthChart({ data, loading }: Props) {
   if (loading) {
     return (
-      <Card className="p-5">
+      <div className="glass-chart">
         <div className="mb-4">
           <h3 className="font-semibold text-sm">Application Portfolio Health</h3>
           <p className="text-xs text-muted-foreground">Current status distribution</p>
         </div>
         <div className="h-[140px] animate-pulse bg-muted/40 rounded-lg" />
-      </Card>
+      </div>
     );
   }
 
   if (!data || data.total === 0) {
     return (
-      <Card className="p-5">
+      <div className="glass-chart">
         <div className="mb-4">
           <h3 className="font-semibold text-sm">Application Portfolio Health</h3>
           <p className="text-xs text-muted-foreground">Current status distribution</p>
@@ -43,7 +42,7 @@ export function AppPortfolioHealthChart({ data, loading }: Props) {
         <div className="h-[140px] flex items-center justify-center text-sm text-muted-foreground">
           No applications in portfolio
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -54,7 +53,7 @@ export function AppPortfolioHealthChart({ data, loading }: Props) {
   })).filter((s) => s.value > 0);
 
   return (
-    <Card className="p-5 flex flex-col gap-5">
+    <div className="glass-chart flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -77,7 +76,7 @@ export function AppPortfolioHealthChart({ data, loading }: Props) {
           >
             {/* Hover tooltip */}
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-              <div className="bg-[#1a1f2e] text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg whitespace-nowrap">
+              <div className="bg-foreground text-background text-[10px] font-medium px-2 py-1 rounded shadow-lg whitespace-nowrap">
                 {s.label}: {s.value} ({s.pct}%)
               </div>
             </div>
@@ -103,6 +102,6 @@ export function AppPortfolioHealthChart({ data, loading }: Props) {
           );
         })}
       </div>
-    </Card>
+    </div>
   );
 }

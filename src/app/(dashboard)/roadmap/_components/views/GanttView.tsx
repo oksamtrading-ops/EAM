@@ -15,7 +15,7 @@ const ROW_H = 44;          // h-10 (40) + mb-1 (4)
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-300",
   PLANNED: "bg-blue-400",
-  IN_PROGRESS: "bg-[#0B5CD6]",
+  IN_PROGRESS: "bg-primary",
   ON_HOLD: "bg-yellow-400",
   COMPLETE: "bg-emerald-600",
   CANCELLED: "bg-gray-300 opacity-40",

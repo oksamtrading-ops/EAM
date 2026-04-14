@@ -31,7 +31,7 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string;
     value: "csv",
     label: "CSV (.csv)",
     description: "Lightweight comma-separated format for import into other tools",
-    icon: <FileText className="h-5 w-5 text-[#0B5CD6]" />,
+    icon: <FileText className="h-5 w-5 text-primary" />,
   },
   {
     value: "pptx",
@@ -95,13 +95,13 @@ export function ExportDialog({ open, onClose, onExportPptx }: Props) {
               onClick={() => setSelectedFormat(opt.value)}
               className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-all text-left ${
                 selectedFormat === opt.value
-                  ? "border-[#0B5CD6] bg-[#0B5CD6]/[0.04] ring-1 ring-[#0B5CD6]/20"
-                  : "border-[#e9ecef] hover:border-[#0B5CD6]/30 hover:bg-[#fafbfc]"
+                  ? "border-primary bg-primary/[0.04] ring-1 ring-primary/20"
+                  : "border-border hover:border-primary/30 hover:bg-muted/20"
               }`}
             >
               <div className="mt-0.5 shrink-0">{opt.icon}</div>
               <div>
-                <p className="text-sm font-medium text-[#1a1f2e]">{opt.label}</p>
+                <p className="text-sm font-medium text-foreground">{opt.label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{opt.description}</p>
               </div>
             </button>
@@ -113,7 +113,7 @@ export function ExportDialog({ open, onClose, onExportPptx }: Props) {
           <Button
             onClick={handleExport}
             disabled={exporting}
-            className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+            className="bg-primary hover:bg-primary/90 text-white"
           >
             {exporting ? "Exporting..." : `Export ${selectedFormat.toUpperCase()}`}
           </Button>

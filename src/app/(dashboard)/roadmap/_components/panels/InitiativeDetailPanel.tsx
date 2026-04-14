@@ -127,7 +127,7 @@ export function InitiativeDetailPanel({
               onClick={() => setTab(t)}
               className={`flex-1 py-2 text-xs font-medium capitalize transition-colors ${
                 tab === t
-                  ? "border-b-2 border-[#0B5CD6] text-foreground"
+                  ? "border-b-2 border-primary text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -245,13 +245,13 @@ export function InitiativeDetailPanel({
 
                       {/* Hover tooltip */}
                       <div className="absolute bottom-full left-0 right-0 mb-2 hidden group-hover:block z-50">
-                        <div className="bg-[#1a1f2e] text-white text-[11px] rounded-lg px-3 py-2.5 shadow-lg leading-relaxed">
+                        <div className="bg-foreground text-background text-[11px] rounded-lg px-3 py-2.5 shadow-lg leading-relaxed">
                           <p className="font-semibold text-purple-300 mb-1">AI-powered risk assessment</p>
-                          <p className="text-white/80">
+                          <p className="text-background/80">
                             Analyses this initiative's timeline, budget, milestones, and dependencies using Claude AI to identify schedule, budget, scope, and change-management risks — each with likelihood, impact, and a recommended mitigation action.
                           </p>
                         </div>
-                        <div className="w-3 h-3 bg-[#1a1f2e] rotate-45 mx-auto -mt-1.5" />
+                        <div className="w-3 h-3 bg-foreground rotate-45 mx-auto -mt-1.5" />
                       </div>
                     </div>
 

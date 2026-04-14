@@ -169,18 +169,18 @@ export function CmdAIAnswer({
   return (
     <div className="flex flex-col max-h-[60vh]">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#e5e5e7]">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
         <button
           onClick={onBack}
-          className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/[0.05] text-[#86868b]"
+          className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/[0.05] text-muted-foreground"
           aria-label="Back to search"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <Sparkles className="h-4 w-4 text-[#7c3aed]" />
-        <span className="text-[13px] font-medium text-[#1d1d1f] truncate flex-1">{query}</span>
+        <Sparkles className="h-4 w-4 text-[var(--ai)]" />
+        <span className="text-[13px] font-medium text-foreground truncate flex-1">{query}</span>
         {!done && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-[#86868b]" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         )}
         <button
           onClick={handleStar}
@@ -188,7 +188,7 @@ export function CmdAIAnswer({
           aria-label={saved ? "Saved" : "Save this query"}
           title={saved ? "Saved" : "Save this query"}
           className={`h-7 w-7 flex items-center justify-center rounded-md hover:bg-black/[0.05] transition ${
-            saved ? "text-[#f59e0b]" : "text-[#86868b]"
+            saved ? "text-[#f59e0b]" : "text-muted-foreground"
           }`}
         >
           <Star className={`h-4 w-4 ${saved ? "fill-[#f59e0b]" : ""}`} />
@@ -201,21 +201,21 @@ export function CmdAIAnswer({
           <div className="flex flex-col gap-3 py-2">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-[13.5px] text-[#1d1d1f] leading-relaxed">
+              <p className="text-[13.5px] text-foreground leading-relaxed">
                 {error.message}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setRetryKey((k) => k + 1)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium bg-[var(--ai)] text-white hover:bg-[var(--ai)]/90 transition"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Try again
               </button>
               <button
                 onClick={onBack}
-                className="px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-[#3a3a3c] hover:bg-black/[0.05] transition"
+                className="px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-muted-foreground hover:bg-black/[0.05] transition"
               >
                 Back to search
               </button>
@@ -224,9 +224,9 @@ export function CmdAIAnswer({
         ) : (
           <>
             {/* Prose answer */}
-            <p className="text-[14px] leading-relaxed text-[#1d1d1f] whitespace-pre-wrap">
+            <p className="text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
               {prose || (
-                <span className="text-[#86868b]">Thinking…</span>
+                <span className="text-muted-foreground">Thinking…</span>
               )}
             </p>
 
@@ -237,7 +237,7 @@ export function CmdAIAnswer({
                   <button
                     key={i}
                     onClick={() => onNavigate(f.url)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#7c3aed]/10 text-[#6d28d9] hover:bg-[#7c3aed]/20 transition"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--ai)]/10 text-[var(--ai)] hover:bg-[var(--ai)]/20 transition"
                   >
                     {f.label}
                     <ExternalLink className="h-3 w-3" />
@@ -249,7 +249,7 @@ export function CmdAIAnswer({
             {/* Entity refs */}
             {meta?.entityRefs && meta.entityRefs.length > 0 && (
               <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#86868b]">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Related
                 </p>
                 <div className="space-y-0.5">
@@ -261,9 +261,9 @@ export function CmdAIAnswer({
                         onClick={() => onNavigate(paletteDeepLink(ref.type, ref.id))}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-left hover:bg-black/[0.04] transition"
                       >
-                        <Icon className="h-3.5 w-3.5 text-[#86868b]" />
-                        <span className="text-[#1d1d1f]">{ref.type}</span>
-                        <span className="text-[#86868b] truncate font-mono text-[11px]">
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-foreground">{ref.type}</span>
+                        <span className="text-muted-foreground truncate font-mono text-[11px]">
                           {ref.id}
                         </span>
                       </button>
@@ -275,10 +275,10 @@ export function CmdAIAnswer({
 
             {/* Dig Deeper button */}
             {meta?.primaryRef && done && (
-              <div className="pt-2 border-t border-[#e5e5e7]">
+              <div className="pt-2 border-t border-border">
                 <button
                   onClick={() => onNavigate(digDeeperLink(meta.primaryRef!.type, meta.primaryRef!.id))}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium bg-[var(--ai)] text-white hover:bg-[var(--ai)]/90 transition"
                 >
                   <Sparkles className="h-4 w-4" />
                   Dig Deeper with AI

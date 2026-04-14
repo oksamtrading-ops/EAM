@@ -34,7 +34,7 @@ function InitiativeFlowNode({ data }: { data: { initiative: any } }) {
   const { initiative } = data;
   return (
     <div
-      className={`px-3 py-2 rounded-lg border-2 bg-white shadow-sm min-w-[160px] text-center text-xs
+      className={`px-3 py-2 rounded-lg border-2 bg-card shadow-sm min-w-[160px] text-center text-xs
         ${initiative.status === "BLOCKED" ? "border-red-400" : "border-blue-200"}`}
     >
       <Handle type="target" position={Position.Left} />

@@ -27,8 +27,8 @@ export function LandscapeView({ apps, capTree, onSelect, selectedId }: Props) {
   return (
     <div className="space-y-5">
       {/* Legend */}
-      <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-[#1a1f2e]">
+      <div className="bg-card rounded-xl border p-4 flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">
           Application Landscape — by Capability
         </span>
         <div className="flex items-center gap-3">
@@ -44,16 +44,16 @@ export function LandscapeView({ apps, capTree, onSelect, selectedId }: Props) {
       {/* Capability columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {capTree.map((l1: any) => (
-          <div key={l1.id} className="bg-white rounded-xl border overflow-hidden">
-            <div className="px-4 py-3 border-b bg-[#1a1f2e]">
-              <p className="text-xs font-bold text-white">{l1.name}</p>
-              <p className="text-[10px] text-white/50">
+          <div key={l1.id} className="bg-card rounded-xl border overflow-hidden">
+            <div className="px-4 py-3 border-b bg-foreground">
+              <p className="text-xs font-bold text-background">{l1.name}</p>
+              <p className="text-[10px] text-background/50">
                 {(capApps.get(l1.id) ?? []).length} apps
                 {(l1.children ?? []).reduce((sum: number, c: any) => sum + (capApps.get(c.id) ?? []).length, 0) > 0 &&
                   ` + ${(l1.children ?? []).reduce((sum: number, c: any) => sum + (capApps.get(c.id) ?? []).length, 0)} in sub-caps`}
               </p>
             </div>
-            <div className="p-2 space-y-1.5 bg-[#fafbfc] min-h-[80px]">
+            <div className="p-2 space-y-1.5 bg-muted/20 min-h-[80px]">
               {/* Apps directly mapped to L1 */}
               {(capApps.get(l1.id) ?? []).map((app: any) => (
                 <AppCard key={app.id} app={app} onSelect={onSelect} selected={selectedId === app.id} />
@@ -78,7 +78,7 @@ export function LandscapeView({ apps, capTree, onSelect, selectedId }: Props) {
 
       {/* Unmapped apps */}
       {unmapped.length > 0 && (
-        <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="bg-card rounded-xl border overflow-hidden">
           <div className="px-4 py-3 border-b bg-orange-50">
             <p className="text-sm font-medium text-orange-800">
               Unmapped Applications ({unmapped.length})
@@ -105,11 +105,11 @@ function AppCard({ app, onSelect, selected }: { app: any; onSelect: (id: string)
       onClick={() => onSelect(app.id)}
       className={cn(
         "text-left w-full px-3 py-2 rounded-lg border text-xs transition-all hover:shadow-sm",
-        selected ? "border-[#0B5CD6] ring-1 ring-[#0B5CD6]/20 bg-white" : "border-[#e9ecef] bg-white hover:border-[#0B5CD6]/30"
+        selected ? "border-primary ring-1 ring-primary/20 bg-card" : "border-border bg-card hover:border-primary/30"
       )}
       style={{ borderLeftColor: color, borderLeftWidth: "3px" }}
     >
-      <p className="font-medium text-[#1a1f2e] truncate">{app.name}</p>
+      <p className="font-medium text-foreground truncate">{app.name}</p>
       {app.vendor && <p className="text-[10px] text-muted-foreground truncate">{app.vendor}</p>}
     </button>
   );

@@ -75,7 +75,7 @@ const STATUS_COLOR: Record<string, string> = {
   OPEN: "bg-amber-50 text-amber-700",
   MITIGATED: "bg-emerald-50 text-emerald-700",
   ACCEPTED: "bg-blue-50 text-blue-700",
-  CLOSED: "bg-[#f2f2f7] text-[#3a3a3c]",
+  CLOSED: "bg-muted text-muted-foreground",
   IDENTIFIED: "bg-purple-50 text-purple-700",
 };
 
@@ -91,8 +91,8 @@ export function PalettePeekPane({
   if (!index || !active) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-2">
-        <Info className="h-5 w-5 text-[#c7c7cc]" />
-        <p className="text-[12px] text-[#86868b] leading-relaxed max-w-[220px]">
+        <Info className="h-5 w-5 text-muted-foreground" />
+        <p className="text-[12px] text-muted-foreground leading-relaxed max-w-[220px]">
           Highlight an item on the left to preview details here.
         </p>
       </div>
@@ -106,18 +106,18 @@ export function PalettePeekPane({
       <div className="p-4 space-y-3 overflow-y-auto h-full">
         <Header icon={AppWindow} title={a.name} subtitle={a.vendor ?? "No vendor"} />
         {a.description && (
-          <p className="text-[12px] leading-relaxed text-[#3a3a3c] line-clamp-4">
+          <p className="text-[12px] leading-relaxed text-muted-foreground line-clamp-4">
             {a.description}
           </p>
         )}
         <div className="flex flex-wrap gap-1.5">
           {a.lifecycle && (
-            <Chip cls={LIFECYCLE_COLOR[a.lifecycle] ?? "bg-[#f2f2f7] text-[#3a3a3c]"}>
+            <Chip cls={LIFECYCLE_COLOR[a.lifecycle] ?? "bg-muted text-muted-foreground"}>
               {a.lifecycle}
             </Chip>
           )}
           {a.rationalizationStatus && (
-            <Chip cls="bg-[#f2f2f7] text-[#3a3a3c]">{a.rationalizationStatus}</Chip>
+            <Chip cls="bg-muted text-muted-foreground">{a.rationalizationStatus}</Chip>
           )}
         </div>
         <Grid
@@ -138,14 +138,14 @@ export function PalettePeekPane({
       <div className="p-4 space-y-3 overflow-y-auto h-full">
         <Header icon={Network} title={c.name} subtitle={c.level} />
         {c.description ? (
-          <p className="text-[12px] leading-relaxed text-[#3a3a3c] line-clamp-6">
+          <p className="text-[12px] leading-relaxed text-muted-foreground line-clamp-6">
             {c.description}
           </p>
         ) : (
-          <p className="text-[12px] italic text-[#86868b]">No description</p>
+          <p className="text-[12px] italic text-muted-foreground">No description</p>
         )}
         <div className="flex flex-wrap gap-1.5">
-          <Chip cls="bg-[#f2f2f7] text-[#3a3a3c]">Level {c.level}</Chip>
+          <Chip cls="bg-muted text-muted-foreground">Level {c.level}</Chip>
         </div>
       </div>
     );
@@ -164,16 +164,16 @@ export function PalettePeekPane({
       <div className="p-4 space-y-3 overflow-y-auto h-full">
         <Header icon={ShieldAlert} title={r.title} subtitle={r.category} />
         {r.description && (
-          <p className="text-[12px] leading-relaxed text-[#3a3a3c] line-clamp-4">
+          <p className="text-[12px] leading-relaxed text-muted-foreground line-clamp-4">
             {r.description}
           </p>
         )}
         <div className="flex items-center gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-[#86868b]">Score</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score</p>
             <p className={`text-xl font-semibold ${scoreColor}`}>{r.riskScore}</p>
           </div>
-          <Chip cls={STATUS_COLOR[r.status] ?? "bg-[#f2f2f7] text-[#3a3a3c]"}>
+          <Chip cls={STATUS_COLOR[r.status] ?? "bg-muted text-muted-foreground"}>
             {r.status}
           </Chip>
         </div>
@@ -188,12 +188,12 @@ export function PalettePeekPane({
       <div className="p-4 space-y-3 overflow-y-auto h-full">
         <Header icon={MapIcon} title={i.name} subtitle={i.horizon} />
         {i.description && (
-          <p className="text-[12px] leading-relaxed text-[#3a3a3c] line-clamp-5">
+          <p className="text-[12px] leading-relaxed text-muted-foreground line-clamp-5">
             {i.description}
           </p>
         )}
         <div className="flex flex-wrap gap-1.5">
-          <Chip cls="bg-[#f2f2f7] text-[#3a3a3c]">{i.status}</Chip>
+          <Chip cls="bg-muted text-muted-foreground">{i.status}</Chip>
           <Chip cls="bg-purple-50 text-purple-700">{i.horizon}</Chip>
         </div>
       </div>
@@ -206,7 +206,7 @@ export function PalettePeekPane({
 function Empty() {
   return (
     <div className="h-full flex items-center justify-center">
-      <p className="text-[12px] text-[#86868b]">Item not found in index.</p>
+      <p className="text-[12px] text-muted-foreground">Item not found in index.</p>
     </div>
   );
 }
@@ -222,15 +222,15 @@ function Header({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <div className="h-8 w-8 rounded-lg bg-[#f2f2f7] flex items-center justify-center shrink-0">
-        <Icon className="h-4 w-4 text-[#3a3a3c]" />
+      <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-[#1d1d1f] leading-tight truncate">
+        <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
           {title}
         </p>
         {subtitle && (
-          <p className="text-[11px] text-[#86868b] mt-0.5 truncate">{subtitle}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{subtitle}</p>
         )}
       </div>
     </div>
@@ -250,8 +250,8 @@ function Grid({ rows }: { rows: [string, string][] }) {
     <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11.5px]">
       {rows.map(([k, v]) => (
         <div key={k} className="col-span-2 flex items-baseline justify-between gap-3">
-          <dt className="text-[#86868b] uppercase tracking-wider text-[10px]">{k}</dt>
-          <dd className="text-[#1d1d1f] text-right truncate">{v}</dd>
+          <dt className="text-muted-foreground uppercase tracking-wider text-[10px]">{k}</dt>
+          <dd className="text-foreground text-right truncate">{v}</dd>
         </div>
       ))}
     </dl>

@@ -129,13 +129,13 @@ export function CapabilityToolbar({
   ];
 
   return (
-    <div className="bg-white border-b px-3 sm:px-5 py-2.5 flex items-center gap-2 shrink-0">
+    <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-center gap-2 shrink-0">
       {/* Title */}
       <div className="flex items-center gap-2 shrink-0">
-        <h1 className="text-[15px] font-bold text-[#1a1f2e] tracking-tight whitespace-nowrap">
+        <h1 className="text-md font-semibold text-foreground tracking-tight whitespace-nowrap">
           Capability Map
         </h1>
-        <span className="text-[10px] font-medium text-muted-foreground bg-[#f1f3f5] px-2 py-0.5 rounded-full">
+        <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
           {capabilityCount}
         </span>
       </div>
@@ -143,7 +143,7 @@ export function CapabilityToolbar({
       <div className="w-px h-6 bg-border mx-1 shrink-0" />
 
       {/* View toggle (icon-only) */}
-      <div className="flex bg-[#f1f3f5] rounded-lg p-0.5 gap-px shrink-0">
+      <div className="flex bg-muted/40 rounded-lg p-0.5 gap-px shrink-0">
         {VIEW_OPTIONS.map(({ value, label, Icon }) => (
           <button
             key={value}
@@ -152,7 +152,7 @@ export function CapabilityToolbar({
             className={cn(
               "flex items-center justify-center w-8 h-7 rounded-md transition-all relative group",
               view === value
-                ? "bg-white shadow-sm text-[#1a1f2e]"
+                ? "bg-white shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -165,7 +165,7 @@ export function CapabilityToolbar({
       <div className="w-px h-6 bg-border mx-1 shrink-0 hidden sm:block" />
 
       {/* Search (compact) */}
-      <div className="hidden sm:flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-[#f9fafb] min-w-0 flex-1 max-w-[280px]">
+      <div className="hidden sm:flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-muted/20 min-w-0 flex-1 max-w-[280px]">
         <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <input
           type="text"
@@ -237,7 +237,7 @@ export function CapabilityToolbar({
         <button
           onClick={onCreateNew}
           title="Add Capability"
-          className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
+          className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
         >
           <Plus className="h-4 w-4" />
           <Tooltip>Add Capability</Tooltip>
@@ -272,10 +272,10 @@ function IconBtn({
         "relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all",
         variant === "purple"
           ? active
-            ? "bg-[#7c3aed] text-white border-[#7c3aed]"
-            : "border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5"
+            ? "bg-[var(--ai)] text-white border-[var(--ai)]"
+            : "border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)]"
           : active
-          ? "bg-[#1a1f2e] text-white border-[#1a1f2e]"
+          ? "bg-foreground text-background border-foreground"
           : "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
       )}
     >
@@ -288,7 +288,7 @@ function IconBtn({
 /* ─── Tooltip ─── */
 function Tooltip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+    <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
       {children}
     </span>
   );
@@ -333,22 +333,22 @@ function FilterPopover({
         className={cn(
           "flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-medium transition-all",
           hasFilters
-            ? "border-[#0B5CD6] text-[#0B5CD6] bg-[#eff6ff]"
+            ? "border-primary text-primary bg-primary/5"
             : "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
         )}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">Filters</span>
         {hasFilters && (
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0B5CD6]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
         )}
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 bg-white border rounded-xl shadow-lg p-3 min-w-[240px] z-[100]">
+        <div className="absolute top-[calc(100%+6px)] left-0 glass-overlay rounded-xl p-3 min-w-[240px] z-[100]">
           {/* Mobile search (shown inside popover on sm) */}
           <div className="sm:hidden mb-3">
-            <div className="flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-[#f9fafb]">
+            <div className="flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-muted/20">
               <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <input
                 type="text"
@@ -371,8 +371,8 @@ function FilterPopover({
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors",
                   filterLevel === lvl
-                    ? "bg-[#1a1f2e] text-white"
-                    : "bg-[#f1f3f5] text-muted-foreground hover:text-foreground"
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
                 )}
               >
                 {lvl === "all" ? "All" : lvl}
@@ -395,8 +395,8 @@ function FilterPopover({
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors",
                   filterMaturity === opt.value
-                    ? "bg-[#0B5CD6] text-white"
-                    : "bg-[#f1f3f5] text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-white"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
                 )}
               >
                 {opt.label}
@@ -412,7 +412,7 @@ function FilterPopover({
                   onFilterMaturityChange("all");
                   onSearchChange("");
                 }}
-                className="text-[11px] text-[#0B5CD6] hover:underline font-medium"
+                className="text-[11px] text-primary hover:underline font-medium"
               >
                 Clear all filters
               </button>
@@ -455,7 +455,7 @@ function ColorByDropdown({
         className={cn(
           "flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-medium transition-all",
           open
-            ? "border-[#0B5CD6] text-[#0B5CD6] bg-[#eff6ff]"
+            ? "border-primary text-primary bg-primary/5"
             : "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
         )}
       >
@@ -465,7 +465,7 @@ function ColorByDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 bg-white border rounded-xl shadow-lg py-1 min-w-[160px] z-[100]">
+        <div className="absolute top-[calc(100%+6px)] left-0 glass-overlay rounded-xl py-1 min-w-[160px] z-[100]">
           {COLOR_BY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -476,14 +476,14 @@ function ColorByDropdown({
               className={cn(
                 "flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium transition-colors text-left",
                 colorBy === opt.value
-                  ? "text-[#0B5CD6] bg-[#eff6ff]"
-                  : "text-foreground hover:bg-[#f9fafb]"
+                  ? "text-primary bg-primary/5"
+                  : "text-foreground hover:bg-muted/20"
               )}
             >
               <opt.Icon className="h-3.5 w-3.5 shrink-0" />
               <span className="flex-1">{opt.label}</span>
               {colorBy === opt.value && (
-                <Check className="h-3.5 w-3.5 text-[#0B5CD6]" />
+                <Check className="h-3.5 w-3.5 text-primary" />
               )}
             </button>
           ))}

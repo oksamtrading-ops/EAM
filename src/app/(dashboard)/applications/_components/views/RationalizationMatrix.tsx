@@ -37,12 +37,12 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
   return (
     <div className="space-y-4">
       {/* Quadrant chart */}
-      <div className="bg-white rounded-xl border p-6">
-        <h3 className="text-sm font-semibold text-[#1a1f2e] mb-4">
+      <div className="bg-card rounded-xl border p-6">
+        <h3 className="text-sm font-semibold text-foreground mb-4">
           TIME Rationalization Matrix
         </h3>
 
-        <div className="relative w-full aspect-[4/3] max-h-[500px] border-2 border-[#1a1f2e] rounded-lg overflow-hidden">
+        <div className="relative w-full aspect-[4/3] max-h-[500px] border-2 border-foreground rounded-lg overflow-hidden">
           {/* Quadrant backgrounds */}
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
             <div className="bg-blue-50/50 flex items-center justify-center">
@@ -60,8 +60,8 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
           </div>
 
           {/* Axis lines */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#1a1f2e]/20" />
-          <div className="absolute top-1/2 left-0 right-0 h-px bg-[#1a1f2e]/20" />
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-foreground/20" />
+          <div className="absolute top-1/2 left-0 right-0 h-px bg-foreground/20" />
 
           {/* App dots — size reflects integration count (migration risk) */}
           {assessed.map((app) => {
@@ -75,7 +75,7 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
                 onClick={() => onSelect(app.id)}
                 className={cn(
                   "absolute rounded-full border-2 border-white shadow-md transition-all hover:scale-125 hover:z-10 flex items-center justify-center text-[8px] font-bold text-white",
-                  selectedId === app.id && "ring-2 ring-[#0B5CD6] ring-offset-2 scale-125 z-10"
+                  selectedId === app.id && "ring-2 ring-primary ring-offset-2 scale-125 z-10"
                 )}
                 style={{
                   width: dotSize,
@@ -93,10 +93,10 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
           })}
 
           {/* Axis labels */}
-          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium text-[#1a1f2e]/60">
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium text-foreground/60">
             Technical Health →
           </div>
-          <div className="absolute left-1 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-medium text-[#1a1f2e]/60">
+          <div className="absolute left-1 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-medium text-foreground/60">
             Business Value →
           </div>
         </div>
@@ -104,8 +104,8 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
 
       {/* Unassessed apps */}
       {unassessed.length > 0 && (
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-sm font-medium text-[#1a1f2e] mb-2">
+        <div className="bg-card rounded-xl border p-4">
+          <p className="text-sm font-medium text-foreground mb-2">
             Not Yet Assessed ({unassessed.length})
           </p>
           <div className="flex flex-wrap gap-2">
@@ -113,7 +113,7 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
               <button
                 key={app.id}
                 onClick={() => onSelect(app.id)}
-                className="text-xs px-3 py-1.5 bg-[#f1f3f5] rounded-lg hover:bg-[#e9ecef] text-muted-foreground"
+                className="text-xs px-3 py-1.5 bg-muted rounded-lg hover:bg-muted text-muted-foreground"
               >
                 {app.name}
               </button>

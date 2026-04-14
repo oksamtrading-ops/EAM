@@ -44,7 +44,7 @@ export function ObjectivesTab() {
             setEditObj(null);
             setShowForm(true);
           }}
-          className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+          className="bg-primary hover:bg-primary/90 text-white"
           size="sm"
         >
           <Plus className="h-4 w-4 mr-1.5" />
@@ -52,7 +52,7 @@ export function ObjectivesTab() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         {list.length === 0 ? (
           <div className="p-8 text-center">
             <Target className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
@@ -69,14 +69,14 @@ export function ObjectivesTab() {
             {list.map((obj) => (
               <div
                 key={obj.id}
-                className="flex items-center justify-between px-5 py-4 hover:bg-[#fafbfc] group"
+                className="flex items-center justify-between px-5 py-4 hover:bg-muted/20 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-9 w-9 rounded-lg bg-[#0B5CD6]/5 flex items-center justify-center shrink-0">
-                    <Target className="h-4 w-4 text-[#0B5CD6]" />
+                  <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
+                    <Target className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#1a1f2e] truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {obj.name}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

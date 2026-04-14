@@ -158,7 +158,7 @@ export function BulkAssessDialog({ open, onClose, tree }: Props) {
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-[#0B5CD6]" />
+            <CheckCircle2 className="h-5 w-5 text-primary" />
             Bulk Maturity Assessment
             {step === "select" && (
               <Badge variant="outline" className="ml-auto text-xs font-normal">
@@ -187,7 +187,7 @@ export function BulkAssessDialog({ open, onClose, tree }: Props) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search capabilities..."
-                  className="w-full h-9 pl-9 pr-3 rounded-md border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/20 focus:border-[#0B5CD6]"
+                  className="w-full h-9 pl-9 pr-3 rounded-md border text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
               <Select value={filterLevel} onValueChange={(v) => setFilterLevel(v ?? "all")}>
@@ -230,7 +230,7 @@ export function BulkAssessDialog({ open, onClose, tree }: Props) {
                       flatCaps.filter((c) => c.currentMaturity === "NOT_ASSESSED").map((c) => c.id)
                     ));
                   }}
-                  className="ml-auto text-xs text-[#0B5CD6] hover:underline"
+                  className="ml-auto text-xs text-primary hover:underline"
                 >
                   Select all unassessed ({notAssessedCount})
                 </button>
@@ -242,7 +242,7 @@ export function BulkAssessDialog({ open, onClose, tree }: Props) {
               {filtered.map((cap) => (
                 <label
                   key={cap.id}
-                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#fafbfc] cursor-pointer transition"
+                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20 cursor-pointer transition"
                 >
                   <Checkbox
                     checked={selectedIds.has(cap.id)}
@@ -288,7 +288,7 @@ export function BulkAssessDialog({ open, onClose, tree }: Props) {
               <Button
                 onClick={() => setStep("assess")}
                 disabled={selectedIds.size === 0}
-                className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+                className="bg-primary hover:bg-primary/90 text-white"
               >
                 Assess {selectedIds.size} Capabilities
               </Button>
@@ -389,7 +389,7 @@ export function BulkAssessDialog({ open, onClose, tree }: Props) {
               <Button
                 onClick={handleSubmit}
                 disabled={bulkAssessMutation.isPending || (!bulkCurrentMaturity && !bulkTargetMaturity && !bulkImportance)}
-                className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+                className="bg-primary hover:bg-primary/90 text-white"
               >
                 {bulkAssessMutation.isPending
                   ? "Saving..."

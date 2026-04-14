@@ -101,18 +101,18 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
 
   if (isLoading || !app) {
     return (
-      <aside className="w-full sm:w-96 border-l bg-white p-4">
+      <aside className="w-full sm:w-96 border-l bg-card p-4">
         <div className="animate-pulse">Loading...</div>
       </aside>
     );
   }
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col overflow-hidden shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col overflow-hidden shadow-xl">
       {/* Header */}
       <div className="p-4 border-b flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h2 className="font-bold text-[15px] text-[#1a1f2e] truncate">{app.name}</h2>
+          <h2 className="font-bold text-[15px] text-foreground truncate">{app.name}</h2>
           {app.alias && <p className="text-xs text-muted-foreground">{app.alias}</p>}
           {app.vendor && <p className="text-xs text-muted-foreground">{app.vendor}</p>}
         </div>
@@ -123,7 +123,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
               variant="outline"
               onClick={() => onAutoMap(applicationId)}
               title="AI suggests capabilities this app supports"
-              className="h-7 text-[10px] text-[#7c3aed] border-[#7c3aed]/30 hover:bg-[#7c3aed]/5 px-2"
+              className="h-7 text-[10px] text-[var(--ai)] border-[var(--ai)]/30 hover:bg-[var(--ai)]/5 px-2"
             >
               <Sparkles className="h-3 w-3 mr-1" />
               Auto-Map
@@ -443,9 +443,9 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
             {app.capabilities && app.capabilities.length > 0 ? (
               <div className="space-y-1">
                 {app.capabilities.map((m: any) => (
-                  <div key={m.capabilityId} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2">
+                  <div key={m.capabilityId} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2">
                     <Badge variant="outline" className="text-[9px]">{m.capability?.level}</Badge>
-                    <span className="text-[#1a1f2e]">{m.capability?.name}</span>
+                    <span className="text-foreground">{m.capability?.name}</span>
                   </div>
                 ))}
               </div>
@@ -462,7 +462,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <CollapsibleSection title="Interfaces" count={(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0)}>
               <div className="space-y-1.5">
                 {app.interfacesFrom?.map((iface: any) => (
-                  <div key={iface.id} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
+                  <div key={iface.id} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group">
                     <ArrowRight className="h-3 w-3 text-blue-500 shrink-0" />
                     <span className="flex-1 truncate">{iface.targetApp?.name}</span>
                     <Badge variant="outline" className="text-[9px]" style={{ borderColor: IFACE_CRITICALITY_COLORS[iface.criticality] }}>
@@ -477,7 +477,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                   </div>
                 ))}
                 {app.interfacesTo?.map((iface: any) => (
-                  <div key={iface.id} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
+                  <div key={iface.id} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group">
                     <ArrowLeft className="h-3 w-3 text-green-500 shrink-0" />
                     <span className="flex-1 truncate">{iface.sourceApp?.name}</span>
                     <Badge variant="outline" className="text-[9px]" style={{ borderColor: IFACE_CRITICALITY_COLORS[iface.criticality] }}>
@@ -572,7 +572,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <CollapsibleSection title="Tech Stack" count={app.techStackLinks?.length ?? 0}>
               <div className="space-y-1.5">
                 {app.techStackLinks?.map((link: any) => (
-                  <div key={`${link.applicationId}-${link.techRadarEntryId}`} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
+                  <div key={`${link.applicationId}-${link.techRadarEntryId}`} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group">
                     <span className="flex-1 truncate">{link.techRadarEntry?.name}</span>
                     <Badge variant="outline" className="text-[9px]">{link.layer}</Badge>
                     <Badge variant="outline" className="text-[9px]">{link.techRadarEntry?.ring}</Badge>
@@ -692,12 +692,12 @@ function OwnerField({
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
       {owner ? (
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-white group">
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-card group">
           {owner.avatarUrl ? (
             <img src={owner.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
           ) : (
-            <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-              <span className="text-[9px] font-bold text-[#0B5CD6]">
+            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-primary">
                 {(owner.name ?? "?")[0]?.toUpperCase()}
               </span>
             </div>
@@ -712,7 +712,7 @@ function OwnerField({
         </div>
       ) : (
         <Popover>
-          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left">
+          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition text-left">
             + Assign {label.toLowerCase()}
           </PopoverTrigger>
           <PopoverContent className="w-56 p-0" align="start">
@@ -721,7 +721,7 @@ function OwnerField({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search users..."
-                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
                 autoFocus
               />
             </div>
@@ -738,8 +738,8 @@ function OwnerField({
                     {u.avatarUrl ? (
                       <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-                        <span className="text-[9px] font-bold text-[#0B5CD6]">
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-primary">
                           {(u.name ?? u.email)[0]?.toUpperCase()}
                         </span>
                       </div>

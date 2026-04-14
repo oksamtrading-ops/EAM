@@ -99,10 +99,10 @@ export function OverviewTab() {
   return (
     <div className="space-y-6">
       {/* Industry */}
-      <div className="bg-white rounded-xl border p-6 space-y-5">
+      <div className="bg-card rounded-xl border p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-[#1a1f2e]">Industry</h2>
+          <h2 className="text-sm font-semibold text-foreground">Industry</h2>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -140,7 +140,7 @@ export function OverviewTab() {
                     key={h}
                     type="button"
                     onClick={() => setSubIndustry(h)}
-                    className="text-[10px] px-2 py-0.5 rounded-full border border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5 transition"
+                    className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai)]/5 transition"
                   >
                     {h}
                   </button>
@@ -152,10 +152,10 @@ export function OverviewTab() {
       </div>
 
       {/* Geography & regulation */}
-      <div className="bg-white rounded-xl border p-6 space-y-5">
+      <div className="bg-card rounded-xl border p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-[#1a1f2e]">
+          <h2 className="text-sm font-semibold text-foreground">
             Geography & Regulation
           </h2>
         </div>
@@ -197,10 +197,10 @@ export function OverviewTab() {
       </div>
 
       {/* Business model & mission */}
-      <div className="bg-white rounded-xl border p-6 space-y-5">
+      <div className="bg-card rounded-xl border p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-[#1a1f2e]">
+          <h2 className="text-sm font-semibold text-foreground">
             Business Model
           </h2>
         </div>
@@ -233,10 +233,10 @@ export function OverviewTab() {
       </div>
 
       {/* IT Vision */}
-      <div className="bg-white rounded-xl border p-6 space-y-5">
+      <div className="bg-card rounded-xl border p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Eye className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-[#1a1f2e]">IT Vision</h2>
+          <h2 className="text-sm font-semibold text-foreground">IT Vision</h2>
         </div>
 
         <div>
@@ -272,7 +272,7 @@ export function OverviewTab() {
             })
           }
           disabled={updateMutation.isPending}
-          className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white"
+          className="bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
         >
           <Save className="h-4 w-4 mr-2" />
           {updateMutation.isPending ? "Saving..." : "Save Organization Profile"}

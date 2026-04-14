@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -49,7 +49,7 @@ export function PinnedItemsCard({ pins, onUnpin }: Props) {
 
   return (
     <>
-      <Card>
+      <div className="glass-chart !p-0 flex flex-col gap-4 overflow-hidden py-4">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Pin className="h-4 w-4 text-muted-foreground" />
@@ -72,7 +72,7 @@ export function PinnedItemsCard({ pins, onUnpin }: Props) {
                 <div className="px-6 py-3 border-t">
                   <button
                     onClick={() => setShowAll(true)}
-                    className="text-xs font-medium text-[#0076A8] hover:underline"
+                    className="text-xs font-medium text-[var(--link)] hover:underline"
                   >
                     See all {pins.length} pinned items &rarr;
                   </button>
@@ -81,7 +81,7 @@ export function PinnedItemsCard({ pins, onUnpin }: Props) {
             </>
           )}
         </CardContent>
-      </Card>
+      </div>
 
       {/* Full list sheet */}
       <Sheet open={showAll} onOpenChange={setShowAll}>

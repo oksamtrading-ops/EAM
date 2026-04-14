@@ -65,7 +65,7 @@ export function ComplianceView() {
         <h2 className="text-base font-semibold">Compliance Register</h2>
         <Button
           size="sm"
-          className="gap-1.5 bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+          className="gap-1.5 bg-primary hover:bg-primary/90 text-white"
           onClick={() => setShowImport(true)}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -79,7 +79,7 @@ export function ComplianceView() {
           {scorecard.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {scorecard.map((fw) => (
-                <div key={fw.framework} data-slot="card" className="bg-white rounded-xl border p-4 shadow-sm">
+                <div key={fw.framework} data-slot="card" className="glass-chart !p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold">{FRAMEWORK_LABELS[fw.framework] ?? fw.framework}</span>
                     <ScoreBar score={fw.score} />
@@ -100,7 +100,7 @@ export function ComplianceView() {
             const isExpanded = expandedFramework === fw.framework;
             const fwScorecard = scorecard.find((s) => s.framework === fw.framework);
             return (
-              <div key={fw.framework} data-slot="card" className="border rounded-xl overflow-hidden bg-white">
+              <div key={fw.framework} data-slot="card" className="border rounded-xl overflow-hidden bg-card">
                 <button
                   className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
                   onClick={() =>

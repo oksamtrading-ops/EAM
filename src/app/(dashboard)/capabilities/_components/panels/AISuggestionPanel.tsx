@@ -42,15 +42,15 @@ export function AISuggestionPanel({ open, onClose, tree }: Props) {
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#7c3aed]/5 to-transparent">
+      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[var(--ai)]/5 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#7c3aed]/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-[#7c3aed]" />
+          <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-[var(--ai)]" />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-[#1a1f2e]">AI Assistant</h2>
+            <h2 className="font-bold text-sm text-foreground">AI Assistant</h2>
             <p className="text-[11px] text-muted-foreground">
               Powered by Claude
             </p>
@@ -115,7 +115,7 @@ function TabButton({
       onClick={onClick}
       className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
         active
-          ? "border-[#7c3aed] text-[#7c3aed]"
+          ? "border-[var(--ai)] text-[var(--ai)]"
           : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >
@@ -236,7 +236,7 @@ function SuggestTab({
       <Button
         onClick={runSuggestion}
         disabled={loading}
-        className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5"
+        className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white mb-5"
       >
         {loading ? (
           <>
@@ -254,7 +254,7 @@ function SuggestTab({
       {suggestions.length > 0 && (
         <div className="space-y-3">
           {frameworks.length > 0 && (
-            <div className="p-2.5 rounded-lg bg-[#f8f9fa] border border-[#e9ecef]">
+            <div className="p-2.5 rounded-lg bg-muted/30 border border-border">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 Reference Frameworks Used
               </p>
@@ -262,7 +262,7 @@ function SuggestTab({
                 {frameworks.map((f, i) => (
                   <span
                     key={i}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#dee2e6] text-[#495057] font-medium"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-card border border-border text-muted-foreground font-medium"
                   >
                     {f}
                   </span>
@@ -276,7 +276,7 @@ function SuggestTab({
           {suggestions.map((s, i) => (
             <div
               key={i}
-              className="p-3.5 rounded-lg border border-[#e9ecef] hover:border-[#7c3aed]/30 transition-colors"
+              className="p-3.5 rounded-lg border border-border hover:border-[var(--ai)]/30 transition-colors"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ function SuggestTab({
                   >
                     {s.level}
                   </Badge>
-                  <h4 className="text-sm font-semibold text-[#1a1f2e]">
+                  <h4 className="text-sm font-semibold text-foreground">
                     {s.name}
                   </h4>
                 </div>
@@ -294,7 +294,7 @@ function SuggestTab({
               </div>
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 {s.domain && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#7c3aed]/10 text-[#7c3aed] font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ai)]/10 text-[var(--ai)] font-medium">
                     {s.domain}
                   </span>
                 )}
@@ -472,7 +472,7 @@ function GapAnalysisTab({
       <Button
         onClick={runAnalysis}
         disabled={loading}
-        className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5"
+        className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white mb-5"
       >
         {loading ? (
           <>
@@ -491,7 +491,7 @@ function GapAnalysisTab({
         <div className="space-y-4">
           {/* Reference Frameworks */}
           {result.referenceFrameworks?.length > 0 && (
-            <div className="p-2.5 rounded-lg bg-[#f8f9fa] border border-[#e9ecef]">
+            <div className="p-2.5 rounded-lg bg-muted/30 border border-border">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 Reference Frameworks
               </p>
@@ -499,7 +499,7 @@ function GapAnalysisTab({
                 {result.referenceFrameworks.map((f, i) => (
                   <span
                     key={i}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#dee2e6] text-[#495057] font-medium"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-card border border-border text-muted-foreground font-medium"
                   >
                     {f}
                   </span>
@@ -509,18 +509,18 @@ function GapAnalysisTab({
           )}
 
           {/* Executive Summary */}
-          <div className="p-3.5 rounded-lg bg-[#1a1f2e] text-white">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1.5">
+          <div className="p-3.5 rounded-lg bg-foreground text-background">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-background/50 mb-1.5">
               Executive Summary
             </p>
-            <p className="text-xs leading-relaxed text-white/90">
+            <p className="text-xs leading-relaxed text-background/90">
               {result.executiveSummary}
             </p>
           </div>
 
           {/* Maturity Distribution */}
           {result.maturityDistribution && (
-            <div className="p-3 rounded-lg border border-[#e9ecef]">
+            <div className="p-3 rounded-lg border border-border">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Maturity Distribution
               </p>
@@ -602,7 +602,7 @@ function GapAnalysisTab({
                           <Badge variant="outline" className="text-[9px] font-bold shrink-0">
                             {gap.level}
                           </Badge>
-                          <h4 className="text-xs font-semibold text-[#1a1f2e]">
+                          <h4 className="text-xs font-semibold text-foreground">
                             {gap.capabilityName}
                           </h4>
                         </div>
@@ -618,10 +618,10 @@ function GapAnalysisTab({
                           {IMPORTANCE_LABELS[gap.strategicImportance] ?? gap.strategicImportance}
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-[#495057] leading-relaxed mb-1">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-1">
                         {gap.analysis}
                       </p>
-                      <p className="text-[11px] text-[#7c3aed] font-medium leading-relaxed">
+                      <p className="text-[11px] text-[var(--ai)] font-medium leading-relaxed">
                         → {gap.recommendation}
                       </p>
                     </div>
@@ -647,7 +647,7 @@ function GapAnalysisTab({
                       {s.level}
                     </Badge>
                     <div>
-                      <p className="text-xs font-medium text-[#1a1f2e]">{s.capabilityName}</p>
+                      <p className="text-xs font-medium text-foreground">{s.capabilityName}</p>
                       <p className="text-[10px] text-green-700">
                         {MATURITY_LABELS[s.currentMaturity] ?? s.currentMaturity} — {s.note}
                       </p>
@@ -671,7 +671,7 @@ function GapAnalysisTab({
                 {result.notAssessed.map((name, i) => (
                   <span
                     key={i}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-white border border-orange-200 text-orange-700"
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-orange-200 text-orange-700"
                   >
                     {name}
                   </span>
@@ -683,26 +683,26 @@ function GapAnalysisTab({
           {/* Transformation Themes */}
           {result.transformationThemes?.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ai)] mb-2">
                 Transformation Themes
               </p>
               <div className="space-y-2">
                 {result.transformationThemes.map((t, i) => (
                   <div
                     key={i}
-                    className="p-3 rounded-lg border border-[#7c3aed]/20 bg-[#7c3aed]/5"
+                    className="p-3 rounded-lg border border-[var(--ai)]/20 bg-[var(--ai)]/5"
                   >
-                    <h4 className="text-xs font-semibold text-[#1a1f2e] mb-1">
+                    <h4 className="text-xs font-semibold text-foreground mb-1">
                       {t.theme}
                     </h4>
-                    <p className="text-[11px] text-[#495057] leading-relaxed mb-2">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">
                       {t.description}
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {t.relatedCapabilities.map((cap, j) => (
                         <span
                           key={j}
-                          className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#7c3aed]/30 text-[#495057]"
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-card border border-[var(--ai)]/30 text-muted-foreground"
                         >
                           {cap}
                         </span>
@@ -876,7 +876,7 @@ const EFFORT_CONFIG: Record<string, { color: string; bg: string }> = {
 };
 
 const WAVE_COLORS = [
-  "border-[#7c3aed]/40 bg-[#7c3aed]/5",
+  "border-[var(--ai)]/40 bg-[var(--ai)]/5",
   "border-blue-300 bg-blue-50/50",
   "border-purple-300 bg-purple-50/50",
   "border-amber-300 bg-amber-50/50",
@@ -980,7 +980,7 @@ function InvestmentTab({
       <Button
         onClick={runPriorities}
         disabled={loading}
-        className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5"
+        className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white mb-5"
       >
         {loading ? (
           <>
@@ -999,7 +999,7 @@ function InvestmentTab({
         <div className="space-y-4">
           {/* Reference Frameworks */}
           {result.referenceFrameworks?.length > 0 && (
-            <div className="p-2.5 rounded-lg bg-[#f8f9fa] border border-[#e9ecef]">
+            <div className="p-2.5 rounded-lg bg-muted/30 border border-border">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 Reference Frameworks
               </p>
@@ -1007,7 +1007,7 @@ function InvestmentTab({
                 {result.referenceFrameworks.map((f, i) => (
                   <span
                     key={i}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#dee2e6] text-[#495057] font-medium"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-card border border-border text-muted-foreground font-medium"
                   >
                     {f}
                   </span>
@@ -1017,19 +1017,19 @@ function InvestmentTab({
           )}
 
           {/* Executive Summary */}
-          <div className="p-3.5 rounded-lg bg-[#1a1f2e] text-white">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1.5">
+          <div className="p-3.5 rounded-lg bg-foreground text-background">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-background/50 mb-1.5">
               Executive Summary
             </p>
-            <p className="text-xs leading-relaxed text-white/90">
+            <p className="text-xs leading-relaxed text-background/90">
               {result.executiveSummary}
             </p>
           </div>
 
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 rounded-lg border text-center bg-[#f8f9fa]">
-              <p className="text-lg font-bold text-[#1a1f2e]">{result.totalInvestmentGaps ?? 0}</p>
+            <div className="p-2.5 rounded-lg border text-center bg-muted/30">
+              <p className="text-lg font-bold text-foreground">{result.totalInvestmentGaps ?? 0}</p>
               <p className="text-[9px] font-medium text-muted-foreground">Total Gaps</p>
             </div>
             <div className="p-2.5 rounded-lg border text-center bg-green-50 border-green-200">
@@ -1046,20 +1046,20 @@ function InvestmentTab({
           {(result.waves ?? []).map((wave, wi) => (
             <div key={wi}>
               <div className="flex items-center gap-2 mb-2">
-                <div className="h-6 w-6 rounded-full bg-[#1a1f2e] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                <div className="h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center text-[10px] font-bold shrink-0">
                   {wave.wave}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-[#1a1f2e]">{wave.name}</p>
+                  <p className="text-xs font-bold text-foreground">{wave.name}</p>
                   <p className="text-[10px] text-muted-foreground">{wave.timeline}</p>
                 </div>
               </div>
               {wave.theme && (
-                <p className="text-[11px] text-[#495057] italic mb-2 ml-8">
+                <p className="text-[11px] text-muted-foreground italic mb-2 ml-8">
                   {wave.theme}
                 </p>
               )}
-              <div className="space-y-2 ml-3 border-l-2 border-[#e9ecef] pl-5">
+              <div className="space-y-2 ml-3 border-l-2 border-border pl-5">
                 {wave.initiatives.map((init, ii) => {
                   const effortConf = EFFORT_CONFIG[init.estimatedEffort] ?? EFFORT_CONFIG.MEDIUM;
                   return (
@@ -1069,13 +1069,13 @@ function InvestmentTab({
                     >
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold text-white bg-[#1a1f2e] rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-bold text-white bg-foreground rounded-full w-5 h-5 flex items-center justify-center shrink-0">
                             {init.priority}
                           </span>
                           <Badge variant="outline" className="text-[9px] font-bold shrink-0">
                             {init.level}
                           </Badge>
-                          <h4 className="text-xs font-semibold text-[#1a1f2e]">
+                          <h4 className="text-xs font-semibold text-foreground">
                             {init.capabilityName}
                           </h4>
                         </div>
@@ -1091,10 +1091,10 @@ function InvestmentTab({
                           {init.estimatedEffort} effort
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#495057] leading-relaxed mb-1">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-1">
                         {init.investmentRationale}
                       </p>
-                      <p className="text-[11px] text-[#7c3aed] font-medium leading-relaxed mb-1">
+                      <p className="text-[11px] text-[var(--ai)] font-medium leading-relaxed mb-1">
                         → {init.implementationApproach}
                       </p>
                       <p className="text-[10px] text-red-600/70 italic">
@@ -1106,7 +1106,7 @@ function InvestmentTab({
                           {init.dependencies.map((dep, di) => (
                             <span
                               key={di}
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#e9ecef] text-[#495057]"
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-card border border-border text-muted-foreground"
                             >
                               {dep}
                             </span>
@@ -1136,12 +1136,12 @@ function InvestmentTab({
                       <Badge variant="outline" className="text-[9px] font-bold shrink-0">
                         {d.level}
                       </Badge>
-                      <p className="text-xs font-medium text-[#1a1f2e]">{d.capabilityName}</p>
+                      <p className="text-xs font-medium text-foreground">{d.capabilityName}</p>
                       <span className="text-[10px] text-orange-600 ml-auto shrink-0">
                         Gap: +{d.gapSize}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#495057]">{d.deferralReason}</p>
+                    <p className="text-[11px] text-muted-foreground">{d.deferralReason}</p>
                     {d.prerequisiteWave && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Revisit after: {d.prerequisiteWave}
@@ -1166,7 +1166,7 @@ function InvestmentTab({
                 {result.notAssessed.map((name, i) => (
                   <span
                     key={i}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-white border border-orange-200 text-orange-700"
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-orange-200 text-orange-700"
                   >
                     {name}
                   </span>
@@ -1177,11 +1177,11 @@ function InvestmentTab({
 
           {/* Budget Guidance */}
           {result.budgetGuidance && (
-            <div className="p-3 rounded-lg border border-[#7c3aed]/20 bg-[#7c3aed]/5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] mb-1">
+            <div className="p-3 rounded-lg border border-[var(--ai)]/20 bg-[var(--ai)]/5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ai)] mb-1">
                 Budget Guidance
               </p>
-              <p className="text-[11px] text-[#495057] leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {result.budgetGuidance}
               </p>
             </div>

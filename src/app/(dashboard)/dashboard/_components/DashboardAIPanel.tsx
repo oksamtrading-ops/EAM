@@ -267,7 +267,7 @@ export function DashboardAIPanel({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-background flex flex-col shadow-xl">
       {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-purple-600/5 to-transparent">
         <div className="flex items-center gap-2">
@@ -275,7 +275,7 @@ export function DashboardAIPanel({ open, onClose }: Props) {
             <Sparkles className="h-4 w-4 text-purple-600" />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-[#1a1f2e]">AI Executive Brief</h2>
+            <h2 className="font-bold text-sm text-foreground">AI Executive Brief</h2>
             <p className="text-[11px] text-muted-foreground">
               {generatedAt
                 ? `Generated ${formatDistanceToNow(new Date(generatedAt), { addSuffix: true })}`

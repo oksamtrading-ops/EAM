@@ -44,7 +44,7 @@ export function ValueStreamsTab() {
             setEditStream(null);
             setShowForm(true);
           }}
-          className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+          className="bg-primary hover:bg-primary/90 text-white"
           size="sm"
         >
           <Plus className="h-4 w-4 mr-1.5" />
@@ -52,7 +52,7 @@ export function ValueStreamsTab() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         {list.length === 0 ? (
           <div className="p-8 text-center">
             <Workflow className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
@@ -69,7 +69,7 @@ export function ValueStreamsTab() {
             {list.map((vs) => (
               <div
                 key={vs.id}
-                className="flex items-center justify-between px-5 py-4 hover:bg-[#fafbfc] group"
+                className="flex items-center justify-between px-5 py-4 hover:bg-muted/20 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -77,7 +77,7 @@ export function ValueStreamsTab() {
                     style={{ backgroundColor: vs.color }}
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#1a1f2e] truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {vs.name}
                     </p>
                     <p className="text-xs text-muted-foreground">

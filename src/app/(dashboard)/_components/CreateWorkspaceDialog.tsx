@@ -90,7 +90,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Workspace name */}
           <div>
-            <label className="text-xs font-medium text-[#1a1f2e]">
+            <label className="text-xs font-medium text-foreground">
               Workspace Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -98,7 +98,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. ACME Corp EA Engagement"
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6]"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
               autoFocus
               maxLength={100}
             />
@@ -106,7 +106,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
 
           {/* Client name */}
           <div>
-            <label className="text-xs font-medium text-[#1a1f2e]">
+            <label className="text-xs font-medium text-foreground">
               Client Name
             </label>
             <input
@@ -114,20 +114,20 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="e.g. ACME Corporation"
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6]"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
               maxLength={100}
             />
           </div>
 
           {/* Industry */}
           <div>
-            <label className="text-xs font-medium text-[#1a1f2e]">
+            <label className="text-xs font-medium text-foreground">
               Industry
             </label>
             <select
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6] bg-white"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-card"
             >
               {INDUSTRIES.map((ind) => (
                 <option key={ind.value} value={ind.value}>
@@ -139,7 +139,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
 
           {/* Description */}
           <div>
-            <label className="text-xs font-medium text-[#1a1f2e]">
+            <label className="text-xs font-medium text-foreground">
               Description
             </label>
             <textarea
@@ -147,7 +147,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of this workspace..."
               rows={2}
-              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5CD6]/40 focus:border-[#0B5CD6] resize-none"
+              className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary resize-none"
               maxLength={500}
             />
           </div>
@@ -165,7 +165,7 @@ export function CreateWorkspaceDialog({ open, onClose }: Props) {
               type="submit"
               size="sm"
               disabled={!name.trim() || createMutation.isPending}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {createMutation.isPending ? (
                 <>

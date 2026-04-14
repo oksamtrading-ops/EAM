@@ -37,10 +37,10 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
   });
 
   return (
-    <div className="bg-white rounded-xl border overflow-x-auto">
+    <div className="bg-card rounded-xl border overflow-x-auto">
       <table className="w-full text-sm min-w-[900px]">
         <thead>
-          <tr className="border-b bg-[#fafbfc]">
+          <tr className="border-b bg-muted/20">
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Application</th>
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Vendor</th>
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Type</th>
@@ -62,13 +62,13 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
               key={app.id}
               onClick={() => { if (pendingDeleteId !== app.id) onSelect(app.id); }}
               className={cn(
-                "group cursor-pointer transition-colors hover:bg-[#fafbfc]",
-                selectedId === app.id && "bg-[#0B5CD6]/5"
+                "group cursor-pointer transition-colors hover:bg-muted/20",
+                selectedId === app.id && "bg-primary/5"
               )}
             >
               <td className="px-4 py-3">
                 <div>
-                  <p className="font-medium text-[#1a1f2e]">{app.name}</p>
+                  <p className="font-medium text-foreground">{app.name}</p>
                   {app.alias && (
                     <p className="text-[11px] text-muted-foreground">{app.alias}</p>
                   )}
@@ -129,7 +129,7 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
               <td className="px-4 py-3 text-center">
                 <Tooltip>
                   <TooltipTrigger >
-                    <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-0.5 rounded-full cursor-help">
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full cursor-help">
                       {app.capabilities?.length ?? 0}
                     </span>
                   </TooltipTrigger>
@@ -139,7 +139,7 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
               <td className="px-4 py-3 text-center">
                 <Tooltip>
                   <TooltipTrigger >
-                    <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-0.5 rounded-full cursor-help">
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full cursor-help">
                       {(app._count?.interfacesFrom ?? 0) + (app._count?.interfacesTo ?? 0)}
                     </span>
                   </TooltipTrigger>

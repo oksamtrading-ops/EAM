@@ -233,7 +233,7 @@ export function TemplateImportDialog({ open, onClose }: Props) {
                       )}
                     </div>
                     {disabled && (
-                      <span className="text-[10px] bg-[#f2f2f7] text-[#86868b] font-semibold px-1.5 py-0.5 rounded-full shrink-0">
+                      <span className="text-[10px] bg-muted text-muted-foreground font-semibold px-1.5 py-0.5 rounded-full shrink-0">
                         Soon
                       </span>
                     )}

@@ -108,7 +108,7 @@ export function MilestoneFormModal({
               required
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+              className="w-full h-10 border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="Milestone name"
             />
           </div>
@@ -167,7 +167,7 @@ export function MilestoneFormModal({
             <button
               type="submit"
               disabled={isPending || !form.name}
-              className="flex items-center gap-2 px-4 py-2 bg-[#0B5CD6] text-white text-sm font-semibold rounded-md hover:bg-[#094cb0] disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isEdit ? "Save Changes" : "Add Milestone"}

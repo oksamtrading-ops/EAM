@@ -22,7 +22,7 @@ export function PeopleTab() {
         {list.length} user{list.length !== 1 ? "s" : ""} in this workspace
       </p>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         {list.length === 0 ? (
           <div className="p-8 text-center">
             <Users className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
@@ -39,7 +39,7 @@ export function PeopleTab() {
             {list.map((user) => (
               <div
                 key={user.id}
-                className="flex items-center gap-3 px-5 py-4 hover:bg-[#fafbfc]"
+                className="flex items-center gap-3 px-5 py-4 hover:bg-muted/20"
               >
                 {user.avatarUrl ? (
                   <img
@@ -48,14 +48,14 @@ export function PeopleTab() {
                     className="h-9 w-9 rounded-full"
                   />
                 ) : (
-                  <div className="h-9 w-9 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-                    <span className="text-sm font-bold text-[#0B5CD6]">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">
                       {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                     </span>
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[#1a1f2e] truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {user.name ?? "Unnamed"}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
@@ -68,8 +68,8 @@ export function PeopleTab() {
         )}
       </div>
 
-      <div className="bg-[#fafbfc] rounded-xl border border-dashed p-5">
-        <h3 className="text-sm font-medium text-[#1a1f2e] mb-2">
+      <div className="bg-muted/20 rounded-xl border border-dashed p-5">
+        <h3 className="text-sm font-medium text-foreground mb-2">
           How users are added
         </h3>
         <p className="text-xs text-muted-foreground">

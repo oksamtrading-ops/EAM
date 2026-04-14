@@ -53,15 +53,15 @@ export function AppAIPanel({ open, onClose, apps, capTree, defaultTab }: Props) 
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#7c3aed]/5 to-transparent">
+      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[var(--ai)]/5 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#7c3aed]/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-[#7c3aed]" />
+          <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-[var(--ai)]" />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-[#1a1f2e]">AI Assistant</h2>
+            <h2 className="font-bold text-sm text-foreground">AI Assistant</h2>
             <p className="text-[11px] text-muted-foreground">Application Portfolio</p>
           </div>
         </div>
@@ -99,7 +99,7 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-        active ? "border-[#7c3aed] text-[#7c3aed]" : "border-transparent text-muted-foreground hover:text-foreground"
+        active ? "border-[var(--ai)] text-[var(--ai)]" : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}
@@ -193,33 +193,33 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
       {/* Portfolio Overview */}
       <div className="mb-5 space-y-3">
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border bg-[#fafbfc] p-2.5">
+          <div className="rounded-lg border bg-muted/20 p-2.5">
             <div className="flex items-center gap-1 text-muted-foreground mb-0.5">
               <BarChart3 className="h-3 w-3" />
               <span className="text-[10px] font-medium">Total Apps</span>
             </div>
-            <p className="text-lg font-bold text-[#1a1f2e]">{stats?.totalApps ?? apps.length}</p>
+            <p className="text-lg font-bold text-foreground">{stats?.totalApps ?? apps.length}</p>
           </div>
-          <div className="rounded-lg border bg-[#fafbfc] p-2.5">
+          <div className="rounded-lg border bg-muted/20 p-2.5">
             <div className="flex items-center gap-1 text-muted-foreground mb-0.5">
               <DollarSign className="h-3 w-3" />
               <span className="text-[10px] font-medium">Annual Spend</span>
             </div>
-            <p className="text-lg font-bold text-[#1a1f2e]">${totalCost.toLocaleString()}</p>
+            <p className="text-lg font-bold text-foreground">${totalCost.toLocaleString()}</p>
           </div>
         </div>
 
         {/* Current TIME breakdown */}
         {stats && Object.keys(stats.byRationalization).length > 0 && (
-          <div className="rounded-lg border bg-[#fafbfc] p-3 space-y-1.5">
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-1.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Current Rationalization</p>
             {Object.entries(stats.byRationalization).map(([status, count]) => (
               <div key={status} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RAT_COLORS[status] ?? "#cbd5e1" }} />
-                  <span className="text-[#1a1f2e]">{RAT_LABELS[status] ?? status}</span>
+                  <span className="text-foreground">{RAT_LABELS[status] ?? status}</span>
                 </div>
-                <span className="font-medium text-[#1a1f2e] tabular-nums">{count as number}</span>
+                <span className="font-medium text-foreground tabular-nums">{count as number}</span>
               </div>
             ))}
           </div>
@@ -252,7 +252,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
       </div>
 
       {/* Run AI */}
-      <Button onClick={run} disabled={loading} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
+      <Button onClick={run} disabled={loading} className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white mb-5">
         {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing portfolio...</> : <><Sparkles className="h-4 w-4 mr-2" />Run TIME Analysis</>}
       </Button>
 
@@ -293,7 +293,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
                   {items.map((rec, i) => (
                     <div key={i} className={`p-3 rounded-lg border ${conf.border} ${conf.bg}`}>
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="text-xs font-semibold text-[#1a1f2e]">{rec.applicationName}</h4>
+                        <h4 className="text-xs font-semibold text-foreground">{rec.applicationName}</h4>
                         <ConfidenceDot confidence={rec.confidence} />
                       </div>
                       {rec.vendor && <p className="text-[10px] text-muted-foreground mb-1">{rec.vendor}</p>}
@@ -310,8 +310,8 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
                         )}
                         {rec.annualCost > 0 && <Badge variant="outline" className="text-[9px]">${Number(rec.annualCost).toLocaleString()}/yr</Badge>}
                       </div>
-                      <p className="text-[11px] text-[#495057] leading-relaxed mb-1">{rec.rationale}</p>
-                      <p className="text-[11px] text-[#7c3aed] font-medium leading-relaxed">→ {rec.action}</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-1">{rec.rationale}</p>
+                      <p className="text-[11px] text-[var(--ai)] font-medium leading-relaxed">→ {rec.action}</p>
                       {rec.savingsIfActioned > 0 && (
                         <p className="text-[10px] text-green-600 mt-1">Potential savings: ${Number(rec.savingsIfActioned).toLocaleString()}/yr</p>
                       )}
@@ -338,13 +338,13 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
             <Section title="Redundancies" count={result.redundancies.length} color="orange">
               {result.redundancies.map((r, i) => (
                 <div key={i} className="p-2.5 rounded-lg border border-orange-200 bg-orange-50/50">
-                  <p className="text-xs font-medium text-[#1a1f2e] mb-1">{r.capabilityName}</p>
+                  <p className="text-xs font-medium text-foreground mb-1">{r.capabilityName}</p>
                   <div className="flex flex-wrap gap-1 mb-1">
                     {r.applications.map((a: string, j: number) => (
-                      <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-orange-200 text-orange-700">{a}</span>
+                      <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-card border border-orange-200 text-orange-700">{a}</span>
                     ))}
                   </div>
-                  <p className="text-[11px] text-[#495057]">{r.recommendation}</p>
+                  <p className="text-[11px] text-muted-foreground">{r.recommendation}</p>
                 </div>
               ))}
             </Section>
@@ -482,7 +482,7 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
           ))}
         </SelectContent>
       </Select>
-      <Button onClick={run} disabled={loading || !selectedAppId} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
+      <Button onClick={run} disabled={loading || !selectedAppId} className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white mb-5">
         {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing impact...</> : <><Target className="h-4 w-4 mr-2" />Analyze Impact</>}
       </Button>
 
@@ -498,7 +498,7 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
             </div>
             <div className="text-right">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Recommendation</p>
-              <p className="text-sm font-bold text-[#1a1f2e]">{result.recommendation}</p>
+              <p className="text-sm font-bold text-foreground">{result.recommendation}</p>
             </div>
           </div>
 
@@ -518,16 +518,16 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5">
                           <Badge variant="outline" className="text-[9px] font-bold">{cap.level}</Badge>
-                          <span className="text-xs font-medium text-[#1a1f2e]">{cap.capabilityName}</span>
+                          <span className="text-xs font-medium text-foreground">{cap.capabilityName}</span>
                         </div>
                         <span className={`text-[9px] font-bold ${rc.color}`}>{rc.label}</span>
                       </div>
-                      <p className="text-[10px] text-[#495057] mb-1">{cap.riskNote}</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">{cap.riskNote}</p>
                       {cap.alternativeApps?.length > 0 && (
                         <div className="flex items-center gap-1 flex-wrap">
                           <span className="text-[9px] text-muted-foreground">Alternatives:</span>
                           {cap.alternativeApps.map((a: string, j: number) => (
-                            <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-white border text-[#495057]">{a}</span>
+                            <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-card border text-muted-foreground">{a}</span>
                           ))}
                         </div>
                       )}
@@ -547,11 +547,11 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Migration Considerations</p>
               <div className="space-y-1.5">
                 {result.migrationConsiderations.map((m, i) => (
-                  <div key={i} className="p-2.5 rounded-lg border border-[#e9ecef] flex items-start gap-2">
+                  <div key={i} className="p-2.5 rounded-lg border border-border flex items-start gap-2">
                     <Badge variant={m.complexity === "HIGH" ? "destructive" : "secondary"} className="text-[9px] shrink-0 mt-0.5">{m.complexity}</Badge>
                     <div>
-                      <p className="text-xs font-medium text-[#1a1f2e]">{m.factor}</p>
-                      <p className="text-[11px] text-[#495057]">{m.description}</p>
+                      <p className="text-xs font-medium text-foreground">{m.factor}</p>
+                      <p className="text-[11px] text-muted-foreground">{m.description}</p>
                     </div>
                   </div>
                 ))}
@@ -561,14 +561,14 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
 
           {/* Cost Impact */}
           {result.costImpact && (
-            <div className="p-3 rounded-lg border border-[#e9ecef] bg-[#fafbfc]">
+            <div className="p-3 rounded-lg border border-border bg-muted/20">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Cost Impact</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Annual Savings:</span> <span className="font-medium text-green-700">${(result.costImpact.annualSavings ?? 0).toLocaleString()}</span></div>
                 <div><span className="text-muted-foreground">Transition Cost:</span> <span className="font-medium">{result.costImpact.estimatedTransitionCost}</span></div>
                 <div><span className="text-muted-foreground">Payback:</span> <span className="font-medium">{result.costImpact.paybackPeriod}</span></div>
               </div>
-              <p className="text-[11px] text-[#495057] mt-2">{result.costImpact.netAssessment}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">{result.costImpact.netAssessment}</p>
             </div>
           )}
 
@@ -576,15 +576,15 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
           {result.transitionPlan?.length > 0 && (
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Transition Plan</p>
-              <div className="space-y-2 border-l-2 border-[#e9ecef] ml-2 pl-4">
+              <div className="space-y-2 border-l-2 border-border ml-2 pl-4">
                 {result.transitionPlan.map((phase, i) => (
-                  <div key={i} className="p-2.5 rounded-lg border border-[#e9ecef]">
+                  <div key={i} className="p-2.5 rounded-lg border border-border">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-white bg-[#1a1f2e] rounded-full w-5 h-5 flex items-center justify-center shrink-0">{phase.phase}</span>
-                      <span className="text-xs font-semibold text-[#1a1f2e]">{phase.name}</span>
+                      <span className="text-[10px] font-bold text-white bg-foreground rounded-full w-5 h-5 flex items-center justify-center shrink-0">{phase.phase}</span>
+                      <span className="text-xs font-semibold text-foreground">{phase.name}</span>
                       <span className="text-[10px] text-muted-foreground ml-auto">{phase.timeline}</span>
                     </div>
-                    <ul className="text-[11px] text-[#495057] space-y-0.5 ml-7">
+                    <ul className="text-[11px] text-muted-foreground space-y-0.5 ml-7">
                       {(phase.actions ?? []).map((a: string, j: number) => <li key={j}>• {a}</li>)}
                     </ul>
                     <AddToRoadmapBtn onClick={() => onAddToRoadmap({
@@ -728,7 +728,7 @@ function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any
           </SelectContent>
         </Select>
       </div>
-      <Button onClick={run} disabled={loading} className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white mb-5">
+      <Button onClick={run} disabled={loading} className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white mb-5">
         {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Researching solutions...</> : <><Cpu className="h-4 w-4 mr-2" />Get Recommendations</>}
       </Button>
 
@@ -761,7 +761,7 @@ function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <Badge variant="outline" className="text-[9px] font-bold">{cap.level}</Badge>
-                    <h4 className="text-xs font-semibold text-[#1a1f2e]">{cap.capabilityName}</h4>
+                    <h4 className="text-xs font-semibold text-foreground">{cap.capabilityName}</h4>
                   </div>
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${covConf.bg} ${covConf.color}`}>{covConf.label}</span>
                 </div>
@@ -773,23 +773,23 @@ function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any
                 )}
 
                 {(cap.recommendations ?? []).map((rec: any, j: number) => (
-                  <div key={j} className="mt-2 p-2.5 rounded-md border border-[#e9ecef] bg-white">
+                  <div key={j} className="mt-2 p-2.5 rounded-md border border-border bg-card">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-white bg-[#1a1f2e] rounded-full w-4 h-4 flex items-center justify-center">{rec.rank}</span>
-                        <span className="text-xs font-semibold text-[#1a1f2e]">{rec.vendorName} {rec.productName}</span>
+                        <span className="text-[10px] font-bold text-white bg-foreground rounded-full w-4 h-4 flex items-center justify-center">{rec.rank}</span>
+                        <span className="text-xs font-semibold text-foreground">{rec.vendorName} {rec.productName}</span>
                       </div>
                       <ConfidenceDot confidence={rec.confidence} />
                     </div>
                     <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f1f3f5] text-[#495057]">{rec.category}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f1f3f5] text-[#495057]">{rec.deploymentModel}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f1f3f5] text-[#495057]">{rec.costTier}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{rec.category}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{rec.deploymentModel}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{rec.costTier}</span>
                       {rec.existingVendorExtension && (
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Existing vendor</span>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#495057] leading-relaxed">{rec.fitRationale}</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{rec.fitRationale}</p>
                     <p className="text-[10px] text-muted-foreground mt-1">Integration: {rec.integrationNotes}</p>
                     <AddToRoadmapBtn onClick={() => onAddToRoadmap({
                       name: `Implement ${rec.vendorName} ${rec.productName} for ${cap.capabilityName}`,
@@ -811,11 +811,11 @@ function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any
             <Section title="Platform Consolidation" count={result.platformConsolidation.length} color="blue">
               {result.platformConsolidation.map((p, i) => (
                 <div key={i} className="p-3 rounded-lg border border-blue-200 bg-blue-50/50">
-                  <h4 className="text-xs font-semibold text-[#1a1f2e] mb-1">{p.vendorPlatform}</h4>
-                  <p className="text-[11px] text-[#495057] mb-2">{p.rationale}</p>
+                  <h4 className="text-xs font-semibold text-foreground mb-1">{p.vendorPlatform}</h4>
+                  <p className="text-[11px] text-muted-foreground mb-2">{p.rationale}</p>
                   <div className="flex flex-wrap gap-1">
                     {(p.capabilitiesServed ?? []).map((c: string, j: number) => (
-                      <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-blue-200 text-[#495057]">{c}</span>
+                      <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-card border border-blue-200 text-muted-foreground">{c}</span>
                     ))}
                   </div>
                   {p.estimatedCostTier && <p className="text-[10px] text-blue-700 mt-1">Cost tier: {p.estimatedCostTier}</p>}
@@ -841,11 +841,11 @@ function TechRecsTab({ apps, capTree, workspaceId, onAddToRoadmap }: { apps: any
 function FrameworkPills({ frameworks }: { frameworks?: string[] }) {
   if (!frameworks?.length) return null;
   return (
-    <div className="p-2.5 rounded-lg bg-[#f8f9fa] border border-[#e9ecef]">
+    <div className="p-2.5 rounded-lg bg-muted/30 border border-border">
       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Reference Frameworks</p>
       <div className="flex flex-wrap gap-1.5">
         {frameworks.map((f, i) => (
-          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#dee2e6] text-[#495057] font-medium">{f}</span>
+          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-card border border-border text-muted-foreground font-medium">{f}</span>
         ))}
       </div>
     </div>
@@ -855,9 +855,9 @@ function FrameworkPills({ frameworks }: { frameworks?: string[] }) {
 function ExecSummary({ text }: { text: string }) {
   if (!text) return null;
   return (
-    <div className="p-3.5 rounded-lg bg-[#1a1f2e] text-white">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1.5">Executive Summary</p>
-      <p className="text-xs leading-relaxed text-white/90">{text}</p>
+    <div className="p-3.5 rounded-lg bg-foreground text-background">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-background/50 mb-1.5">Executive Summary</p>
+      <p className="text-xs leading-relaxed text-background/90">{text}</p>
     </div>
   );
 }
@@ -885,9 +885,9 @@ function AssumptionsAndNotes({ assumptions, dataQualityNotes, requiresAssessment
   return (
     <div className="space-y-3">
       {assumptions && assumptions.length > 0 && (
-        <div className="p-3 rounded-lg border border-[#e9ecef] bg-[#fafbfc]">
+        <div className="p-3 rounded-lg border border-border bg-muted/20">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Assumptions</p>
-          <ul className="text-[11px] text-[#495057] space-y-0.5">
+          <ul className="text-[11px] text-muted-foreground space-y-0.5">
             {assumptions.map((a, i) => <li key={i}>• {a}</li>)}
           </ul>
         </div>
@@ -907,15 +907,15 @@ function AssumptionsAndNotes({ assumptions, dataQualityNotes, requiresAssessment
           <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700 mb-1.5">Requires Assessment ({requiresAssessment.length})</p>
           <div className="flex flex-wrap gap-1">
             {requiresAssessment.map((n, i) => (
-              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-white border border-orange-200 text-orange-700">{n}</span>
+              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-orange-200 text-orange-700">{n}</span>
             ))}
           </div>
         </div>
       )}
       {unknowns && unknowns.length > 0 && (
-        <div className="p-3 rounded-lg border border-[#e9ecef] bg-[#fafbfc]">
+        <div className="p-3 rounded-lg border border-border bg-muted/20">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Unknowns</p>
-          <ul className="text-[11px] text-[#495057] space-y-0.5">
+          <ul className="text-[11px] text-muted-foreground space-y-0.5">
             {unknowns.map((u, i) => <li key={i}>• {u}</li>)}
           </ul>
         </div>
@@ -939,7 +939,7 @@ function AddToRoadmapBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1 mt-2 px-2 py-1 rounded-md text-[10px] font-medium text-[#7c3aed] bg-[#7c3aed]/5 border border-[#7c3aed]/20 hover:bg-[#7c3aed]/10 transition-colors"
+      className="flex items-center gap-1 mt-2 px-2 py-1 rounded-md text-[10px] font-medium text-[var(--ai)] bg-[var(--ai)]/5 border border-[var(--ai)]/20 hover:bg-[var(--ai)]/10 transition-colors"
     >
       <CalendarPlus className="h-3 w-3" />
       Add to Roadmap

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -59,7 +59,7 @@ export function ActivityFeed({ entries }: Props) {
 
   return (
     <>
-      <Card>
+      <div className="glass-chart !p-0 flex flex-col gap-4 overflow-hidden py-4">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
         </CardHeader>
@@ -77,7 +77,7 @@ export function ActivityFeed({ entries }: Props) {
                 <div className="px-6 py-3 border-t">
                   <button
                     onClick={() => setShowAll(true)}
-                    className="text-xs font-medium text-[#0076A8] hover:underline"
+                    className="text-xs font-medium text-[var(--link)] hover:underline"
                   >
                     See all {entries.length} entries &rarr;
                   </button>
@@ -86,7 +86,7 @@ export function ActivityFeed({ entries }: Props) {
             </>
           )}
         </CardContent>
-      </Card>
+      </div>
 
       {/* Full list sheet */}
       <Sheet open={showAll} onOpenChange={setShowAll}>

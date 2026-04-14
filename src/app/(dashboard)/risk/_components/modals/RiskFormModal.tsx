@@ -200,7 +200,7 @@ export function RiskFormModal({ open, risk, onClose }: Props) {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {isSubmitting ? "Saving…" : risk ? "Update Risk" : "Create Risk"}
             </Button>

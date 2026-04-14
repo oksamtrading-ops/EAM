@@ -123,7 +123,7 @@ export function DrillDownSheet({ filter, onClose }: Props) {
                     className="flex items-center gap-3 py-3 hover:bg-muted/30 rounded-lg px-2 -mx-2 transition-colors group"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate group-hover:text-[#0076A8] transition-colors">
+                      <p className="text-sm font-medium truncate group-hover:text-[var(--link)] transition-colors">
                         {item.label}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.sublabel}</p>

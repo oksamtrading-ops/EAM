@@ -96,7 +96,7 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full h-10 flex items-center gap-2 border rounded-md px-3 text-sm text-left focus:outline-none focus:ring-1 focus:ring-[#0B5CD6] bg-background hover:border-gray-400 transition-colors"
+        className="w-full h-10 flex items-center gap-2 border rounded-md px-3 text-sm text-left focus:outline-none focus:ring-1 focus:ring-primary bg-background hover:border-gray-400 transition-colors"
       >
         <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className={cn("flex-1", !value && "text-muted-foreground")}>
@@ -127,7 +127,7 @@ export function DatePicker({
             <select
               value={viewMonth}
               onChange={(e) => setViewMonth(Number(e.target.value))}
-              className="flex-1 text-xs font-semibold border rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+              className="flex-1 text-xs font-semibold border rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
             >
               {MONTHS.map((m, i) => (
                 <option key={m} value={i}>{m}</option>
@@ -137,7 +137,7 @@ export function DatePicker({
             <select
               value={viewYear}
               onChange={(e) => setViewYear(Number(e.target.value))}
-              className="text-xs font-semibold border rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+              className="text-xs font-semibold border rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
             >
               {YEARS.map((y) => (
                 <option key={y} value={y}>{y}</option>
@@ -176,9 +176,9 @@ export function DatePicker({
                   className={cn(
                     "h-8 w-full text-xs rounded-md transition-colors",
                     isSelected
-                      ? "bg-[#0B5CD6] text-white font-semibold"
+                      ? "bg-primary text-white font-semibold"
                       : isToday
-                      ? "border border-[#0B5CD6] text-[#0B5CD6] font-semibold hover:bg-[#0B5CD6]/10"
+                      ? "border border-primary text-primary font-semibold hover:bg-primary/10"
                       : "hover:bg-muted text-foreground"
                   )}
                 >

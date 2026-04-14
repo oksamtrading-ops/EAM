@@ -354,12 +354,12 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
                     type="button"
                     onClick={() => toggleCap(cap.id)}
                     className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-2 transition-colors ${
-                      selectedCaps.includes(cap.id) ? "bg-[#0B5CD6]/10 text-[#0B5CD6]" : "hover:bg-[#f1f3f5] text-muted-foreground"
+                      selectedCaps.includes(cap.id) ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
                     }`}
                   >
                     <Badge variant="outline" className="text-[8px] shrink-0">{cap.level}</Badge>
                     <span className="truncate">{cap.name}</span>
-                    {selectedCaps.includes(cap.id) && <span className="ml-auto text-[#0B5CD6]">✓</span>}
+                    {selectedCaps.includes(cap.id) && <span className="ml-auto text-primary">✓</span>}
                   </button>
                 ))
               )}
@@ -372,7 +372,7 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
             <Button
               onClick={handleCreate}
               disabled={!form.name.trim() || createMutation.isPending}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {createMutation.isPending ? "Creating..." : "Create Application"}
             </Button>
@@ -407,12 +407,12 @@ function OwnerFieldInline({
     <div>
       <Label>{label}</Label>
       {selected ? (
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-white group mt-1">
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-card group mt-1">
           {selected.avatarUrl ? (
             <img src={selected.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
           ) : (
-            <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-              <span className="text-[9px] font-bold text-[#0B5CD6]">
+            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-primary">
                 {(selected.name ?? "?")[0]?.toUpperCase()}
               </span>
             </div>
@@ -428,7 +428,7 @@ function OwnerFieldInline({
         </div>
       ) : (
         <Popover>
-          <PopoverTrigger className="w-full h-9 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-[#0B5CD6]/50 hover:text-[#0B5CD6] transition text-left mt-1">
+          <PopoverTrigger className="w-full h-9 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition text-left mt-1">
             + Assign {label.toLowerCase()}
           </PopoverTrigger>
           <PopoverContent className="w-56 p-0" align="start">
@@ -437,7 +437,7 @@ function OwnerFieldInline({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search users..."
-                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#0B5CD6]"
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
                 autoFocus
               />
             </div>
@@ -455,8 +455,8 @@ function OwnerFieldInline({
                     {u.avatarUrl ? (
                       <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full bg-[#0B5CD6]/10 flex items-center justify-center">
-                        <span className="text-[9px] font-bold text-[#0B5CD6]">
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-primary">
                           {(u.name ?? u.email)[0]?.toUpperCase()}
                         </span>
                       </div>

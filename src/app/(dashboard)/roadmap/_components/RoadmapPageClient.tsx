@@ -85,7 +85,7 @@ export function RoadmapPageClient() {
                 { label: "Cancelled", value: stats.cancelled, color: "text-rose-500" },
                 { label: "Total Investment", value: formatBudget(stats.totalUsd) ?? "—", color: "text-foreground" },
               ].map((s) => (
-                <div key={s.label} data-slot="card" className="bg-white rounded-xl border p-4 shadow-sm">
+                <div key={s.label} data-slot="card" className="bg-card rounded-xl border p-4 shadow-sm">
                   <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
                   <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
                 </div>

@@ -228,7 +228,7 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
     >
       {mode === "search" ? (
         <div className="flex w-full">
-          <div className="flex-1 min-w-0 border-r border-[#e5e5e7]">
+          <div className="flex-1 min-w-0 border-r border-border">
         <Command
           shouldFilter={false}
           value={activeValue}
@@ -264,7 +264,7 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
                       <Star className="h-4 w-4 fill-[#f59e0b] text-[#f59e0b]" />
                       <span className="truncate">{q.label}</span>
                       {q.useCount > 0 && (
-                        <span className="ml-auto text-[10px] text-[#86868b] px-1.5 py-0.5 rounded-full bg-[#f2f2f7]">
+                        <span className="ml-auto text-[10px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">
                           {q.useCount}×
                         </span>
                       )}
@@ -275,7 +275,7 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
                           e.stopPropagation();
                           deleteSaved.mutate({ id: q.id });
                         }}
-                        className="opacity-0 group-hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-black/[0.08] text-[#86868b]"
+                        className="opacity-0 group-hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-black/[0.08] text-muted-foreground"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -291,11 +291,11 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
                   <CommandItem
                     value={`__ai__${query}`}
                     onSelect={handleAskAi}
-                    className="text-[#7c3aed] font-medium"
+                    className="text-[var(--ai)] font-medium"
                   >
                     <Sparkles className="h-4 w-4" />
                     <span>Ask AI — &quot;{query}&quot;</span>
-                    <span className="ml-auto text-xs text-[#86868b]">↵</span>
+                    <span className="ml-auto text-xs text-muted-foreground">↵</span>
                   </CommandItem>
                 </CommandGroup>
                 <CommandSeparator />
@@ -303,7 +303,7 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
             )}
 
             {!index && (
-              <div className="px-3 py-6 flex items-center gap-2 text-sm text-[#86868b]">
+              <div className="px-3 py-6 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading workspace…
               </div>
             )}
@@ -316,9 +316,9 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
               <CommandGroup heading="Applications">
                 {results.applications.map((it) => (
                   <CommandItem key={it.id} value={`app-${it.id}`} onSelect={() => handleSelectItem(it)}>
-                    <AppWindow className="h-4 w-4 text-[#86868b]" />
+                    <AppWindow className="h-4 w-4 text-muted-foreground" />
                     <span>{it.label}</span>
-                    {it.sub && <span className="ml-auto text-xs text-[#86868b]">{it.sub}</span>}
+                    {it.sub && <span className="ml-auto text-xs text-muted-foreground">{it.sub}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -328,9 +328,9 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
               <CommandGroup heading="Capabilities">
                 {results.capabilities.map((it) => (
                   <CommandItem key={it.id} value={`cap-${it.id}`} onSelect={() => handleSelectItem(it)}>
-                    <Network className="h-4 w-4 text-[#86868b]" />
+                    <Network className="h-4 w-4 text-muted-foreground" />
                     <span>{it.label}</span>
-                    {it.sub && <span className="ml-auto text-xs text-[#86868b]">{it.sub}</span>}
+                    {it.sub && <span className="ml-auto text-xs text-muted-foreground">{it.sub}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -340,9 +340,9 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
               <CommandGroup heading="Risks">
                 {results.risks.map((it) => (
                   <CommandItem key={it.id} value={`risk-${it.id}`} onSelect={() => handleSelectItem(it)}>
-                    <ShieldAlert className="h-4 w-4 text-[#86868b]" />
+                    <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                     <span>{it.label}</span>
-                    {it.sub && <span className="ml-auto text-xs text-[#86868b]">{it.sub}</span>}
+                    {it.sub && <span className="ml-auto text-xs text-muted-foreground">{it.sub}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -352,9 +352,9 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
               <CommandGroup heading="Initiatives">
                 {results.initiatives.map((it) => (
                   <CommandItem key={it.id} value={`init-${it.id}`} onSelect={() => handleSelectItem(it)}>
-                    <MapIcon className="h-4 w-4 text-[#86868b]" />
+                    <MapIcon className="h-4 w-4 text-muted-foreground" />
                     <span>{it.label}</span>
-                    {it.sub && <span className="ml-auto text-xs text-[#86868b]">{it.sub}</span>}
+                    {it.sub && <span className="ml-auto text-xs text-muted-foreground">{it.sub}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -372,9 +372,9 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
                         value={a.id}
                         onSelect={() => handleQuickAction(a.action)}
                       >
-                        <Icon className="h-4 w-4 text-[#86868b]" />
+                        <Icon className="h-4 w-4 text-muted-foreground" />
                         <span>{a.label}</span>
-                        <ArrowRight className="ml-auto h-3.5 w-3.5 text-[#c7c7cc]" />
+                        <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
                       </CommandItem>
                     );
                   })}
@@ -384,7 +384,7 @@ export function GlobalCmdPalette({ open, onClose }: { open: boolean; onClose: ()
           </CommandList>
         </Command>
           </div>
-          <aside className="w-[320px] shrink-0 bg-[#fafafa] hidden md:block">
+          <aside className="w-[320px] shrink-0 bg-muted/20 hidden md:block">
             <PalettePeekPane activeValue={activeValue} index={index} />
           </aside>
         </div>

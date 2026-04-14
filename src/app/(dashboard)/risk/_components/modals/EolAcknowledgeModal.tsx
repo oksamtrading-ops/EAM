@@ -93,7 +93,7 @@ export function EolAcknowledgeModal({ entryId, onClose }: Props) {
             <Button
               type="submit"
               disabled={acknowledgeMutation.isPending}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {acknowledgeMutation.isPending ? "Saving…" : "Acknowledge"}
             </Button>

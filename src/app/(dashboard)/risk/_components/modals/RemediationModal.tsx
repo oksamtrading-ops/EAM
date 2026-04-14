@@ -129,7 +129,7 @@ export function RemediationModal({ riskId, onClose }: Props) {
             <Button
               type="submit"
               disabled={linkMutation.isPending}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {linkMutation.isPending ? "Saving…" : "Add Remediation"}
             </Button>

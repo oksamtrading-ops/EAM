@@ -57,15 +57,15 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
       {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#1a1f2e]/5 flex items-center justify-center">
-            <History className="h-4 w-4 text-[#1a1f2e]" />
+          <div className="h-8 w-8 rounded-lg bg-foreground/5 flex items-center justify-center">
+            <History className="h-4 w-4 text-foreground" />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-[#1a1f2e]">
+            <h2 className="font-bold text-sm text-foreground">
               Version History
             </h2>
             <p className="text-[11px] text-muted-foreground">
@@ -79,7 +79,7 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
       </div>
 
       {/* Save version */}
-      <div className="px-5 py-3 border-b bg-[#fafbfc]">
+      <div className="px-5 py-3 border-b bg-muted/20">
         {showSaveInput ? (
           <div className="space-y-2">
             <Input
@@ -100,7 +100,7 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="flex-1 bg-[#0B5CD6] hover:bg-[#094cb0] text-white text-xs"
+                className="flex-1 bg-primary hover:bg-primary/90 text-white text-xs"
                 disabled={!saveLabel.trim() || saveMutation.isPending}
                 onClick={() => saveMutation.mutate({ label: saveLabel.trim() })}
               >
@@ -127,7 +127,7 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
         ) : (
           <Button
             size="sm"
-            className="w-full bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+            className="w-full bg-primary hover:bg-primary/90 text-white"
             onClick={() => setShowSaveInput(true)}
           >
             <Save className="h-4 w-4 mr-2" />
@@ -158,12 +158,12 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
             {versions.map((v, i) => (
               <div
                 key={v.id}
-                className="px-5 py-3.5 hover:bg-[#fafbfc] transition-colors"
+                className="px-5 py-3.5 hover:bg-muted/20 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-medium text-[#1a1f2e] truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {v.label}
                       </p>
                       {v.isAutomatic && (
@@ -233,7 +233,7 @@ export function VersionHistoryPanel({ open, onClose }: Props) {
       </ScrollArea>
 
       {/* Footer info */}
-      <div className="px-5 py-3 border-t bg-[#fafbfc]">
+      <div className="px-5 py-3 border-t bg-muted/20">
         <p className="text-[10px] text-muted-foreground leading-relaxed">
           Restoring a version is non-destructive — your current map is
           auto-saved before any restore. Auto-snapshots are created on template

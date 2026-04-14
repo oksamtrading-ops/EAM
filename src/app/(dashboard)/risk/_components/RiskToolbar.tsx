@@ -91,15 +91,15 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
   ];
 
   return (
-    <div className="shrink-0 border-b bg-background">
+    <div className="shrink-0 border-b glass-toolbar">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-3 py-3 sm:px-6 gap-3">
+      <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
             <ShieldAlert className="h-4 w-4 text-red-600" />
           </div>
           <div className="min-w-0">
-            <h1 className="font-semibold text-[15px] truncate">Technology Risk & Compliance</h1>
+            <h1 className="text-md font-semibold text-foreground truncate">Technology Risk & Compliance</h1>
             <p className="text-xs text-muted-foreground">Module 4</p>
           </div>
         </div>
@@ -114,7 +114,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
               className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all disabled:opacity-50"
             >
               <ScanLine className="h-[15px] w-[15px]" />
-              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
                 {scanning ? "Scanning..." : "Auto-scan"}
               </span>
             </button>
@@ -124,27 +124,27 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
               className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
             >
               <Download className="h-[15px] w-[15px]" />
-              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
                 Export PPTX
               </span>
             </button>
             <button
               onClick={onAI}
               title="AI Assistant"
-              className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-all"
+              className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] transition-all"
             >
               <Sparkles className="h-[15px] w-[15px]" />
-              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
                 AI Assistant
               </span>
             </button>
             <button
               onClick={onNewRisk}
               title="New Risk"
-              className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
+              className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
             >
               <Plus className="h-4 w-4" />
-              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+              <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
                 New Risk
               </span>
             </button>
@@ -157,7 +157,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
 
       {/* Stats strip */}
       {stats && (
-        <div className="px-3 pb-3 sm:px-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="px-4 pb-3 sm:px-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             { label: "Total Risks", value: stats.total, color: "text-foreground" },
             { label: "Open", value: stats.open, color: "text-red-500" },
@@ -165,7 +165,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             { label: "Unmitigated", value: stats.unmitigated, color: "text-orange-500" },
             { label: "In Progress", value: stats.inProgress, color: "text-blue-500" },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-lg border px-4 py-2.5 shadow-sm">
+            <div key={s.label} className="bg-card rounded-lg border border-border px-4 py-2.5 shadow-sm">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
               <p className="text-[11px] text-muted-foreground">{s.label}</p>
             </div>
@@ -174,7 +174,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
       )}
 
       {/* View tabs */}
-      <div className="flex items-center gap-1 px-3 sm:px-6 pb-0 overflow-x-auto">
+      <div className="flex items-center gap-1 px-4 sm:px-5 pb-0 overflow-x-auto">
         {VIEWS.map((v) => (
           <button
             key={v.id}
@@ -182,7 +182,7 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap",
               view === v.id
-                ? "border-[#0B5CD6] text-[#0B5CD6]"
+                ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >

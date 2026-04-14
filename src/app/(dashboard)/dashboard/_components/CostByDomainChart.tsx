@@ -10,7 +10,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Card } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -47,7 +46,7 @@ function CustomTooltip({
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   return (
-    <div className="bg-white border border-[#e2e8d5] rounded-lg px-3 py-2 shadow-sm text-xs">
+    <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-sm text-xs">
       <p className="font-semibold mb-1">{d.domain}</p>
       <p className="text-muted-foreground">
         Cost: <span className="font-medium text-foreground">{formatCost(d.totalCost, currency)}</span>
@@ -65,7 +64,7 @@ export function CostByDomainChart({ data, loading, currency }: Props) {
 
   return (
     <>
-      <Card className="p-5">
+      <div className="glass-chart">
         <div className="mb-4">
           <h3 className="font-semibold text-sm">IT Spend by Business Domain</h3>
           <p className="text-xs text-muted-foreground">
@@ -112,12 +111,12 @@ export function CostByDomainChart({ data, loading, currency }: Props) {
         {hasMore && (
           <button
             onClick={() => setShowAll(true)}
-            className="mt-3 text-xs font-medium text-[#0076A8] hover:underline"
+            className="mt-3 text-xs font-medium text-[var(--link)] hover:underline"
           >
             See all {data.length} domains &rarr;
           </button>
         )}
-      </Card>
+      </div>
 
       {/* Full list sheet */}
       <Sheet open={showAll} onOpenChange={setShowAll}>

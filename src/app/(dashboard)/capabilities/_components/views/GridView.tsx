@@ -94,8 +94,8 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
           <div
             key={l1.id}
             className={cn(
-              "bg-white rounded-xl border shadow-sm overflow-hidden transition-all",
-              isDragOver && "ring-2 ring-[#0B5CD6] border-[#0B5CD6]"
+              "bg-card rounded-xl border shadow-sm overflow-hidden transition-all",
+              isDragOver && "ring-2 ring-primary border-primary"
             )}
             onDragOver={(e) => {
               if (draggingRef.current && draggingRef.current.level !== "L1") {
@@ -120,8 +120,8 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
             <button
               onClick={() => onSelect(l1.id)}
               className={cn(
-                "w-full text-left px-5 py-4 transition-all hover:bg-[#f8f9fa] border-b",
-                selectedId === l1.id && "bg-[#0B5CD6]/5"
+                "w-full text-left px-5 py-4 transition-all hover:bg-muted/30 border-b",
+                selectedId === l1.id && "bg-primary/5"
               )}
             >
               <div className="flex items-center justify-between">
@@ -132,10 +132,10 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-white bg-[#1a1f2e] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-background bg-foreground px-1.5 py-0.5 rounded">
                         L1
                       </span>
-                      <h3 className="font-semibold text-[15px] text-[#1a1f2e]">
+                      <h3 className="font-semibold text-[15px] text-foreground">
                         {l1.name}
                       </h3>
                     </div>
@@ -148,7 +148,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   {isDragOver && (
-                    <span className="text-xs text-[#0B5CD6] font-medium animate-pulse shrink-0">
+                    <span className="text-xs text-primary font-medium animate-pulse shrink-0">
                       Drop here
                     </span>
                   )}
@@ -162,7 +162,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                   {l1.strategicImportance !== "NOT_ASSESSED" && (
                     <StatusBadge label={IMPORTANCE_LABELS[l1.strategicImportance] ?? "N/A"} color={IMPORTANCE_COLORS[l1.strategicImportance] ?? IMPORTANCE_COLORS.NOT_ASSESSED} />
                   )}
-                  <span className="text-xs text-muted-foreground bg-[#f1f3f5] px-2 py-1 rounded-md shrink-0 whitespace-nowrap">
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0 whitespace-nowrap">
                     {l1.children?.length ?? 0} sub-capabilities
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -172,7 +172,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
 
             {/* L2 Grid */}
             {l1.children && l1.children.length > 0 && (
-              <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 bg-[#fafbfc]">
+              <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 bg-muted/20">
                 {l1.children.map((l2: any) => (
                   <div
                     key={l2.id}
@@ -181,16 +181,16 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                     onDragEnd={handleDragEnd}
                     onClick={() => onSelect(l2.id)}
                     className={cn(
-                      "text-left p-3.5 rounded-lg border bg-white transition-all hover:shadow-md hover:border-[#0B5CD6]/30 group cursor-grab active:cursor-grabbing",
+                      "text-left p-3.5 rounded-lg border bg-card transition-all hover:shadow-md hover:border-primary/30 group cursor-grab active:cursor-grabbing",
                       selectedId === l2.id
-                        ? "border-[#0B5CD6] shadow-md ring-1 ring-[#0B5CD6]/20"
-                        : "border-[#e9ecef]"
+                        ? "border-primary shadow-md ring-1 ring-primary/20"
+                        : "border-border"
                     )}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-1.5">
                         <GripVertical className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                        <span className="text-[9px] font-bold text-[#0B5CD6] bg-[#0B5CD6]/10 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                           L2
                         </span>
                       </div>
@@ -199,7 +199,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                         style={{ backgroundColor: getColor(l2, colorBy) }}
                       />
                     </div>
-                    <h4 className="text-sm font-medium text-[#1a1f2e] leading-tight mb-2 group-hover:text-[#0B5CD6] transition-colors">
+                    <h4 className="text-sm font-medium text-foreground leading-tight mb-2 group-hover:text-primary transition-colors">
                       {l2.name}
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -212,7 +212,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
 
                     {/* L3 sub-capabilities */}
                     {l2.children && l2.children.length > 0 && (
-                      <div className="mt-2.5 pt-2.5 border-t border-dashed border-[#e9ecef] space-y-1">
+                      <div className="mt-2.5 pt-2.5 border-t border-dashed border-border space-y-1">
                         {l2.children.map((l3: any) => {
                           const l3Color = getColor(l3, colorBy);
                           return (
@@ -226,8 +226,8 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                               className={cn(
                                 "w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] transition-colors group/l3",
                                 selectedId === l3.id
-                                  ? "bg-[#0B5CD6]/10 text-[#1a1f2e]"
-                                  : "hover:bg-[#f1f3f5] text-muted-foreground"
+                                  ? "bg-primary/10 text-foreground"
+                                  : "hover:bg-muted text-muted-foreground"
                               )}
                             >
                               <span className="text-[7px] font-bold text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">
@@ -237,7 +237,7 @@ export function GridView({ tree, colorBy, onSelect, selectedId, onMove }: Props)
                                 className="w-1.5 h-1.5 rounded-full shrink-0"
                                 style={{ backgroundColor: l3Color }}
                               />
-                              <span className="truncate group-hover/l3:text-[#1a1f2e] transition-colors">
+                              <span className="truncate group-hover/l3:text-foreground transition-colors">
                                 {l3.name}
                               </span>
                             </button>

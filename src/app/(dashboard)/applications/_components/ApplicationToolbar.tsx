@@ -56,10 +56,10 @@ export function ApplicationToolbar({
   ];
 
   return (
-    <div className="bg-white border-b px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3">
+    <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-[#1a1f2e] tracking-tight truncate">
+          <h1 className="text-md font-semibold text-foreground tracking-tight truncate">
             Application Portfolio
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -70,7 +70,7 @@ export function ApplicationToolbar({
 
       <div className="flex items-center gap-2 shrink-0">
         {/* View toggle */}
-        <div className="flex bg-[#f1f3f5] rounded-lg p-0.5">
+        <div className="flex bg-muted/40 rounded-lg p-0.5">
           <ViewBtn active={view === "table"} onClick={() => onViewChange("table")} icon={<Table2 className="h-3.5 w-3.5" />} label="Table" />
           <ViewBtn active={view === "landscape"} onClick={() => onViewChange("landscape")} icon={<LayoutGrid className="h-3.5 w-3.5" />} label="Landscape" />
           <ViewBtn active={view === "matrix"} onClick={() => onViewChange("matrix")} icon={<ScatterChart className="h-3.5 w-3.5" />} label="Matrix" />
@@ -85,12 +85,12 @@ export function ApplicationToolbar({
             title="AI Auto-Map"
             className={`relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
               showAutoMap
-                ? "bg-[#7c3aed] text-white border-[#7c3aed]"
-                : "border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5"
+                ? "bg-[var(--ai)] text-white border-[var(--ai)]"
+                : "border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)]"
             }`}
           >
             <Network className="h-[15px] w-[15px]" />
-            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
               AI Auto-Map
             </span>
           </button>
@@ -100,12 +100,12 @@ export function ApplicationToolbar({
             title="AI Assistant"
             className={`relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
               showAI
-                ? "bg-[#7c3aed] text-white border-[#7c3aed]"
-                : "border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed]/5"
+                ? "bg-[var(--ai)] text-white border-[var(--ai)]"
+                : "border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)]"
             }`}
           >
             <Sparkles className="h-[15px] w-[15px]" />
-            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
               AI Assistant
             </span>
           </button>
@@ -116,7 +116,7 @@ export function ApplicationToolbar({
             className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
           >
             <FileUp className="h-[15px] w-[15px]" />
-            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
               Import / Export
             </span>
           </button>
@@ -124,10 +124,10 @@ export function ApplicationToolbar({
           <button
             onClick={onCreateNew}
             title="Add Application"
-            className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-[#0B5CD6] hover:bg-[#094cb0] text-white transition-colors"
+            className="relative group flex items-center justify-center w-8 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-[#1a1f2e] text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+            <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
               Add Application
             </span>
           </button>
@@ -145,7 +145,7 @@ function ViewBtn({ active, onClick, icon, label }: { active: boolean; onClick: (
     <button
       onClick={onClick}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-        active ? "bg-white shadow-sm text-[#1a1f2e]" : "text-muted-foreground hover:text-foreground"
+        active ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}

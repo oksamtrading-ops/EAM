@@ -106,7 +106,7 @@ export function FrameworkImportModal({ onClose }: Props) {
             <Button
               type="submit"
               disabled={!framework || importMutation.isPending}
-              className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {importMutation.isPending ? "Importing…" : "Import Framework"}
             </Button>

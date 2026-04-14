@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -66,7 +66,7 @@ export function ActionRequiredFeed({ items }: Props) {
 
   return (
     <>
-      <Card>
+      <div className="glass-chart !p-0 flex flex-col gap-4 overflow-hidden py-4">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium">Action Required</CardTitle>
@@ -91,14 +91,14 @@ export function ActionRequiredFeed({ items }: Props) {
             <div className="px-6 py-3 border-t">
               <button
                 onClick={() => setShowAll(true)}
-                className="text-xs font-medium text-[#0076A8] hover:underline"
+                className="text-xs font-medium text-[var(--link)] hover:underline"
               >
                 See all {items.length} items &rarr;
               </button>
             </div>
           )}
         </CardContent>
-      </Card>
+      </div>
 
       {/* Full list sheet */}
       <Sheet open={showAll} onOpenChange={setShowAll}>

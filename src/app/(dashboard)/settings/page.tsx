@@ -121,7 +121,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl p-3 sm:p-6 space-y-8">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">
             Workspace Settings
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -131,8 +131,8 @@ export default function SettingsPage() {
       </div>
 
       {/* General settings */}
-      <div className="bg-white rounded-xl border p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-[#1a1f2e]">General</h2>
+      <div className="bg-card rounded-xl border p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-foreground">General</h2>
 
         <div>
           <Label className="text-sm font-medium">Workspace Name</Label>
@@ -201,7 +201,7 @@ export default function SettingsPage() {
             })
           }
           disabled={updateMutation.isPending || !name.trim()}
-          className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+          className="bg-primary hover:bg-primary/90 text-white"
         >
           <Save className="h-4 w-4 mr-2" />
           {updateMutation.isPending ? "Saving..." : "Save Settings"}
@@ -209,8 +209,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Workspace actions */}
-      <div className="bg-white rounded-xl border p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-[#1a1f2e]">
+      <div className="bg-card rounded-xl border p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-foreground">
           Workspace Actions
         </h2>
 
@@ -218,7 +218,7 @@ export default function SettingsPage() {
         {currentWs && !currentWs.isDefault && (
           <div className="flex items-center justify-between py-3 border-b">
             <div>
-              <p className="text-sm font-medium text-[#1a1f2e]">
+              <p className="text-sm font-medium text-foreground">
                 Set as Default Workspace
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -239,7 +239,7 @@ export default function SettingsPage() {
 
         {currentWs?.isDefault && (
           <div className="flex items-center gap-2 py-3 border-b text-sm text-muted-foreground">
-            <Star className="h-4 w-4 text-[#0B5CD6]" />
+            <Star className="h-4 w-4 text-primary" />
             This is your default workspace.
           </div>
         )}
@@ -247,7 +247,7 @@ export default function SettingsPage() {
         {/* Deactivate */}
         <div className="flex items-center justify-between py-3 border-b">
           <div>
-            <p className="text-sm font-medium text-[#1a1f2e]">
+            <p className="text-sm font-medium text-foreground">
               Deactivate Workspace
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -275,14 +275,14 @@ export default function SettingsPage() {
       </div>
 
       {/* Danger zone */}
-      <div className="bg-white rounded-xl border border-red-200 p-6 space-y-4">
+      <div className="bg-card rounded-xl border border-red-200 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-red-500" />
           <h2 className="text-sm font-semibold text-red-600">Danger Zone</h2>
         </div>
 
         <div>
-          <p className="text-sm font-medium text-[#1a1f2e]">
+          <p className="text-sm font-medium text-foreground">
             Delete Workspace
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">

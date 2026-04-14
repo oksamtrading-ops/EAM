@@ -29,8 +29,8 @@ export function OrganizationsPageClient() {
     <div className="max-w-4xl p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-[#0B5CD6]" />
+        <h1 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-primary" />
           Organization
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -39,9 +39,9 @@ export function OrganizationsPageClient() {
       </div>
 
       {/* AI context banner */}
-      <div className="rounded-xl border border-[#7c3aed]/20 bg-gradient-to-r from-[#7c3aed]/5 to-transparent p-4 flex gap-3">
-        <Sparkles className="h-4 w-4 text-[#7c3aed] shrink-0 mt-0.5" />
-        <div className="text-xs text-[#1a1f2e] leading-relaxed">
+      <div className="rounded-xl border border-[var(--ai)]/20 bg-gradient-to-r from-[var(--ai)]/5 to-transparent p-4 flex gap-3">
+        <Sparkles className="h-4 w-4 text-[var(--ai)] shrink-0 mt-0.5" />
+        <div className="text-xs text-foreground leading-relaxed">
           <p className="font-semibold mb-1">Used by AI Assistant features</p>
           <p className="text-muted-foreground">
             App-to-Capability Auto-Mapping, Rationalization, Tech

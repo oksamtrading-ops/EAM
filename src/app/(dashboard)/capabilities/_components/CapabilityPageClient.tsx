@@ -243,12 +243,12 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-      <div className="w-16 h-16 rounded-2xl bg-[#0B5CD6]/10 flex items-center justify-center mb-5">
-        <svg className="h-8 w-8 text-[#0B5CD6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+        <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
         </svg>
       </div>
-      <h2 className="text-xl font-bold text-[#1a1f2e] mb-2">
+      <h2 className="text-xl font-bold text-foreground mb-2">
         No capabilities mapped yet
       </h2>
       <p className="text-sm text-muted-foreground mb-8 max-w-md leading-relaxed">
@@ -258,13 +258,13 @@ function EmptyState({
       <div className="flex gap-3">
         <button
           onClick={onImport}
-          className="px-5 py-2.5 bg-[#0B5CD6] text-white rounded-lg text-sm font-semibold hover:bg-[#094cb0] transition-colors shadow-sm"
+          className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
         >
           Import Industry Template
         </button>
         <button
           onClick={onCreateNew}
-          className="px-5 py-2.5 border border-[#dee2e6] rounded-lg text-sm font-medium text-[#495057] hover:bg-[#f8f9fa] transition-colors"
+          className="px-5 py-2.5 border border-border rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/30 transition-colors"
         >
           Create Manually
         </button>

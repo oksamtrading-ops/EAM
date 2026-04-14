@@ -163,7 +163,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
       <div className="w-16 h-16 rounded-2xl bg-[#3b82f6]/10 flex items-center justify-center mb-5">
         <AppWindow className="h-8 w-8 text-[#3b82f6]" />
       </div>
-      <h2 className="text-xl font-bold text-[#1a1f2e] mb-2">
+      <h2 className="text-xl font-bold text-foreground mb-2">
         No applications catalogued yet
       </h2>
       <p className="text-sm text-muted-foreground mb-8 max-w-md leading-relaxed">
@@ -172,7 +172,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
       </p>
       <button
         onClick={onCreateNew}
-        className="px-5 py-2.5 bg-[#0B5CD6] text-white rounded-lg text-sm font-semibold hover:bg-[#094cb0] transition-colors shadow-sm"
+        className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
       >
         Add First Application
       </button>

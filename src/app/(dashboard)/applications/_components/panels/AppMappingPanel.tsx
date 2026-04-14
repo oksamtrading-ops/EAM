@@ -69,15 +69,15 @@ export function AppMappingPanel({ open, onClose, mode, applicationId, apps }: Pr
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#7c3aed]/10 to-transparent">
+      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[var(--ai)]/10 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#7c3aed]/15 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-[#7c3aed]" />
+          <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-[var(--ai)]" />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-[#1a1f2e]">
+            <h2 className="font-bold text-sm text-foreground">
               {mode === "single" ? "Capability Auto-Mapping" : "Batch Capability Mapping"}
             </h2>
             <p className="text-[11px] text-muted-foreground">
@@ -274,13 +274,13 @@ function SingleMode({ applicationId, workspaceId }: { applicationId: string; wor
   return (
     <div className="p-5 space-y-4">
       {/* App summary */}
-      <div className="rounded-lg border bg-gradient-to-br from-[#f8f5ff] to-white p-4">
+      <div className="rounded-lg border bg-gradient-to-br from-[var(--ai)]/5 to-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
               Target Application
             </div>
-            <h3 className="font-bold text-sm text-[#1a1f2e] truncate">{context.application.name}</h3>
+            <h3 className="font-bold text-sm text-foreground truncate">{context.application.name}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               {context.application.vendor ?? "No vendor"} • {context.application.applicationType}
             </p>
@@ -301,7 +301,7 @@ function SingleMode({ applicationId, workspaceId }: { applicationId: string; wor
         <Button
           onClick={generate}
           disabled={loading}
-          className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white h-11"
+          className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white h-11"
         >
           <Brain className="h-4 w-4 mr-2" />
           Generate Capability Suggestions
@@ -309,8 +309,8 @@ function SingleMode({ applicationId, workspaceId }: { applicationId: string; wor
       )}
 
       {loading && (
-        <div className="rounded-lg border bg-gradient-to-br from-[#f8f5ff] to-white p-6 text-center">
-          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#7c3aed] mb-1">
+        <div className="rounded-lg border bg-gradient-to-br from-[var(--ai)]/5 to-card p-6 text-center">
+          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[var(--ai)] mb-1">
             <Loader2 className="h-4 w-4 animate-spin" />
             Claude is thinking deeply...
           </div>
@@ -442,7 +442,7 @@ function SuggestionCard({
       : "text-amber-700 bg-amber-50 border-amber-200";
 
   const relColor: Record<string, string> = {
-    PRIMARY: "bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20",
+    PRIMARY: "bg-[var(--ai)]/10 text-[var(--ai)] border-[var(--ai)]/20",
     SUPPORTING: "bg-blue-50 text-blue-700 border-blue-200",
     ENABLING: "bg-slate-50 text-slate-700 border-slate-200",
   };
@@ -456,13 +456,13 @@ function SuggestionCard({
           ? "bg-emerald-50/40 border-emerald-200"
           : suggestion.status === "rejected"
           ? "bg-slate-50/60 border-slate-200 opacity-60"
-          : "bg-white border-slate-200"
+          : "bg-card border-slate-200"
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-semibold text-sm text-[#1a1f2e]">
+            <span className="font-semibold text-sm text-foreground">
               {suggestion.capabilityName}
             </span>
             {isDone && (
@@ -498,7 +498,7 @@ function SuggestionCard({
         </button>
       </div>
 
-      <p className="text-xs text-[#3a3a3c] leading-relaxed">{suggestion.rationale}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">{suggestion.rationale}</p>
 
       {expanded && (
         <div className="mt-3 pt-3 border-t space-y-2.5">
@@ -710,7 +710,7 @@ function BatchMode({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
     <div className="p-5 space-y-4">
       {!result && !loading && (
         <>
-          <div className="rounded-lg border bg-gradient-to-br from-[#f8f5ff] to-white p-4 text-xs text-[#1a1f2e]">
+          <div className="rounded-lg border bg-gradient-to-br from-[var(--ai)]/5 to-card p-4 text-xs text-foreground">
             <p className="font-semibold mb-1">Batch Capability Mapping</p>
             <p className="text-muted-foreground leading-relaxed">
               AI will suggest capability mappings for up to 30 applications at once.
@@ -731,7 +731,7 @@ function BatchMode({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
                     setSelectedIds(new Set());
                   }
                 }}
-                className="text-[11px] text-[#7c3aed] hover:underline"
+                className="text-[11px] text-[var(--ai)] hover:underline"
               >
                 {selectedIds.size === 0 ? "Select first 30" : "Clear"}
               </button>
@@ -777,7 +777,7 @@ function BatchMode({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
           <Button
             onClick={runBatch}
             disabled={selectedIds.size === 0}
-            className="w-full bg-[#7c3aed] hover:bg-[#6d28d9] text-white h-11"
+            className="w-full bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white h-11"
           >
             <Sparkles className="h-4 w-4 mr-2" />
             Run Batch ({selectedIds.size} apps)
@@ -786,8 +786,8 @@ function BatchMode({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
       )}
 
       {loading && (
-        <div className="rounded-lg border bg-gradient-to-br from-[#f8f5ff] to-white p-6 text-center">
-          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#7c3aed] mb-1">
+        <div className="rounded-lg border bg-gradient-to-br from-[var(--ai)]/5 to-card p-6 text-center">
+          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[var(--ai)] mb-1">
             <Loader2 className="h-4 w-4 animate-spin" />
             Processing {selectedIds.size} apps...
           </div>
@@ -805,8 +805,8 @@ function BatchMode({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
 
       {result && (
         <>
-          <div className="rounded-lg bg-[#f8f5ff] border border-[#7c3aed]/20 p-4">
-            <p className="text-sm font-semibold text-[#1a1f2e]">
+          <div className="rounded-lg bg-[var(--ai)]/5 border border-[var(--ai)]/20 p-4">
+            <p className="text-sm font-semibold text-foreground">
               {result.meta.appsProcessed} apps processed • {totalSuggestions} suggestions
             </p>
             <div className="flex gap-2 mt-3">
@@ -860,7 +860,7 @@ function BatchMode({ apps, workspaceId }: { apps: any[]; workspaceId: string }) 
                       {sugs.map((s) => (
                         <div
                           key={s.capabilityId}
-                          className={`flex items-center justify-between gap-2 p-2 rounded bg-white border text-xs ${
+                          className={`flex items-center justify-between gap-2 p-2 rounded bg-card border text-xs ${
                             s.status === "accepted" ? "opacity-50" : ""
                           }`}
                         >

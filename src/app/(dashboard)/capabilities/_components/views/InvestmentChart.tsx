@@ -74,7 +74,7 @@ export function InvestmentChart({ tree, onSelect }: Props) {
       {/* Summary strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard
-          icon={<DollarSign className="h-4 w-4 text-[#0B5CD6]" />}
+          icon={<DollarSign className="h-4 w-4 text-primary" />}
           label="Total Investment"
           value={`$${grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
           sub="Annual weighted cost"
@@ -94,8 +94,8 @@ export function InvestmentChart({ tree, onSelect }: Props) {
       </div>
 
       {/* Bar chart */}
-      <div className="bg-white rounded-xl border p-5">
-        <h3 className="text-sm font-semibold text-[#1a1f2e] mb-4">
+      <div className="glass-chart">
+        <h3 className="text-sm font-semibold text-foreground mb-4">
           Investment by Capability Domain
         </h3>
         <div className="space-y-3">
@@ -109,21 +109,21 @@ export function InvestmentChart({ tree, onSelect }: Props) {
                 onClick={() => onSelect(d.id)}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-[#1a1f2e] group-hover:text-[#0B5CD6] transition">
+                  <span className="text-xs font-medium text-foreground group-hover:text-primary transition">
                     {d.name}
                   </span>
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] text-muted-foreground">
                       {sharePct.toFixed(1)}%
                     </span>
-                    <span className="text-xs font-semibold tabular-nums text-[#1a1f2e]">
+                    <span className="text-xs font-semibold tabular-nums text-foreground">
                       ${d.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 </div>
-                <div className="h-6 bg-[#f1f3f5] rounded-md overflow-hidden relative">
+                <div className="h-6 bg-muted rounded-md overflow-hidden relative">
                   <div
-                    className="h-full rounded-md bg-gradient-to-r from-[#0B5CD6] to-[#3b82f6] transition-all duration-300 group-hover:from-[#094cb0] group-hover:to-[#0B5CD6]"
+                    className="h-full rounded-md bg-gradient-to-r from-primary to-[#3b82f6] transition-all duration-300 group-hover:from-primary/90 group-hover:to-primary"
                     style={{ width: `${Math.max(pct, 0.5)}%` }}
                   />
                   {/* Sub-segments for L2 children */}
@@ -152,7 +152,7 @@ export function InvestmentChart({ tree, onSelect }: Props) {
                     {d.children.slice(0, 4).map((child: any) => (
                       <div key={child.id} className="flex items-center justify-between text-[10px]">
                         <span className="text-muted-foreground truncate">{child.name}</span>
-                        <span className="text-[#1a1f2e] tabular-nums font-medium ml-2">
+                        <span className="text-foreground tabular-nums font-medium ml-2">
                           ${child.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
@@ -185,12 +185,12 @@ function SummaryCard({
   sub: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border p-4">
+    <div className="bg-card rounded-xl border p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className="text-xl font-bold text-[#1a1f2e]">{value}</p>
+      <p className="text-xl font-bold text-foreground">{value}</p>
       <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );

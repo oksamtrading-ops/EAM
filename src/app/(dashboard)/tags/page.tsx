@@ -67,7 +67,7 @@ export default function TagsPage() {
     <div className="max-w-2xl p-3 sm:p-6 space-y-6">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[#1a1f2e] tracking-tight">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">
             Capability Tags
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -77,7 +77,7 @@ export default function TagsPage() {
       </div>
 
       {/* Create new tag */}
-      <div className="bg-white rounded-xl border p-5">
+      <div className="bg-card rounded-xl border p-5">
         <h2 className="text-sm font-semibold mb-3">Create New Tag</h2>
         <div className="flex items-end gap-3">
           <div className="flex-1">
@@ -106,7 +106,7 @@ export default function TagsPage() {
                   onClick={() => setNewColor(c)}
                   className={`w-6 h-6 rounded-full transition-all ${
                     newColor === c
-                      ? "ring-2 ring-offset-2 ring-[#1a1f2e] scale-110"
+                      ? "ring-2 ring-offset-2 ring-foreground scale-110"
                       : "hover:scale-110"
                   }`}
                   style={{ backgroundColor: c }}
@@ -119,7 +119,7 @@ export default function TagsPage() {
               createMutation.mutate({ name: newName.trim(), color: newColor })
             }
             disabled={!newName.trim() || createMutation.isPending}
-            className="bg-[#0B5CD6] hover:bg-[#094cb0] text-white shrink-0"
+            className="bg-primary hover:bg-primary/90 text-white shrink-0"
           >
             <Plus className="h-4 w-4 mr-1.5" />
             Add
@@ -128,7 +128,7 @@ export default function TagsPage() {
       </div>
 
       {/* Tag list */}
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">Loading...</div>
         ) : !tags || tags.length === 0 ? (
@@ -143,7 +143,7 @@ export default function TagsPage() {
             {tags.map((tag) => (
               <div
                 key={tag.id}
-                className="flex items-center justify-between px-5 py-3 hover:bg-[#fafbfc] group"
+                className="flex items-center justify-between px-5 py-3 hover:bg-muted/20 group"
               >
                 {editingId === tag.id ? (
                   /* Inline edit row */
@@ -155,7 +155,7 @@ export default function TagsPage() {
                           onClick={() => setEditState((s) => ({ ...s, color: c }))}
                           className={`w-5 h-5 rounded-full transition-all ${
                             editState.color === c
-                              ? "ring-2 ring-offset-1 ring-[#1a1f2e] scale-110"
+                              ? "ring-2 ring-offset-1 ring-foreground scale-110"
                               : "hover:scale-110"
                           }`}
                           style={{ backgroundColor: c }}
@@ -176,7 +176,7 @@ export default function TagsPage() {
                       <button
                         onClick={() => saveEdit(tag.id)}
                         disabled={updateMutation.isPending || !editState.name.trim()}
-                        className="p-1.5 rounded text-[#0B5CD6] hover:bg-[#0B5CD6]/10 disabled:opacity-50"
+                        className="p-1.5 rounded text-primary hover:bg-primary/10 disabled:opacity-50"
                       >
                         <Check className="h-4 w-4" />
                       </button>
@@ -196,7 +196,7 @@ export default function TagsPage() {
                         className="w-4 h-4 rounded-full shrink-0"
                         style={{ backgroundColor: tag.color }}
                       />
-                      <span className="text-sm font-medium text-[#1a1f2e]">
+                      <span className="text-sm font-medium text-foreground">
                         {tag.name}
                       </span>
                     </div>
@@ -204,7 +204,7 @@ export default function TagsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-[#0B5CD6] h-8 w-8 p-0"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary h-8 w-8 p-0"
                         onClick={() => startEdit(tag)}
                         title="Edit tag"
                       >

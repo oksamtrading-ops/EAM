@@ -200,7 +200,7 @@ export function ImportExcelDialog({ open, onClose }: Props) {
 
           {/* File upload */}
           <div
-            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-[#0B5CD6] hover:bg-[#0B5CD6]/5 transition-colors"
+            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
             onClick={() => fileRef.current?.click()}
           >
             <input
@@ -215,12 +215,12 @@ export function ImportExcelDialog({ open, onClose }: Props) {
             />
             {validating ? (
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 text-[#0B5CD6] animate-spin" />
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 <p className="text-sm font-medium">Validating...</p>
               </div>
             ) : file ? (
               <div className="flex flex-col items-center gap-2">
-                <FileSpreadsheet className="h-8 w-8 text-[#0B5CD6]" />
+                <FileSpreadsheet className="h-8 w-8 text-primary" />
                 <p className="text-sm font-medium">{file.name}</p>
                 <p className="text-xs text-muted-foreground">Click to replace</p>
               </div>
@@ -281,7 +281,7 @@ export function ImportExcelDialog({ open, onClose }: Props) {
                 <Button
                   onClick={handleImport}
                   disabled={importing}
-                  className="w-full bg-[#0B5CD6] hover:bg-[#094cb0] text-white"
+                  className="w-full bg-primary hover:bg-primary/90 text-white"
                 >
                   {importing ? (
                     <>

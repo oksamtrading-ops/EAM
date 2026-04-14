@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { Card } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -47,7 +46,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   return (
-    <div className="bg-white border border-[#e2e8d5] rounded-lg px-3 py-2 shadow-sm text-xs">
+    <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-sm text-xs">
       <p className="font-semibold mb-1">{d.domain}</p>
       <p className="text-muted-foreground">Avg maturity: <span className="font-medium text-foreground">{d.avgMaturity.toFixed(1)} / 5</span></p>
       <p className="text-muted-foreground">{d.count} capabilit{d.count !== 1 ? "ies" : "y"}</p>
@@ -62,7 +61,7 @@ export function CapabilityMaturityChart({ data, loading }: Props) {
 
   return (
     <>
-      <Card className="p-5 flex flex-col">
+      <div className="glass-chart flex flex-col">
         <div className="mb-4">
           <h3 className="font-semibold text-sm">Business Capability Maturity</h3>
           <p className="text-xs text-muted-foreground">Average maturity score by domain (scale 1&ndash;5)</p>
@@ -113,20 +112,20 @@ export function CapabilityMaturityChart({ data, loading }: Props) {
           <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground mt-3">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400 inline-block" />Initial (&lt;2)</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400 inline-block" />Developing (2&ndash;3)</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#0076A8] inline-block" />Defined/Managed (3&ndash;4)</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#0B5CD6] inline-block" />Optimizing (&ge;4)</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[var(--link)] inline-block" />Defined/Managed (3&ndash;4)</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary inline-block" />Optimizing (&ge;4)</span>
           </div>
         )}
 
         {hasMore && (
           <button
             onClick={() => setShowAll(true)}
-            className="mt-3 text-xs font-medium text-[#0076A8] hover:underline self-start"
+            className="mt-3 text-xs font-medium text-[var(--link)] hover:underline self-start"
           >
             See all {data.length} domains &rarr;
           </button>
         )}
-      </Card>
+      </div>
 
       {/* Full list sheet */}
       <Sheet open={showAll} onOpenChange={setShowAll}>
