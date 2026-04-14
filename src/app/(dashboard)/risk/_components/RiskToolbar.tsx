@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Plus,
   ShieldAlert,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRiskContext, type ViewMode } from "./RiskContext";
+import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -67,48 +67,78 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
       .catch(() => toast.error("Export failed"));
   }
 
+  const overflowActions: OverflowAction[] = [
+    {
+      label: scanning ? "Scanning..." : "Auto-scan",
+      icon: <ScanLine className="h-4 w-4" />,
+      onClick: () => { setScanning(true); autoScan.mutate(); },
+    },
+    {
+      label: "Export PPTX",
+      icon: <Download className="h-4 w-4" />,
+      onClick: handleExport,
+    },
+    {
+      label: "AI Assistant",
+      icon: <Sparkles className="h-4 w-4" />,
+      onClick: onAI,
+    },
+    {
+      label: "New Risk",
+      icon: <Plus className="h-4 w-4" />,
+      onClick: onNewRisk,
+      primary: true,
+    },
+  ];
+
   return (
     <div className="shrink-0 border-b bg-background">
       {/* Top bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-3 sm:px-6 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
+      <div className="flex items-center justify-between px-3 py-3 sm:px-6 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
             <ShieldAlert className="h-4 w-4 text-red-600" />
           </div>
-          <div>
-            <h1 className="font-semibold text-[15px]">Technology Risk & Compliance</h1>
+          <div className="min-w-0">
+            <h1 className="font-semibold text-[15px] truncate">Technology Risk & Compliance</h1>
             <p className="text-xs text-muted-foreground">Module 4</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setScanning(true); autoScan.mutate(); }}
-            disabled={scanning}
-            className="gap-1.5"
-          >
-            <ScanLine className="h-3.5 w-3.5" />
-            {scanning ? "Scanning…" : "Auto-scan"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            Export PPTX
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onAI}
-            className="gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            AI Assistant
-          </Button>
-          <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
-            <Plus className="h-4 w-4" />
-            New Risk
-          </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Full buttons — hidden below lg */}
+          <div className="hidden lg:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setScanning(true); autoScan.mutate(); }}
+              disabled={scanning}
+              className="gap-1.5"
+            >
+              <ScanLine className="h-3.5 w-3.5" />
+              {scanning ? "Scanning..." : "Auto-scan"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+              <Download className="h-3.5 w-3.5" />
+              Export PPTX
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAI}
+              className="gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Assistant
+            </Button>
+            <Button size="sm" onClick={onNewRisk} className="gap-1.5 bg-[#0B5CD6] hover:bg-[#094cb0] text-white">
+              <Plus className="h-4 w-4" />
+              New Risk
+            </Button>
+          </div>
+
+          {/* Overflow menu — visible below lg */}
+          <OverflowMenu actions={overflowActions} className="lg:hidden" />
         </div>
       </div>
 
@@ -131,13 +161,13 @@ export function RiskToolbar({ onNewRisk, onAI }: Props) {
       )}
 
       {/* View tabs */}
-      <div className="flex items-center gap-1 px-6 pb-0">
+      <div className="flex items-center gap-1 px-3 sm:px-6 pb-0 overflow-x-auto">
         {VIEWS.map((v) => (
           <button
             key={v.id}
             onClick={() => setView(v.id)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 text-[13px] font-medium border-b-2 transition-colors",
+              "flex items-center gap-2 px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap",
               view === v.id
                 ? "border-[#0B5CD6] text-[#0B5CD6]"
                 : "border-transparent text-muted-foreground hover:text-foreground"

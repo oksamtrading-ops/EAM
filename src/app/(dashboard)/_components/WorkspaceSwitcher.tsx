@@ -26,37 +26,37 @@ export function WorkspaceSwitcher({ onCreateNew }: Props) {
 
   return (
     <div className="relative">
-      {/* Trigger */}
+      {/* Trigger — styled for dark sidebar */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-black/[0.03] transition-colors"
-        style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.04] transition-colors"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
       >
         <div
-          className="h-9 w-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+          className="h-8 w-8 rounded-xl flex items-center justify-center shadow-sm shrink-0"
           style={{
             background: "linear-gradient(135deg, #0B5CD6 0%, #5e8a1a 100%)",
           }}
         >
-          <Building2 className="h-[18px] w-[18px] text-white" />
+          <Building2 className="h-4 w-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[14px] text-[#1d1d1f] tracking-tight leading-tight truncate">
+          <p className="font-semibold text-[13px] text-white tracking-tight leading-tight truncate">
             {workspaceName}
           </p>
-          <p className="text-[11px] text-[#86868b] truncate leading-tight mt-0.5">
+          <p className="text-[10px] text-white/40 truncate leading-tight mt-0.5">
             {industry}
           </p>
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-[#86868b] transition-transform shrink-0",
+            "h-3.5 w-3.5 text-white/30 transition-transform shrink-0",
             open && "rotate-180"
           )}
         />
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — pops out in light theme since it overlays the page */}
       {open && (
         <>
           {/* Backdrop */}

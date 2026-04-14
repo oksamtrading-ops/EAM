@@ -69,7 +69,7 @@ export function AppMappingPanel({ open, onClose, mode, applicationId, apps }: Pr
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-40 border-l bg-white flex flex-col shadow-xl">
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-white flex flex-col shadow-xl">
       {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[#7c3aed]/10 to-transparent">
         <div className="flex items-center gap-2">
