@@ -5,6 +5,7 @@ import {
   X, Trash2, ChevronRight, Copy, Target, Link2, Unlink,
   Users, Building2, Workflow, Plus, ArrowRight, DollarSign,
 } from "lucide-react";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -240,8 +241,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           <Separator />
 
           {/* Value Stream */}
-          <section>
-            <SectionLabel icon={<Workflow className="h-3.5 w-3.5" />}>Value Stream</SectionLabel>
+          <CollapsibleSection title="Value Stream" icon={<Workflow className="h-3.5 w-3.5" />}>
             <Select
               value={cap.valueStreamId ?? "__none__"}
               onValueChange={(v) =>
@@ -318,13 +318,12 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 Create new value stream
               </button>
             )}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Investment / Cost Rollup */}
-          <section>
-            <SectionLabel icon={<DollarSign className="h-3.5 w-3.5" />}>Investment</SectionLabel>
+          <CollapsibleSection title="Investment" icon={<DollarSign className="h-3.5 w-3.5" />}>
             {(() => {
               const capCost = costRollup?.[capabilityId];
               if (!capCost || capCost.totalCost === 0) {
@@ -378,13 +377,12 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 </div>
               );
             })()}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Ownership */}
-          <section>
-            <SectionLabel icon={<Users className="h-3.5 w-3.5" />}>Ownership</SectionLabel>
+          <CollapsibleSection title="Ownership" icon={<Users className="h-3.5 w-3.5" />}>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Organization</label>
@@ -427,13 +425,13 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 />
               </div>
             </div>
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Assessment */}
-          <section className="space-y-3">
-            <SectionLabel>Assessment</SectionLabel>
+          <CollapsibleSection title="Assessment" defaultOpen>
+            <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Current Maturity</label>
@@ -527,15 +525,18 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 </SelectContent>
               </Select>
             </div>
-          </section>
+            </div>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Strategic Objectives */}
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <SectionLabel icon={<Target className="h-3.5 w-3.5" />}>Strategic Objectives</SectionLabel>
-              <div className="flex items-center gap-1">
+          <CollapsibleSection
+            title="Strategic Objectives"
+            icon={<Target className="h-3.5 w-3.5" />}
+            count={(cap as any).objectives?.length ?? 0}
+            actions={
+              <>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -554,8 +555,9 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                   <Plus className="h-3 w-3 mr-1" />
                   Link
                 </Button>
-              </div>
-            </div>
+              </>
+            }
+          >
 
             {showObjectivePicker && (
               <div className="mb-3 p-3 rounded-lg border bg-muted/30 space-y-1.5">
@@ -615,14 +617,15 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 No strategic objectives linked. Link objectives to track alignment.
               </p>
             )}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Dependencies */}
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <SectionLabel icon={<Link2 className="h-3.5 w-3.5" />}>Dependencies</SectionLabel>
+          <CollapsibleSection
+            title="Dependencies"
+            icon={<Link2 className="h-3.5 w-3.5" />}
+            actions={
               <Button
                 size="sm"
                 variant="ghost"
@@ -632,7 +635,8 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 <Plus className="h-3 w-3 mr-1" />
                 Add
               </Button>
-            </div>
+            }
+          >
 
             {showDependencyPicker && (
               <div className="mb-3 p-3 rounded-lg border bg-muted/30 max-h-48 overflow-auto space-y-1">
@@ -706,7 +710,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                 No dependencies defined.
               </p>
             )}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
@@ -719,8 +723,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
 
           {/* Sub-capabilities */}
           {cap.children && cap.children.length > 0 && (
-            <section>
-              <SectionLabel>Sub-capabilities ({cap.children.length})</SectionLabel>
+            <CollapsibleSection title="Sub-capabilities" count={cap.children.length} defaultOpen>
               <div className="space-y-1">
                 {cap.children.map((child: any) => (
                   <div
@@ -733,7 +736,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
                   </div>
                 ))}
               </div>
-            </section>
+            </CollapsibleSection>
           )}
 
           {/* Tags */}

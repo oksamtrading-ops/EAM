@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, ChevronDown, ChevronRight } from "lucide-react";
+import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink } from "lucide-react";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,14 +29,12 @@ type Props = {
 
 export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showInterfaces, setShowInterfaces] = useState(false);
-  const [showTechStack, setShowTechStack] = useState(false);
   const [showAddInterface, setShowAddInterface] = useState(false);
   const [newIface, setNewIface] = useState({ targetAppId: "", name: "", protocol: "REST_API", direction: "OUTBOUND", criticality: "INT_MEDIUM" });
   const utils = trpc.useUtils();
   const { data: app, isLoading } = trpc.application.getById.useQuery({ id: applicationId });
   const { data: allApps } = trpc.application.listForMapping.useQuery();
-  const { data: radarData } = trpc.techRadar.getRadar.useQuery(undefined, { enabled: showTechStack });
+  const { data: radarData } = trpc.techRadar.getRadar.useQuery();
   const { data: workspaceUsers } = trpc.workspace.listUsers.useQuery();
   const radarEntries = radarData?.entries ?? [];
 
@@ -201,9 +200,8 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
 
           <Separator />
 
-          {/* Cost Details */}
-          <section>
-            <h3 className="text-sm font-medium mb-3">Cost Details</h3>
+          {/* Cost & Users */}
+          <CollapsibleSection title="Cost & Users">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Cost Model</label>
@@ -328,13 +326,12 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                 }}
               />
             </div>
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Assessment */}
-          <section>
-            <h3 className="text-sm font-medium mb-3">Assessment</h3>
+          <CollapsibleSection title="Assessment" defaultOpen>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Biz Value</label>
@@ -437,15 +434,12 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                 </Select>
               </div>
             </div>
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Capability mappings */}
-          <section>
-            <h3 className="text-sm font-medium mb-2">
-              Linked Capabilities ({app.capabilities?.length ?? 0})
-            </h3>
+          <CollapsibleSection title="Linked Capabilities" count={app.capabilities?.length ?? 0}>
             {app.capabilities && app.capabilities.length > 0 ? (
               <div className="space-y-1">
                 {app.capabilities.map((m: any) => (
@@ -460,20 +454,12 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                 No capabilities linked. Edit this app to assign capabilities.
               </p>
             )}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Interfaces */}
-          <section>
-            <button
-              onClick={() => setShowInterfaces(!showInterfaces)}
-              className="flex items-center gap-1.5 text-sm font-medium w-full text-left mb-2"
-            >
-              {showInterfaces ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-              Interfaces ({(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0)})
-            </button>
-            {showInterfaces && (
+          <CollapsibleSection title="Interfaces" count={(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0)}>
               <div className="space-y-1.5">
                 {app.interfacesFrom?.map((iface: any) => (
                   <div key={iface.id} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
@@ -578,21 +564,12 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                   </Button>
                 )}
               </div>
-            )}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Tech Stack */}
-          <section>
-            <button
-              onClick={() => setShowTechStack(!showTechStack)}
-              className="flex items-center gap-1.5 text-sm font-medium w-full text-left mb-2"
-            >
-              {showTechStack ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-              Tech Stack ({app.techStackLinks?.length ?? 0})
-            </button>
-            {showTechStack && (
+          <CollapsibleSection title="Tech Stack" count={app.techStackLinks?.length ?? 0}>
               <div className="space-y-1.5">
                 {app.techStackLinks?.map((link: any) => (
                   <div key={`${link.applicationId}-${link.techRadarEntryId}`} className="text-xs p-2 bg-[#fafbfc] rounded flex items-center gap-2 group">
@@ -632,26 +609,27 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                   </div>
                 )}
               </div>
-            )}
-          </section>
+          </CollapsibleSection>
 
           <Separator />
 
           {/* Ownership */}
-          <section className="grid grid-cols-2 gap-3">
-            <OwnerField
-              label="Business Owner"
-              owner={(app as any).businessOwner}
-              onChange={(id) => updateMutation.mutate({ id: app.id, businessOwnerId: id })}
-              users={workspaceUsers}
-            />
-            <OwnerField
-              label="IT Owner"
-              owner={(app as any).itOwner}
-              onChange={(id) => updateMutation.mutate({ id: app.id, itOwnerId: id })}
-              users={workspaceUsers}
-            />
-          </section>
+          <CollapsibleSection title="Ownership">
+            <div className="grid grid-cols-2 gap-3">
+              <OwnerField
+                label="Business Owner"
+                owner={(app as any).businessOwner}
+                onChange={(id) => updateMutation.mutate({ id: app.id, businessOwnerId: id })}
+                users={workspaceUsers}
+              />
+              <OwnerField
+                label="IT Owner"
+                owner={(app as any).itOwner}
+                onChange={(id) => updateMutation.mutate({ id: app.id, itOwnerId: id })}
+                users={workspaceUsers}
+              />
+            </div>
+          </CollapsibleSection>
         </div>
       </ScrollArea>
 

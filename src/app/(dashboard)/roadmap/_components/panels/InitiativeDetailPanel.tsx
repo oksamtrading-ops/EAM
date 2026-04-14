@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Pencil, AlertTriangle, Loader2 } from "lucide-react";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { format } from "date-fns";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
@@ -171,44 +172,43 @@ export function InitiativeDetailPanel({
                     <ProgressBar value={initiative.progressPct} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    {initiative.startDate && (
-                      <div>
-                        <p className="text-[11px] text-muted-foreground mb-0.5">Start</p>
-                        <p className="font-medium text-xs">
-                          {format(new Date(initiative.startDate), "MMM d, yyyy")}
-                        </p>
-                      </div>
-                    )}
-                    {initiative.endDate && (
-                      <div>
-                        <p className="text-[11px] text-muted-foreground mb-0.5">End</p>
-                        <p className="font-medium text-xs">
-                          {format(new Date(initiative.endDate), "MMM d, yyyy")}
-                        </p>
-                      </div>
-                    )}
-                    {initiative.budgetUsd && (
-                      <div>
-                        <p className="text-[11px] text-muted-foreground mb-0.5">Budget</p>
-                        <p className="font-medium text-xs">
-                          ${Number(initiative.budgetUsd).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                    {initiative.businessSponsor && (
-                      <div>
-                        <p className="text-[11px] text-muted-foreground mb-0.5">Sponsor</p>
-                        <p className="font-medium text-xs">{initiative.businessSponsor}</p>
-                      </div>
-                    )}
-                  </div>
+                  <CollapsibleSection title="Details" defaultOpen>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {initiative.startDate && (
+                        <div>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">Start</p>
+                          <p className="font-medium text-xs">
+                            {format(new Date(initiative.startDate), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                      )}
+                      {initiative.endDate && (
+                        <div>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">End</p>
+                          <p className="font-medium text-xs">
+                            {format(new Date(initiative.endDate), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                      )}
+                      {initiative.budgetUsd && (
+                        <div>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">Budget</p>
+                          <p className="font-medium text-xs">
+                            ${Number(initiative.budgetUsd).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {initiative.businessSponsor && (
+                        <div>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">Sponsor</p>
+                          <p className="font-medium text-xs">{initiative.businessSponsor}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleSection>
 
-                  {initiative.capabilities.length > 0 && (
-                    <div>
-                      <p className="text-[11px] text-muted-foreground mb-1">
-                        Capabilities ({initiative.capabilities.length})
-                      </p>
+                  <CollapsibleSection title="Linked Capabilities" count={initiative.capabilities.length}>
+                    {initiative.capabilities.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {initiative.capabilities.map((c) => (
                           <span
@@ -219,8 +219,10 @@ export function InitiativeDetailPanel({
                           </span>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No capabilities linked.</p>
+                    )}
+                  </CollapsibleSection>
 
                   {/* AI Risk Assessment */}
                   <div className="border-t pt-4">
