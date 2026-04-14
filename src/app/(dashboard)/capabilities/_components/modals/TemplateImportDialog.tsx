@@ -42,15 +42,15 @@ const IMPORTANCE_LABELS: Record<string, string> = {
 // state and a "Templates coming soon" badge.
 const INDUSTRIES = [
   { value: "BANKING",              label: "Banking & Financial Services",  icon: "🏦", templatesAvailable: true },
-  { value: "INSURANCE",            label: "Insurance",                     icon: "🛡️", templatesAvailable: false },
+  { value: "INSURANCE",            label: "Insurance",                     icon: "🛡️", templatesAvailable: true },
   { value: "RETAIL",               label: "Retail & Consumer",             icon: "🛒", templatesAvailable: true },
   { value: "LOGISTICS",            label: "Logistics & Supply Chain",      icon: "🚚", templatesAvailable: true },
   { value: "MANUFACTURING",        label: "Manufacturing",                 icon: "🏭", templatesAvailable: true },
   { value: "HEALTHCARE",           label: "Healthcare",                    icon: "🏥", templatesAvailable: true },
-  { value: "PHARMA_LIFESCIENCES",  label: "Pharma & Life Sciences",        icon: "💊", templatesAvailable: false },
-  { value: "TELECOM",              label: "Telecommunications",            icon: "📡", templatesAvailable: false },
-  { value: "ENERGY_UTILITIES",     label: "Energy & Utilities",            icon: "⚡", templatesAvailable: false },
-  { value: "PUBLIC_SECTOR",        label: "Public Sector",                 icon: "🏛️", templatesAvailable: false },
+  { value: "PHARMA_LIFESCIENCES",  label: "Pharma & Life Sciences",        icon: "💊", templatesAvailable: true },
+  { value: "TELECOM",              label: "Telecommunications",            icon: "📡", templatesAvailable: true },
+  { value: "ENERGY_UTILITIES",     label: "Energy & Utilities",            icon: "⚡", templatesAvailable: true },
+  { value: "PUBLIC_SECTOR",        label: "Public Sector",                 icon: "🏛️", templatesAvailable: true },
   { value: "GENERIC",              label: "Generic / Cross-Industry",      icon: "🔲", templatesAvailable: true },
   { value: "ENTERPRISE_BCM",       label: "Enterprise BCM (Comprehensive)", icon: "🌐", templatesAvailable: true },
 ] as const;

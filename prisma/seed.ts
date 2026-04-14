@@ -214,6 +214,346 @@ const GENERIC_TEMPLATE = [
   { code: "GEN-L2-025", level: "L2", name: "Cloud & Infrastructure", parentCode: "GEN-L1-008", sortOrder: 4, description: null },
 ];
 
+const INSURANCE_TEMPLATE = [
+  // L1
+  { code: "INS-L1-001", level: "L1", name: "Product Management", parentCode: null, sortOrder: 1, description: "Design, develop, price, and maintain insurance products across all lines of business" },
+  { code: "INS-L1-002", level: "L1", name: "Underwriting", parentCode: null, sortOrder: 2, description: "Evaluate, select, and price risks to determine insurability and appropriate terms" },
+  { code: "INS-L1-003", level: "L1", name: "Policy Administration", parentCode: null, sortOrder: 3, description: "Issue, maintain, and service insurance policies throughout their lifecycle" },
+  { code: "INS-L1-004", level: "L1", name: "Claims Management", parentCode: null, sortOrder: 4, description: "Receive, investigate, adjudicate, and settle insurance claims" },
+  { code: "INS-L1-005", level: "L1", name: "Distribution & Sales", parentCode: null, sortOrder: 5, description: "Manage channels, intermediaries, and sales processes to acquire and retain business" },
+  { code: "INS-L1-006", level: "L1", name: "Customer Management", parentCode: null, sortOrder: 6, description: "Acquire, onboard, service, and retain policyholders and claimants" },
+  { code: "INS-L1-007", level: "L1", name: "Reinsurance", parentCode: null, sortOrder: 7, description: "Cede, manage, and account for risk transferred to reinsurance partners" },
+  { code: "INS-L1-008", level: "L1", name: "Actuarial & Risk Management", parentCode: null, sortOrder: 8, description: "Quantify risk exposures, set reserves, and ensure capital adequacy" },
+  { code: "INS-L1-009", level: "L1", name: "Compliance & Regulatory", parentCode: null, sortOrder: 9, description: "Ensure adherence to insurance regulations, reporting, and market conduct standards" },
+  { code: "INS-L1-010", level: "L1", name: "Investment & Asset Management", parentCode: null, sortOrder: 10, description: "Manage investment portfolio and general/separate account assets" },
+  // L2 — Product Management
+  { code: "INS-L2-001", level: "L2", name: "Product Design & Configuration", parentCode: "INS-L1-001", sortOrder: 1, description: null },
+  { code: "INS-L2-002", level: "L2", name: "Rate Development & Filing", parentCode: "INS-L1-001", sortOrder: 2, description: null },
+  { code: "INS-L2-003", level: "L2", name: "Product Lifecycle Management", parentCode: "INS-L1-001", sortOrder: 3, description: null },
+  { code: "INS-L2-004", level: "L2", name: "Forms & Endorsement Management", parentCode: "INS-L1-001", sortOrder: 4, description: null },
+  // L2 — Underwriting
+  { code: "INS-L2-005", level: "L2", name: "Submission Intake & Triage", parentCode: "INS-L1-002", sortOrder: 1, description: null },
+  { code: "INS-L2-006", level: "L2", name: "Risk Assessment & Selection", parentCode: "INS-L1-002", sortOrder: 2, description: null },
+  { code: "INS-L2-007", level: "L2", name: "Pricing & Rating", parentCode: "INS-L1-002", sortOrder: 3, description: null },
+  { code: "INS-L2-008", level: "L2", name: "Underwriting Authority & Referrals", parentCode: "INS-L1-002", sortOrder: 4, description: null },
+  // L2 — Policy Administration
+  { code: "INS-L2-009", level: "L2", name: "Policy Issuance & Binding", parentCode: "INS-L1-003", sortOrder: 1, description: null },
+  { code: "INS-L2-010", level: "L2", name: "Endorsements & Amendments", parentCode: "INS-L1-003", sortOrder: 2, description: null },
+  { code: "INS-L2-011", level: "L2", name: "Renewal Processing", parentCode: "INS-L1-003", sortOrder: 3, description: null },
+  { code: "INS-L2-012", level: "L2", name: "Cancellation & Reinstatement", parentCode: "INS-L1-003", sortOrder: 4, description: null },
+  { code: "INS-L2-013", level: "L2", name: "Billing & Premium Accounting", parentCode: "INS-L1-003", sortOrder: 5, description: null },
+  // L2 — Claims Management
+  { code: "INS-L2-014", level: "L2", name: "First Notice of Loss (FNOL)", parentCode: "INS-L1-004", sortOrder: 1, description: null },
+  { code: "INS-L2-015", level: "L2", name: "Claims Investigation & Adjustment", parentCode: "INS-L1-004", sortOrder: 2, description: null },
+  { code: "INS-L2-016", level: "L2", name: "Reserving & Valuation", parentCode: "INS-L1-004", sortOrder: 3, description: null },
+  { code: "INS-L2-017", level: "L2", name: "Settlement & Payment", parentCode: "INS-L1-004", sortOrder: 4, description: null },
+  { code: "INS-L2-018", level: "L2", name: "Subrogation & Recovery", parentCode: "INS-L1-004", sortOrder: 5, description: null },
+  // L2 — Distribution & Sales
+  { code: "INS-L2-019", level: "L2", name: "Agency & Broker Management", parentCode: "INS-L1-005", sortOrder: 1, description: null },
+  { code: "INS-L2-020", level: "L2", name: "Channel Strategy & Compensation", parentCode: "INS-L1-005", sortOrder: 2, description: null },
+  { code: "INS-L2-021", level: "L2", name: "Quote & Proposal Generation", parentCode: "INS-L1-005", sortOrder: 3, description: null },
+  { code: "INS-L2-022", level: "L2", name: "Digital & Direct Distribution", parentCode: "INS-L1-005", sortOrder: 4, description: null },
+  // L2 — Customer Management
+  { code: "INS-L2-023", level: "L2", name: "Customer Onboarding & KYC", parentCode: "INS-L1-006", sortOrder: 1, description: null },
+  { code: "INS-L2-024", level: "L2", name: "Customer Service & Inquiries", parentCode: "INS-L1-006", sortOrder: 2, description: null },
+  { code: "INS-L2-025", level: "L2", name: "Customer 360 View", parentCode: "INS-L1-006", sortOrder: 3, description: null },
+  { code: "INS-L2-026", level: "L2", name: "Retention & Loyalty Management", parentCode: "INS-L1-006", sortOrder: 4, description: null },
+  // L2 — Reinsurance
+  { code: "INS-L2-027", level: "L2", name: "Treaty & Facultative Placement", parentCode: "INS-L1-007", sortOrder: 1, description: null },
+  { code: "INS-L2-028", level: "L2", name: "Cession Administration", parentCode: "INS-L1-007", sortOrder: 2, description: null },
+  { code: "INS-L2-029", level: "L2", name: "Reinsurance Accounting & Settlements", parentCode: "INS-L1-007", sortOrder: 3, description: null },
+  { code: "INS-L2-030", level: "L2", name: "Reinsurance Recoveries", parentCode: "INS-L1-007", sortOrder: 4, description: null },
+  // L2 — Actuarial & Risk Management
+  { code: "INS-L2-031", level: "L2", name: "Loss Reserving & Triangulation", parentCode: "INS-L1-008", sortOrder: 1, description: null },
+  { code: "INS-L2-032", level: "L2", name: "Capital Modeling & Solvency", parentCode: "INS-L1-008", sortOrder: 2, description: null },
+  { code: "INS-L2-033", level: "L2", name: "Catastrophe Modeling", parentCode: "INS-L1-008", sortOrder: 3, description: null },
+  { code: "INS-L2-034", level: "L2", name: "Enterprise Risk Management", parentCode: "INS-L1-008", sortOrder: 4, description: null },
+  // L2 — Compliance & Regulatory
+  { code: "INS-L2-035", level: "L2", name: "Regulatory Filing & Reporting", parentCode: "INS-L1-009", sortOrder: 1, description: null },
+  { code: "INS-L2-036", level: "L2", name: "Market Conduct & Fair Practices", parentCode: "INS-L1-009", sortOrder: 2, description: null },
+  { code: "INS-L2-037", level: "L2", name: "AML & Fraud Detection", parentCode: "INS-L1-009", sortOrder: 3, description: null },
+  { code: "INS-L2-038", level: "L2", name: "License & Appointment Management", parentCode: "INS-L1-009", sortOrder: 4, description: null },
+  // L2 — Investment & Asset Management
+  { code: "INS-L2-039", level: "L2", name: "Investment Strategy & Allocation", parentCode: "INS-L1-010", sortOrder: 1, description: null },
+  { code: "INS-L2-040", level: "L2", name: "Portfolio Management & Trading", parentCode: "INS-L1-010", sortOrder: 2, description: null },
+  { code: "INS-L2-041", level: "L2", name: "Investment Accounting", parentCode: "INS-L1-010", sortOrder: 3, description: null },
+  { code: "INS-L2-042", level: "L2", name: "Asset-Liability Matching", parentCode: "INS-L1-010", sortOrder: 4, description: null },
+];
+
+const PHARMA_TEMPLATE = [
+  // L1
+  { code: "PHA-L1-001", level: "L1", name: "Drug Discovery & Research", parentCode: null, sortOrder: 1, description: "Identify and validate novel therapeutic targets and lead compounds" },
+  { code: "PHA-L1-002", level: "L1", name: "Preclinical Development", parentCode: null, sortOrder: 2, description: "Evaluate safety, toxicology, and pharmacokinetics before human trials" },
+  { code: "PHA-L1-003", level: "L1", name: "Clinical Development", parentCode: null, sortOrder: 3, description: "Design, execute, and analyze Phase I–IV human clinical trials" },
+  { code: "PHA-L1-004", level: "L1", name: "Regulatory Affairs", parentCode: null, sortOrder: 4, description: "Secure and maintain marketing authorizations across global jurisdictions" },
+  { code: "PHA-L1-005", level: "L1", name: "Manufacturing & Supply Chain", parentCode: null, sortOrder: 5, description: "Produce, package, and distribute drug products at commercial scale" },
+  { code: "PHA-L1-006", level: "L1", name: "Quality Management", parentCode: null, sortOrder: 6, description: "Ensure product quality and regulatory compliance across the product lifecycle" },
+  { code: "PHA-L1-007", level: "L1", name: "Commercial Operations", parentCode: null, sortOrder: 7, description: "Drive product launch, marketing, and sales execution" },
+  { code: "PHA-L1-008", level: "L1", name: "Market Access & Pricing", parentCode: null, sortOrder: 8, description: "Optimize reimbursement, pricing, and formulary positioning" },
+  { code: "PHA-L1-009", level: "L1", name: "Medical Affairs", parentCode: null, sortOrder: 9, description: "Provide scientific expertise and evidence generation post-approval" },
+  { code: "PHA-L1-010", level: "L1", name: "Pharmacovigilance & Drug Safety", parentCode: null, sortOrder: 10, description: "Monitor, detect, and report adverse drug reactions throughout the product lifecycle" },
+  // L2 — Drug Discovery & Research
+  { code: "PHA-L2-001", level: "L2", name: "Target Identification & Validation", parentCode: "PHA-L1-001", sortOrder: 1, description: null },
+  { code: "PHA-L2-002", level: "L2", name: "Hit-to-Lead & Lead Optimization", parentCode: "PHA-L1-001", sortOrder: 2, description: null },
+  { code: "PHA-L2-003", level: "L2", name: "Translational Research", parentCode: "PHA-L1-001", sortOrder: 3, description: null },
+  { code: "PHA-L2-004", level: "L2", name: "Biomarker Discovery", parentCode: "PHA-L1-001", sortOrder: 4, description: null },
+  { code: "PHA-L2-005", level: "L2", name: "Intellectual Property Management", parentCode: "PHA-L1-001", sortOrder: 5, description: null },
+  // L2 — Preclinical Development
+  { code: "PHA-L2-006", level: "L2", name: "In-Vitro & In-Vivo Studies", parentCode: "PHA-L1-002", sortOrder: 1, description: null },
+  { code: "PHA-L2-007", level: "L2", name: "ADME/PK Profiling", parentCode: "PHA-L1-002", sortOrder: 2, description: null },
+  { code: "PHA-L2-008", level: "L2", name: "Toxicology & Safety Assessment", parentCode: "PHA-L1-002", sortOrder: 3, description: null },
+  { code: "PHA-L2-009", level: "L2", name: "Formulation Development", parentCode: "PHA-L1-002", sortOrder: 4, description: null },
+  // L2 — Clinical Development
+  { code: "PHA-L2-010", level: "L2", name: "Trial Design & Protocol Management", parentCode: "PHA-L1-003", sortOrder: 1, description: null },
+  { code: "PHA-L2-011", level: "L2", name: "Site Selection & Patient Recruitment", parentCode: "PHA-L1-003", sortOrder: 2, description: null },
+  { code: "PHA-L2-012", level: "L2", name: "Clinical Data Management", parentCode: "PHA-L1-003", sortOrder: 3, description: null },
+  { code: "PHA-L2-013", level: "L2", name: "Clinical Supply & Randomization", parentCode: "PHA-L1-003", sortOrder: 4, description: null },
+  { code: "PHA-L2-014", level: "L2", name: "Safety Monitoring & DSMB Oversight", parentCode: "PHA-L1-003", sortOrder: 5, description: null },
+  // L2 — Regulatory Affairs
+  { code: "PHA-L2-015", level: "L2", name: "Regulatory Strategy & Intelligence", parentCode: "PHA-L1-004", sortOrder: 1, description: null },
+  { code: "PHA-L2-016", level: "L2", name: "Submission & Dossier Management (eCTD)", parentCode: "PHA-L1-004", sortOrder: 2, description: null },
+  { code: "PHA-L2-017", level: "L2", name: "Labeling & Promotional Review", parentCode: "PHA-L1-004", sortOrder: 3, description: null },
+  { code: "PHA-L2-018", level: "L2", name: "Post-Approval Lifecycle Management", parentCode: "PHA-L1-004", sortOrder: 4, description: null },
+  // L2 — Manufacturing & Supply Chain
+  { code: "PHA-L2-019", level: "L2", name: "Process Development & Scale-Up", parentCode: "PHA-L1-005", sortOrder: 1, description: null },
+  { code: "PHA-L2-020", level: "L2", name: "GMP Manufacturing", parentCode: "PHA-L1-005", sortOrder: 2, description: null },
+  { code: "PHA-L2-021", level: "L2", name: "Packaging & Serialization", parentCode: "PHA-L1-005", sortOrder: 3, description: null },
+  { code: "PHA-L2-022", level: "L2", name: "Supply Planning & Inventory", parentCode: "PHA-L1-005", sortOrder: 4, description: null },
+  { code: "PHA-L2-023", level: "L2", name: "Cold Chain & Distribution", parentCode: "PHA-L1-005", sortOrder: 5, description: null },
+  // L2 — Quality Management
+  { code: "PHA-L2-024", level: "L2", name: "Quality Assurance & GxP Compliance", parentCode: "PHA-L1-006", sortOrder: 1, description: null },
+  { code: "PHA-L2-025", level: "L2", name: "Quality Control & Lab Operations", parentCode: "PHA-L1-006", sortOrder: 2, description: null },
+  { code: "PHA-L2-026", level: "L2", name: "Deviation, CAPA & Change Control", parentCode: "PHA-L1-006", sortOrder: 3, description: null },
+  { code: "PHA-L2-027", level: "L2", name: "Supplier & CMO Quality", parentCode: "PHA-L1-006", sortOrder: 4, description: null },
+  { code: "PHA-L2-028", level: "L2", name: "Validation & Qualification", parentCode: "PHA-L1-006", sortOrder: 5, description: null },
+  // L2 — Commercial Operations
+  { code: "PHA-L2-029", level: "L2", name: "Go-to-Market Strategy & Launch", parentCode: "PHA-L1-007", sortOrder: 1, description: null },
+  { code: "PHA-L2-030", level: "L2", name: "Sales Force Effectiveness & CRM", parentCode: "PHA-L1-007", sortOrder: 2, description: null },
+  { code: "PHA-L2-031", level: "L2", name: "Omnichannel Marketing & HCP Engagement", parentCode: "PHA-L1-007", sortOrder: 3, description: null },
+  { code: "PHA-L2-032", level: "L2", name: "Commercial Analytics & Forecasting", parentCode: "PHA-L1-007", sortOrder: 4, description: null },
+  // L2 — Market Access & Pricing
+  { code: "PHA-L2-033", level: "L2", name: "Health Economics & Outcomes Research", parentCode: "PHA-L1-008", sortOrder: 1, description: null },
+  { code: "PHA-L2-034", level: "L2", name: "Pricing & Contracting Strategy", parentCode: "PHA-L1-008", sortOrder: 2, description: null },
+  { code: "PHA-L2-035", level: "L2", name: "Payer & HTA Engagement", parentCode: "PHA-L1-008", sortOrder: 3, description: null },
+  { code: "PHA-L2-036", level: "L2", name: "Patient Access & Assistance Programs", parentCode: "PHA-L1-008", sortOrder: 4, description: null },
+  // L2 — Medical Affairs
+  { code: "PHA-L2-037", level: "L2", name: "Medical Information & Communication", parentCode: "PHA-L1-009", sortOrder: 1, description: null },
+  { code: "PHA-L2-038", level: "L2", name: "MSL Operations", parentCode: "PHA-L1-009", sortOrder: 2, description: null },
+  { code: "PHA-L2-039", level: "L2", name: "Investigator-Initiated Studies", parentCode: "PHA-L1-009", sortOrder: 3, description: null },
+  { code: "PHA-L2-040", level: "L2", name: "Publication Planning", parentCode: "PHA-L1-009", sortOrder: 4, description: null },
+  { code: "PHA-L2-041", level: "L2", name: "Advisory Boards & KOL Engagement", parentCode: "PHA-L1-009", sortOrder: 5, description: null },
+  // L2 — Pharmacovigilance & Drug Safety
+  { code: "PHA-L2-042", level: "L2", name: "Adverse Event Case Processing", parentCode: "PHA-L1-010", sortOrder: 1, description: null },
+  { code: "PHA-L2-043", level: "L2", name: "Signal Detection & Risk Management", parentCode: "PHA-L1-010", sortOrder: 2, description: null },
+  { code: "PHA-L2-044", level: "L2", name: "Periodic Safety Reporting (PSUR)", parentCode: "PHA-L1-010", sortOrder: 3, description: null },
+  { code: "PHA-L2-045", level: "L2", name: "Risk Evaluation & Mitigation (REMS)", parentCode: "PHA-L1-010", sortOrder: 4, description: null },
+];
+
+const TELECOM_TEMPLATE = [
+  // L1
+  { code: "TEL-L1-001", level: "L1", name: "Strategy & Enterprise Management", parentCode: null, sortOrder: 1, description: "Corporate planning, portfolio governance, and enterprise performance oversight" },
+  { code: "TEL-L1-002", level: "L1", name: "Product & Offer Management", parentCode: null, sortOrder: 2, description: "Lifecycle management of commercial products, bundles, and catalog entries" },
+  { code: "TEL-L1-003", level: "L1", name: "Customer Management", parentCode: null, sortOrder: 3, description: "End-to-end customer engagement from acquisition through retention" },
+  { code: "TEL-L1-004", level: "L1", name: "Service Management", parentCode: null, sortOrder: 4, description: "Design, orchestration, and assurance of customer-facing and resource-facing services" },
+  { code: "TEL-L1-005", level: "L1", name: "Network & Resource Management", parentCode: null, sortOrder: 5, description: "Planning, provisioning, and real-time control of network infrastructure (OSS)" },
+  { code: "TEL-L1-006", level: "L1", name: "Revenue & Financial Management", parentCode: null, sortOrder: 6, description: "Rating, charging, billing, and financial settlement across revenue streams" },
+  { code: "TEL-L1-007", level: "L1", name: "Partner & Supplier Management", parentCode: null, sortOrder: 7, description: "Governance of wholesale, MVNO, roaming, and vendor relationships" },
+  { code: "TEL-L1-008", level: "L1", name: "Infrastructure & IT Management", parentCode: null, sortOrder: 8, description: "Physical assets, data centers, IT platforms, and cloud infrastructure" },
+  { code: "TEL-L1-009", level: "L1", name: "Digital Services & Innovation", parentCode: null, sortOrder: 9, description: "Digital channels, API ecosystems, and emerging-technology enablement" },
+  { code: "TEL-L1-010", level: "L1", name: "Workforce & Field Operations", parentCode: null, sortOrder: 10, description: "Planning and dispatch of field technicians and workforce optimization" },
+  // L2 — Strategy & Enterprise Management
+  { code: "TEL-L2-001", level: "L2", name: "Strategic Planning", parentCode: "TEL-L1-001", sortOrder: 1, description: null },
+  { code: "TEL-L2-002", level: "L2", name: "Enterprise Risk Management", parentCode: "TEL-L1-001", sortOrder: 2, description: null },
+  { code: "TEL-L2-003", level: "L2", name: "Regulatory & Compliance Management", parentCode: "TEL-L1-001", sortOrder: 3, description: null },
+  { code: "TEL-L2-004", level: "L2", name: "Enterprise Performance Management", parentCode: "TEL-L1-001", sortOrder: 4, description: null },
+  // L2 — Product & Offer Management
+  { code: "TEL-L2-005", level: "L2", name: "Product Portfolio Management", parentCode: "TEL-L1-002", sortOrder: 1, description: null },
+  { code: "TEL-L2-006", level: "L2", name: "Product Design & Configuration", parentCode: "TEL-L1-002", sortOrder: 2, description: null },
+  { code: "TEL-L2-007", level: "L2", name: "Offer Pricing & Discounting", parentCode: "TEL-L1-002", sortOrder: 3, description: null },
+  { code: "TEL-L2-008", level: "L2", name: "Catalog Management", parentCode: "TEL-L1-002", sortOrder: 4, description: null },
+  // L2 — Customer Management
+  { code: "TEL-L2-009", level: "L2", name: "Customer Onboarding & Identity", parentCode: "TEL-L1-003", sortOrder: 1, description: null },
+  { code: "TEL-L2-010", level: "L2", name: "Customer Order Management", parentCode: "TEL-L1-003", sortOrder: 2, description: null },
+  { code: "TEL-L2-011", level: "L2", name: "Customer Experience Management", parentCode: "TEL-L1-003", sortOrder: 3, description: null },
+  { code: "TEL-L2-012", level: "L2", name: "Loyalty & Retention Management", parentCode: "TEL-L1-003", sortOrder: 4, description: null },
+  { code: "TEL-L2-013", level: "L2", name: "Customer Data & Analytics", parentCode: "TEL-L1-003", sortOrder: 5, description: null },
+  // L2 — Service Management
+  { code: "TEL-L2-014", level: "L2", name: "Service Design & Catalog", parentCode: "TEL-L1-004", sortOrder: 1, description: null },
+  { code: "TEL-L2-015", level: "L2", name: "Service Order Orchestration", parentCode: "TEL-L1-004", sortOrder: 2, description: null },
+  { code: "TEL-L2-016", level: "L2", name: "Service Quality Management", parentCode: "TEL-L1-004", sortOrder: 3, description: null },
+  { code: "TEL-L2-017", level: "L2", name: "Service Problem Management", parentCode: "TEL-L1-004", sortOrder: 4, description: null },
+  { code: "TEL-L2-018", level: "L2", name: "Service Inventory Management", parentCode: "TEL-L1-004", sortOrder: 5, description: null },
+  // L2 — Network & Resource Management
+  { code: "TEL-L2-019", level: "L2", name: "Network Planning & Engineering", parentCode: "TEL-L1-005", sortOrder: 1, description: null },
+  { code: "TEL-L2-020", level: "L2", name: "Provisioning & Activation", parentCode: "TEL-L1-005", sortOrder: 2, description: null },
+  { code: "TEL-L2-021", level: "L2", name: "Network Inventory & Topology", parentCode: "TEL-L1-005", sortOrder: 3, description: null },
+  { code: "TEL-L2-022", level: "L2", name: "Fault Management", parentCode: "TEL-L1-005", sortOrder: 4, description: null },
+  { code: "TEL-L2-023", level: "L2", name: "Performance Management", parentCode: "TEL-L1-005", sortOrder: 5, description: null },
+  // L2 — Revenue & Financial Management
+  { code: "TEL-L2-024", level: "L2", name: "Mediation & Rating", parentCode: "TEL-L1-006", sortOrder: 1, description: null },
+  { code: "TEL-L2-025", level: "L2", name: "Billing & Invoicing", parentCode: "TEL-L1-006", sortOrder: 2, description: null },
+  { code: "TEL-L2-026", level: "L2", name: "Revenue Assurance & Fraud Management", parentCode: "TEL-L1-006", sortOrder: 3, description: null },
+  { code: "TEL-L2-027", level: "L2", name: "Collections & Debt Management", parentCode: "TEL-L1-006", sortOrder: 4, description: null },
+  { code: "TEL-L2-028", level: "L2", name: "Inter-Carrier Settlement", parentCode: "TEL-L1-006", sortOrder: 5, description: null },
+  // L2 — Partner & Supplier Management
+  { code: "TEL-L2-029", level: "L2", name: "Partner Onboarding & Contracting", parentCode: "TEL-L1-007", sortOrder: 1, description: null },
+  { code: "TEL-L2-030", level: "L2", name: "Interconnect & Roaming Management", parentCode: "TEL-L1-007", sortOrder: 2, description: null },
+  { code: "TEL-L2-031", level: "L2", name: "Supplier Performance Management", parentCode: "TEL-L1-007", sortOrder: 3, description: null },
+  { code: "TEL-L2-032", level: "L2", name: "Partner Revenue Sharing", parentCode: "TEL-L1-007", sortOrder: 4, description: null },
+  // L2 — Infrastructure & IT Management
+  { code: "TEL-L2-033", level: "L2", name: "Physical Site & Facilities Management", parentCode: "TEL-L1-008", sortOrder: 1, description: null },
+  { code: "TEL-L2-034", level: "L2", name: "IT Platform & Cloud Operations", parentCode: "TEL-L1-008", sortOrder: 2, description: null },
+  { code: "TEL-L2-035", level: "L2", name: "Asset Lifecycle Management", parentCode: "TEL-L1-008", sortOrder: 3, description: null },
+  { code: "TEL-L2-036", level: "L2", name: "Capacity & Demand Planning", parentCode: "TEL-L1-008", sortOrder: 4, description: null },
+  // L2 — Digital Services & Innovation
+  { code: "TEL-L2-037", level: "L2", name: "Digital Channel Management", parentCode: "TEL-L1-009", sortOrder: 1, description: null },
+  { code: "TEL-L2-038", level: "L2", name: "API Gateway & Ecosystem", parentCode: "TEL-L1-009", sortOrder: 2, description: null },
+  { code: "TEL-L2-039", level: "L2", name: "IoT & 5G Service Enablement", parentCode: "TEL-L1-009", sortOrder: 3, description: null },
+  { code: "TEL-L2-040", level: "L2", name: "AI/ML & Advanced Analytics", parentCode: "TEL-L1-009", sortOrder: 4, description: null },
+  // L2 — Workforce & Field Operations
+  { code: "TEL-L2-041", level: "L2", name: "Workforce Scheduling & Dispatch", parentCode: "TEL-L1-010", sortOrder: 1, description: null },
+  { code: "TEL-L2-042", level: "L2", name: "Field Service Execution", parentCode: "TEL-L1-010", sortOrder: 2, description: null },
+  { code: "TEL-L2-043", level: "L2", name: "Workforce Skills & Training", parentCode: "TEL-L1-010", sortOrder: 3, description: null },
+  { code: "TEL-L2-044", level: "L2", name: "Mobile Workforce Analytics", parentCode: "TEL-L1-010", sortOrder: 4, description: null },
+];
+
+const ENERGY_UTILITIES_TEMPLATE = [
+  // L1
+  { code: "ENU-L1-001", level: "L1", name: "Generation & Production", parentCode: null, sortOrder: 1, description: "Convert primary energy sources into electricity, gas, or treated water" },
+  { code: "ENU-L1-002", level: "L1", name: "Transmission & Distribution", parentCode: null, sortOrder: 2, description: "Transport energy or water from production facilities to delivery points" },
+  { code: "ENU-L1-003", level: "L1", name: "Grid Operations & System Control", parentCode: null, sortOrder: 3, description: "Real-time balancing, dispatch, and reliability of the energy/water network" },
+  { code: "ENU-L1-004", level: "L1", name: "Metering & Smart Grid", parentCode: null, sortOrder: 4, description: "Capture consumption data and enable two-way grid communication" },
+  { code: "ENU-L1-005", level: "L1", name: "Customer Operations", parentCode: null, sortOrder: 5, description: "Manage the full customer lifecycle from enrollment through billing" },
+  { code: "ENU-L1-006", level: "L1", name: "Energy Trading & Portfolio Management", parentCode: null, sortOrder: 6, description: "Optimize procurement, hedging, and market participation" },
+  { code: "ENU-L1-007", level: "L1", name: "Asset Management", parentCode: null, sortOrder: 7, description: "Maintain and optimize physical infrastructure across its lifecycle" },
+  { code: "ENU-L1-008", level: "L1", name: "Regulatory Compliance & Risk", parentCode: null, sortOrder: 8, description: "Ensure adherence to NERC/CIP, environmental, rate-case, and safety regulations" },
+  { code: "ENU-L1-009", level: "L1", name: "Renewable Energy & Sustainability", parentCode: null, sortOrder: 9, description: "Integrate clean energy sources and meet decarbonization targets" },
+  { code: "ENU-L1-010", level: "L1", name: "Corporate & Shared Services", parentCode: null, sortOrder: 10, description: "Provide enterprise-wide support functions" },
+  // L2 — Generation & Production
+  { code: "ENU-L2-001", level: "L2", name: "Thermal Generation Operations", parentCode: "ENU-L1-001", sortOrder: 1, description: null },
+  { code: "ENU-L2-002", level: "L2", name: "Hydroelectric & Nuclear Operations", parentCode: "ENU-L1-001", sortOrder: 2, description: null },
+  { code: "ENU-L2-003", level: "L2", name: "Gas Processing & Production", parentCode: "ENU-L1-001", sortOrder: 3, description: null },
+  { code: "ENU-L2-004", level: "L2", name: "Water Treatment & Purification", parentCode: "ENU-L1-001", sortOrder: 4, description: null },
+  { code: "ENU-L2-005", level: "L2", name: "Plant Performance Optimization", parentCode: "ENU-L1-001", sortOrder: 5, description: null },
+  // L2 — Transmission & Distribution
+  { code: "ENU-L2-006", level: "L2", name: "High-Voltage Transmission Operations", parentCode: "ENU-L1-002", sortOrder: 1, description: null },
+  { code: "ENU-L2-007", level: "L2", name: "Gas Pipeline Management", parentCode: "ENU-L1-002", sortOrder: 2, description: null },
+  { code: "ENU-L2-008", level: "L2", name: "Water Distribution Networks", parentCode: "ENU-L1-002", sortOrder: 3, description: null },
+  { code: "ENU-L2-009", level: "L2", name: "Substation & Pumping Operations", parentCode: "ENU-L1-002", sortOrder: 4, description: null },
+  { code: "ENU-L2-010", level: "L2", name: "Loss & Leakage Management", parentCode: "ENU-L1-002", sortOrder: 5, description: null },
+  // L2 — Grid Operations & System Control
+  { code: "ENU-L2-011", level: "L2", name: "SCADA & Energy Management Systems", parentCode: "ENU-L1-003", sortOrder: 1, description: null },
+  { code: "ENU-L2-012", level: "L2", name: "Load Forecasting & Dispatch", parentCode: "ENU-L1-003", sortOrder: 2, description: null },
+  { code: "ENU-L2-013", level: "L2", name: "Outage Management & Restoration", parentCode: "ENU-L1-003", sortOrder: 3, description: null },
+  { code: "ENU-L2-014", level: "L2", name: "Frequency & Voltage Regulation", parentCode: "ENU-L1-003", sortOrder: 4, description: null },
+  { code: "ENU-L2-015", level: "L2", name: "Distributed Energy Resource Management", parentCode: "ENU-L1-003", sortOrder: 5, description: null },
+  // L2 — Metering & Smart Grid
+  { code: "ENU-L2-016", level: "L2", name: "Advanced Metering Infrastructure (AMI)", parentCode: "ENU-L1-004", sortOrder: 1, description: null },
+  { code: "ENU-L2-017", level: "L2", name: "Meter Data Management", parentCode: "ENU-L1-004", sortOrder: 2, description: null },
+  { code: "ENU-L2-018", level: "L2", name: "Demand Response Management", parentCode: "ENU-L1-004", sortOrder: 3, description: null },
+  { code: "ENU-L2-019", level: "L2", name: "Smart Grid Analytics", parentCode: "ENU-L1-004", sortOrder: 4, description: null },
+  // L2 — Customer Operations
+  { code: "ENU-L2-020", level: "L2", name: "Customer Enrollment & Accounts", parentCode: "ENU-L1-005", sortOrder: 1, description: null },
+  { code: "ENU-L2-021", level: "L2", name: "Billing & Revenue Management", parentCode: "ENU-L1-005", sortOrder: 2, description: null },
+  { code: "ENU-L2-022", level: "L2", name: "Field Service & Work Orders", parentCode: "ENU-L1-005", sortOrder: 3, description: null },
+  { code: "ENU-L2-023", level: "L2", name: "Customer Self-Service & Digital", parentCode: "ENU-L1-005", sortOrder: 4, description: null },
+  { code: "ENU-L2-024", level: "L2", name: "Customer Programs (EE, TOU, Net Metering)", parentCode: "ENU-L1-005", sortOrder: 5, description: null },
+  // L2 — Energy Trading & Portfolio Management
+  { code: "ENU-L2-025", level: "L2", name: "Wholesale Market Trading", parentCode: "ENU-L1-006", sortOrder: 1, description: null },
+  { code: "ENU-L2-026", level: "L2", name: "Power Purchase Agreements", parentCode: "ENU-L1-006", sortOrder: 2, description: null },
+  { code: "ENU-L2-027", level: "L2", name: "Risk & Position Management", parentCode: "ENU-L1-006", sortOrder: 3, description: null },
+  { code: "ENU-L2-028", level: "L2", name: "Renewable Energy Credits & Carbon Trading", parentCode: "ENU-L1-006", sortOrder: 4, description: null },
+  // L2 — Asset Management
+  { code: "ENU-L2-029", level: "L2", name: "Asset Registry & Configuration", parentCode: "ENU-L1-007", sortOrder: 1, description: null },
+  { code: "ENU-L2-030", level: "L2", name: "Preventive & Predictive Maintenance", parentCode: "ENU-L1-007", sortOrder: 2, description: null },
+  { code: "ENU-L2-031", level: "L2", name: "Capital Project & Investment Planning", parentCode: "ENU-L1-007", sortOrder: 3, description: null },
+  { code: "ENU-L2-032", level: "L2", name: "Inspection & Condition Assessment", parentCode: "ENU-L1-007", sortOrder: 4, description: null },
+  // L2 — Regulatory Compliance & Risk
+  { code: "ENU-L2-033", level: "L2", name: "NERC CIP & Reliability Compliance", parentCode: "ENU-L1-008", sortOrder: 1, description: null },
+  { code: "ENU-L2-034", level: "L2", name: "Environmental Permitting & Reporting", parentCode: "ENU-L1-008", sortOrder: 2, description: null },
+  { code: "ENU-L2-035", level: "L2", name: "Rate Case & Tariff Management", parentCode: "ENU-L1-008", sortOrder: 3, description: null },
+  { code: "ENU-L2-036", level: "L2", name: "Safety & Occupational Health", parentCode: "ENU-L1-008", sortOrder: 4, description: null },
+  // L2 — Renewable Energy & Sustainability
+  { code: "ENU-L2-037", level: "L2", name: "Solar & Wind Asset Operations", parentCode: "ENU-L1-009", sortOrder: 1, description: null },
+  { code: "ENU-L2-038", level: "L2", name: "Energy Storage Management", parentCode: "ENU-L1-009", sortOrder: 2, description: null },
+  { code: "ENU-L2-039", level: "L2", name: "Microgrid & Islanding Operations", parentCode: "ENU-L1-009", sortOrder: 3, description: null },
+  { code: "ENU-L2-040", level: "L2", name: "Carbon Accounting & ESG Reporting", parentCode: "ENU-L1-009", sortOrder: 4, description: null },
+  // L2 — Corporate & Shared Services
+  { code: "ENU-L2-041", level: "L2", name: "Financial Planning & Accounting", parentCode: "ENU-L1-010", sortOrder: 1, description: null },
+  { code: "ENU-L2-042", level: "L2", name: "Human Capital Management", parentCode: "ENU-L1-010", sortOrder: 2, description: null },
+  { code: "ENU-L2-043", level: "L2", name: "Supply Chain & Procurement", parentCode: "ENU-L1-010", sortOrder: 3, description: null },
+  { code: "ENU-L2-044", level: "L2", name: "IT & OT Cybersecurity", parentCode: "ENU-L1-010", sortOrder: 4, description: null },
+  { code: "ENU-L2-045", level: "L2", name: "Enterprise Data & Analytics", parentCode: "ENU-L1-010", sortOrder: 5, description: null },
+];
+
+const PUBLIC_SECTOR_TEMPLATE = [
+  // L1
+  { code: "PUB-L1-001", level: "L1", name: "Citizen Services & Engagement", parentCode: null, sortOrder: 1, description: "Delivering public-facing services and managing citizen interactions across channels" },
+  { code: "PUB-L1-002", level: "L1", name: "Policy & Regulatory Management", parentCode: null, sortOrder: 2, description: "Developing, enacting, and managing laws, regulations, and public policy" },
+  { code: "PUB-L1-003", level: "L1", name: "Revenue & Taxation", parentCode: null, sortOrder: 3, description: "Collecting, managing, and accounting for public revenues and tax obligations" },
+  { code: "PUB-L1-004", level: "L1", name: "Grants, Benefits & Transfers", parentCode: null, sortOrder: 4, description: "Administering financial assistance programs from eligibility through disbursement" },
+  { code: "PUB-L1-005", level: "L1", name: "Public Safety & Justice", parentCode: null, sortOrder: 5, description: "Protecting citizens and administering the justice system" },
+  { code: "PUB-L1-006", level: "L1", name: "Financial Management & Budget", parentCode: null, sortOrder: 6, description: "Planning, executing, and controlling public funds across the fiscal cycle" },
+  { code: "PUB-L1-007", level: "L1", name: "Procurement & Acquisition", parentCode: null, sortOrder: 7, description: "Acquiring goods, services, and works in compliance with public procurement law" },
+  { code: "PUB-L1-008", level: "L1", name: "Human Capital Management", parentCode: null, sortOrder: 8, description: "Recruiting, developing, and retaining the public-sector workforce" },
+  { code: "PUB-L1-009", level: "L1", name: "Digital Government & IT", parentCode: null, sortOrder: 9, description: "Delivering technology services and enabling digital transformation" },
+  { code: "PUB-L1-010", level: "L1", name: "Infrastructure, Assets & Facilities", parentCode: null, sortOrder: 10, description: "Managing public physical assets, real property, and capital infrastructure" },
+  // L2 — Citizen Services & Engagement
+  { code: "PUB-L2-001", level: "L2", name: "Citizen Request & Case Management", parentCode: "PUB-L1-001", sortOrder: 1, description: null },
+  { code: "PUB-L2-002", level: "L2", name: "Benefits Eligibility & Enrollment", parentCode: "PUB-L1-001", sortOrder: 2, description: null },
+  { code: "PUB-L2-003", level: "L2", name: "Licensing & Permitting", parentCode: "PUB-L1-001", sortOrder: 3, description: null },
+  { code: "PUB-L2-004", level: "L2", name: "Omnichannel Service Delivery", parentCode: "PUB-L1-001", sortOrder: 4, description: null },
+  { code: "PUB-L2-005", level: "L2", name: "Citizen Identity & Authentication", parentCode: "PUB-L1-001", sortOrder: 5, description: null },
+  // L2 — Policy & Regulatory Management
+  { code: "PUB-L2-006", level: "L2", name: "Legislative Drafting & Tracking", parentCode: "PUB-L1-002", sortOrder: 1, description: null },
+  { code: "PUB-L2-007", level: "L2", name: "Regulatory Compliance Management", parentCode: "PUB-L1-002", sortOrder: 2, description: null },
+  { code: "PUB-L2-008", level: "L2", name: "Policy Analysis & Impact Assessment", parentCode: "PUB-L1-002", sortOrder: 3, description: null },
+  { code: "PUB-L2-009", level: "L2", name: "Public Comment & Consultation", parentCode: "PUB-L1-002", sortOrder: 4, description: null },
+  // L2 — Revenue & Taxation
+  { code: "PUB-L2-010", level: "L2", name: "Tax Assessment & Collection", parentCode: "PUB-L1-003", sortOrder: 1, description: null },
+  { code: "PUB-L2-011", level: "L2", name: "Revenue Forecasting", parentCode: "PUB-L1-003", sortOrder: 2, description: null },
+  { code: "PUB-L2-012", level: "L2", name: "Audit & Enforcement", parentCode: "PUB-L1-003", sortOrder: 3, description: null },
+  { code: "PUB-L2-013", level: "L2", name: "Debt & Receivables Management", parentCode: "PUB-L1-003", sortOrder: 4, description: null },
+  // L2 — Grants, Benefits & Transfers
+  { code: "PUB-L2-014", level: "L2", name: "Grant Program Design & Solicitation", parentCode: "PUB-L1-004", sortOrder: 1, description: null },
+  { code: "PUB-L2-015", level: "L2", name: "Application Intake & Eligibility", parentCode: "PUB-L1-004", sortOrder: 2, description: null },
+  { code: "PUB-L2-016", level: "L2", name: "Award Management & Disbursement", parentCode: "PUB-L1-004", sortOrder: 3, description: null },
+  { code: "PUB-L2-017", level: "L2", name: "Grantee Monitoring & Compliance", parentCode: "PUB-L1-004", sortOrder: 4, description: null },
+  { code: "PUB-L2-018", level: "L2", name: "Benefit Fraud Detection", parentCode: "PUB-L1-004", sortOrder: 5, description: null },
+  // L2 — Public Safety & Justice
+  { code: "PUB-L2-019", level: "L2", name: "Law Enforcement Operations", parentCode: "PUB-L1-005", sortOrder: 1, description: null },
+  { code: "PUB-L2-020", level: "L2", name: "Emergency Management & Response", parentCode: "PUB-L1-005", sortOrder: 2, description: null },
+  { code: "PUB-L2-021", level: "L2", name: "Corrections & Rehabilitation", parentCode: "PUB-L1-005", sortOrder: 3, description: null },
+  { code: "PUB-L2-022", level: "L2", name: "Courts & Adjudication", parentCode: "PUB-L1-005", sortOrder: 4, description: null },
+  { code: "PUB-L2-023", level: "L2", name: "Intelligence & Threat Analysis", parentCode: "PUB-L1-005", sortOrder: 5, description: null },
+  // L2 — Financial Management & Budget
+  { code: "PUB-L2-024", level: "L2", name: "Budget Formulation & Execution", parentCode: "PUB-L1-006", sortOrder: 1, description: null },
+  { code: "PUB-L2-025", level: "L2", name: "Accounting & Fund Control", parentCode: "PUB-L1-006", sortOrder: 2, description: null },
+  { code: "PUB-L2-026", level: "L2", name: "Financial Reporting & Audit", parentCode: "PUB-L1-006", sortOrder: 3, description: null },
+  { code: "PUB-L2-027", level: "L2", name: "Cost Management & Allocation", parentCode: "PUB-L1-006", sortOrder: 4, description: null },
+  // L2 — Procurement & Acquisition
+  { code: "PUB-L2-028", level: "L2", name: "Sourcing & Solicitation", parentCode: "PUB-L1-007", sortOrder: 1, description: null },
+  { code: "PUB-L2-029", level: "L2", name: "Contract Management", parentCode: "PUB-L1-007", sortOrder: 2, description: null },
+  { code: "PUB-L2-030", level: "L2", name: "Vendor Performance Management", parentCode: "PUB-L1-007", sortOrder: 3, description: null },
+  { code: "PUB-L2-031", level: "L2", name: "Purchase-to-Pay Processing", parentCode: "PUB-L1-007", sortOrder: 4, description: null },
+  // L2 — Human Capital Management
+  { code: "PUB-L2-032", level: "L2", name: "Workforce Planning & Recruitment", parentCode: "PUB-L1-008", sortOrder: 1, description: null },
+  { code: "PUB-L2-033", level: "L2", name: "Compensation & Benefits", parentCode: "PUB-L1-008", sortOrder: 2, description: null },
+  { code: "PUB-L2-034", level: "L2", name: "Performance & Talent Management", parentCode: "PUB-L1-008", sortOrder: 3, description: null },
+  { code: "PUB-L2-035", level: "L2", name: "Learning & Professional Development", parentCode: "PUB-L1-008", sortOrder: 4, description: null },
+  // L2 — Digital Government & IT
+  { code: "PUB-L2-036", level: "L2", name: "Enterprise Architecture & Standards", parentCode: "PUB-L1-009", sortOrder: 1, description: null },
+  { code: "PUB-L2-037", level: "L2", name: "Cybersecurity & Privacy", parentCode: "PUB-L1-009", sortOrder: 2, description: null },
+  { code: "PUB-L2-038", level: "L2", name: "Application Portfolio Management", parentCode: "PUB-L1-009", sortOrder: 3, description: null },
+  { code: "PUB-L2-039", level: "L2", name: "Data Management & Analytics", parentCode: "PUB-L1-009", sortOrder: 4, description: null },
+  { code: "PUB-L2-040", level: "L2", name: "Cloud & Infrastructure Services", parentCode: "PUB-L1-009", sortOrder: 5, description: null },
+  // L2 — Infrastructure, Assets & Facilities
+  { code: "PUB-L2-041", level: "L2", name: "Capital Planning & Project Delivery", parentCode: "PUB-L1-010", sortOrder: 1, description: null },
+  { code: "PUB-L2-042", level: "L2", name: "Facility Operations & Maintenance", parentCode: "PUB-L1-010", sortOrder: 2, description: null },
+  { code: "PUB-L2-043", level: "L2", name: "Real Property & Land Management", parentCode: "PUB-L1-010", sortOrder: 3, description: null },
+  { code: "PUB-L2-044", level: "L2", name: "Fleet & Equipment Management", parentCode: "PUB-L1-010", sortOrder: 4, description: null },
+];
+
 const ENTERPRISE_BCM_TEMPLATE = [
   // ── L1 Domains ──────────────────────────────────────────────
   { code: "LIX-L1-001", level: "L1", name: "Asset Management", parentCode: null, sortOrder: 1, description: "Lifecycle management, maintenance, and performance of physical and digital assets" },
@@ -1032,6 +1372,11 @@ async function main() {
     ...MANUFACTURING_TEMPLATE.map((t) => ({ ...t, industry: "MANUFACTURING" as const })),
     ...HEALTHCARE_TEMPLATE.map((t) => ({ ...t, industry: "HEALTHCARE" as const })),
     ...GENERIC_TEMPLATE.map((t) => ({ ...t, industry: "GENERIC" as const })),
+    ...INSURANCE_TEMPLATE.map((t) => ({ ...t, industry: "INSURANCE" as const })),
+    ...PHARMA_TEMPLATE.map((t) => ({ ...t, industry: "PHARMA_LIFESCIENCES" as const })),
+    ...TELECOM_TEMPLATE.map((t) => ({ ...t, industry: "TELECOM" as const })),
+    ...ENERGY_UTILITIES_TEMPLATE.map((t) => ({ ...t, industry: "ENERGY_UTILITIES" as const })),
+    ...PUBLIC_SECTOR_TEMPLATE.map((t) => ({ ...t, industry: "PUBLIC_SECTOR" as const })),
     ...ENTERPRISE_BCM_FULL.map((t) => ({ ...t, industry: "ENTERPRISE_BCM" as const })),
   ];
 
