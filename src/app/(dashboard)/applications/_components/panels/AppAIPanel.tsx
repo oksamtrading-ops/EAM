@@ -136,6 +136,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
   const [result, setResult] = useState<RatResult | null>(null);
   const { data: stats } = trpc.application.getStats.useQuery();
   const { data: matrix } = trpc.application.getRationalizationMatrix.useQuery();
+  const { data: aiContext } = trpc.application.getAIRationalizationContext.useQuery();
 
   async function run() {
     setLoading(true);
@@ -148,7 +149,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
           action: "rationalization",
           workspaceId,
           payload: {
-            apps: apps.map((a) => ({
+            apps: aiContext?.apps ?? apps.map((a) => ({
               name: a.name,
               vendor: a.vendor,
               applicationType: a.applicationType,
@@ -163,15 +164,9 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
               costModel: a.costModel,
               licensedUsers: a.licensedUsers,
               actualUsers: a.actualUsers,
-              adoptionRate: a.actualUsers != null && a.licensedUsers != null && a.licensedUsers > 0
-                ? a.actualUsers / a.licensedUsers : null,
+              adoptionRate: null,
               capabilityCount: a.capabilities?.length ?? 0,
-              interfaceCount: {
-                inbound: a._count?.interfacesTo ?? 0,
-                outbound: a._count?.interfacesFrom ?? 0,
-                total: (a._count?.interfacesFrom ?? 0) + (a._count?.interfacesTo ?? 0),
-                critical: 0,
-              },
+              interfaceCount: { inbound: 0, outbound: 0, total: 0, critical: 0 },
               techStack: [],
               replacementApp: null,
             })),
@@ -401,6 +396,7 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
   const [selectedAppId, setSelectedAppId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImpactResult | null>(null);
+  const { data: aiContext } = trpc.application.getAIRationalizationContext.useQuery();
 
   async function run() {
     if (!selectedAppId) { toast.error("Select an application first"); return; }
@@ -408,6 +404,9 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
     setResult(null);
     const targetApp = apps.find((a) => a.id === selectedAppId);
     if (!targetApp) return;
+
+    // Use enriched data from AI context endpoint when available
+    const enrichedTarget = aiContext?.apps?.find((a: any) => a.id === selectedAppId);
 
     try {
       const res = await fetch("/api/ai/applications", {
@@ -431,12 +430,12 @@ function ImpactTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspa
               annualCostUsd: targetApp.annualCostUsd ? Number(targetApp.annualCostUsd) : null,
               licensedUsers: targetApp.licensedUsers,
               actualUsers: targetApp.actualUsers,
-              adoptionRate: targetApp.actualUsers != null && targetApp.licensedUsers != null && targetApp.licensedUsers > 0
-                ? targetApp.actualUsers / targetApp.licensedUsers : null,
+              adoptionRate: enrichedTarget?.adoptionRate ?? (targetApp.actualUsers != null && targetApp.licensedUsers != null && targetApp.licensedUsers > 0
+                ? targetApp.actualUsers / targetApp.licensedUsers : null),
               costModel: targetApp.costModel,
-              interfaces: [],
-              techStack: [],
-              replacementApp: null,
+              interfaces: enrichedTarget?.interfaces ?? [],
+              techStack: enrichedTarget?.techStack ?? [],
+              replacementApp: enrichedTarget?.replacementApp ?? null,
               capabilities: (targetApp.capabilities ?? []).map((c: any) => ({
                 capabilityName: c.capability?.name ?? c.capabilityName ?? "Unknown",
                 level: c.capability?.level ?? c.level ?? "?",

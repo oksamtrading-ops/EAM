@@ -24,6 +24,9 @@ const COLUMNS = [
   { header: "Cost Notes", key: "costNotes" },
   { header: "Business Owner", key: "businessOwnerName" },
   { header: "IT Owner", key: "itOwnerName" },
+  { header: "Functional Fit", key: "functionalFit", allowed: "EXCELLENT, GOOD, ADEQUATE, POOR, UNFIT, FF_UNKNOWN" },
+  { header: "Data Classification", key: "dataClassification", allowed: "PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED, DC_UNKNOWN" },
+  { header: "Actual Users", key: "actualUsers" },
 ];
 
 export async function POST(req: Request) {

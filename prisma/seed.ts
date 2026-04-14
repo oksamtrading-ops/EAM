@@ -1409,6 +1409,392 @@ async function main() {
   }
 
   console.log(`Seeded ${allTemplates.length} templates`);
+
+  // Optional: seed demo applications into a specific workspace
+  const demoWsId = process.env.DEMO_WORKSPACE_ID;
+  if (demoWsId) {
+    await seedDemoApplications(demoWsId);
+  }
+}
+
+// ─── Demo Application Seed Data ──────────────────────────
+// Run with: DEMO_WORKSPACE_ID=<id> npx tsx prisma/seed.ts
+
+const DEMO_APPS = [
+  {
+    name: "SAP S/4HANA",
+    vendor: "SAP",
+    applicationType: "COTS" as const,
+    deploymentModel: "HYBRID" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "CRITICAL" as const,
+    technicalHealth: "GOOD" as const,
+    functionalFit: "EXCELLENT" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    rationalizationStatus: "INVEST" as const,
+    annualCostUsd: 480000,
+    costModel: "LICENSE_FLAT" as const,
+    licensedUsers: 2000,
+    actualUsers: 1850,
+    description: "Core ERP for finance, procurement, and supply chain",
+  },
+  {
+    name: "Salesforce CRM",
+    vendor: "Salesforce",
+    applicationType: "SAAS" as const,
+    deploymentModel: "SAAS_HOSTED" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "HIGH" as const,
+    technicalHealth: "EXCELLENT" as const,
+    functionalFit: "GOOD" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    rationalizationStatus: "TOLERATE" as const,
+    annualCostUsd: 180000,
+    costModel: "LICENSE_PER_USER" as const,
+    licensedUsers: 500,
+    actualUsers: 420,
+    description: "Customer relationship management and sales pipeline",
+  },
+  {
+    name: "ServiceNow ITSM",
+    vendor: "ServiceNow",
+    applicationType: "SAAS" as const,
+    deploymentModel: "SAAS_HOSTED" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "HIGH" as const,
+    technicalHealth: "GOOD" as const,
+    functionalFit: "GOOD" as const,
+    dataClassification: "INTERNAL" as const,
+    rationalizationStatus: "TOLERATE" as const,
+    annualCostUsd: 120000,
+    costModel: "SUBSCRIPTION" as const,
+    licensedUsers: 800,
+    actualUsers: 650,
+    description: "IT service management, incident and change tracking",
+  },
+  {
+    name: "Legacy HR System",
+    vendor: "In-House",
+    applicationType: "LEGACY" as const,
+    deploymentModel: "ON_PREMISE" as const,
+    lifecycle: "PHASING_OUT" as const,
+    businessValue: "MEDIUM" as const,
+    technicalHealth: "POOR" as const,
+    functionalFit: "POOR" as const,
+    dataClassification: "RESTRICTED" as const,
+    rationalizationStatus: "MIGRATE" as const,
+    annualCostUsd: 95000,
+    costModel: "INTERNAL" as const,
+    licensedUsers: 3000,
+    actualUsers: 2800,
+    description: "Legacy payroll and HR management — being replaced by Workday",
+  },
+  {
+    name: "Workday HCM",
+    vendor: "Workday",
+    applicationType: "SAAS" as const,
+    deploymentModel: "SAAS_HOSTED" as const,
+    lifecycle: "PLANNED" as const,
+    businessValue: "HIGH" as const,
+    technicalHealth: "EXCELLENT" as const,
+    functionalFit: "EXCELLENT" as const,
+    dataClassification: "RESTRICTED" as const,
+    rationalizationStatus: "INVEST" as const,
+    annualCostUsd: 220000,
+    costModel: "LICENSE_PER_USER" as const,
+    licensedUsers: 3000,
+    actualUsers: null,
+    description: "Next-gen HCM platform — replacing Legacy HR System",
+  },
+  {
+    name: "Confluence Wiki",
+    vendor: "Atlassian",
+    applicationType: "SAAS" as const,
+    deploymentModel: "SAAS_HOSTED" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "LOW" as const,
+    technicalHealth: "FAIR" as const,
+    functionalFit: "ADEQUATE" as const,
+    dataClassification: "INTERNAL" as const,
+    rationalizationStatus: "RAT_NOT_ASSESSED" as const,
+    annualCostUsd: 18000,
+    costModel: "SUBSCRIPTION" as const,
+    licensedUsers: 1500,
+    actualUsers: 310,
+    description: "Internal knowledge base and documentation platform",
+  },
+  {
+    name: "Custom Reporting Tool",
+    vendor: null,
+    applicationType: "CUSTOM" as const,
+    deploymentModel: "ON_PREMISE" as const,
+    lifecycle: "SUNSET" as const,
+    businessValue: "LOW" as const,
+    technicalHealth: "TH_CRITICAL" as const,
+    functionalFit: "UNFIT" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    rationalizationStatus: "ELIMINATE" as const,
+    annualCostUsd: 35000,
+    costModel: "INTERNAL" as const,
+    licensedUsers: 200,
+    actualUsers: 12,
+    description: "Outdated VB.NET reporting tool — replaced by Power BI",
+  },
+  {
+    name: "Microsoft Power BI",
+    vendor: "Microsoft",
+    applicationType: "SAAS" as const,
+    deploymentModel: "CLOUD_PUBLIC" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "HIGH" as const,
+    technicalHealth: "EXCELLENT" as const,
+    functionalFit: "GOOD" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    rationalizationStatus: "INVEST" as const,
+    annualCostUsd: 45000,
+    costModel: "LICENSE_PER_USER" as const,
+    licensedUsers: 400,
+    actualUsers: 350,
+    description: "Business intelligence and analytics dashboards",
+  },
+  {
+    name: "MuleSoft Anypoint",
+    vendor: "Salesforce",
+    applicationType: "PAAS" as const,
+    deploymentModel: "CLOUD_PUBLIC" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "HIGH" as const,
+    technicalHealth: "GOOD" as const,
+    functionalFit: "GOOD" as const,
+    dataClassification: "INTERNAL" as const,
+    rationalizationStatus: "TOLERATE" as const,
+    annualCostUsd: 160000,
+    costModel: "SUBSCRIPTION" as const,
+    licensedUsers: null,
+    actualUsers: null,
+    description: "Integration platform — API gateway and ESB",
+  },
+  {
+    name: "SharePoint Intranet",
+    vendor: "Microsoft",
+    applicationType: "SAAS" as const,
+    deploymentModel: "SAAS_HOSTED" as const,
+    lifecycle: "ACTIVE" as const,
+    businessValue: "MEDIUM" as const,
+    technicalHealth: "FAIR" as const,
+    functionalFit: "ADEQUATE" as const,
+    dataClassification: "INTERNAL" as const,
+    rationalizationStatus: "TOLERATE" as const,
+    annualCostUsd: 25000,
+    costModel: "SUBSCRIPTION" as const,
+    licensedUsers: 3000,
+    actualUsers: 1200,
+    description: "Company intranet portal and document management",
+  },
+];
+
+// Interface definitions — reference apps by name, resolved at insert time
+const DEMO_INTERFACES = [
+  {
+    sourceName: "SAP S/4HANA",
+    targetName: "Salesforce CRM",
+    name: "Customer Master Data Sync",
+    protocol: "REST_API" as const,
+    direction: "BIDIRECTIONAL" as const,
+    criticality: "INT_CRITICAL" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    frequency: "Real-time",
+    dataFlowDescription: "Customer master records synced bidirectionally between ERP and CRM",
+  },
+  {
+    sourceName: "SAP S/4HANA",
+    targetName: "Microsoft Power BI",
+    name: "Financial Data Feed",
+    protocol: "REST_API" as const,
+    direction: "OUTBOUND" as const,
+    criticality: "INT_HIGH" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    frequency: "Hourly",
+    dataFlowDescription: "GL actuals and budget data pushed to BI dashboards",
+  },
+  {
+    sourceName: "SAP S/4HANA",
+    targetName: "Legacy HR System",
+    name: "Employee Cost Center Feed",
+    protocol: "FILE_TRANSFER" as const,
+    direction: "OUTBOUND" as const,
+    criticality: "INT_HIGH" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "RESTRICTED" as const,
+    frequency: "Daily batch",
+    dataFlowDescription: "Cost center allocations sent to HR for payroll processing",
+  },
+  {
+    sourceName: "Salesforce CRM",
+    targetName: "MuleSoft Anypoint",
+    name: "Order API Gateway",
+    protocol: "REST_API" as const,
+    direction: "OUTBOUND" as const,
+    criticality: "INT_CRITICAL" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    frequency: "Real-time",
+    dataFlowDescription: "Sales orders routed through integration platform to ERP",
+  },
+  {
+    sourceName: "MuleSoft Anypoint",
+    targetName: "SAP S/4HANA",
+    name: "Order Fulfillment API",
+    protocol: "REST_API" as const,
+    direction: "OUTBOUND" as const,
+    criticality: "INT_CRITICAL" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    frequency: "Real-time",
+    dataFlowDescription: "Validated orders posted to SAP for fulfillment",
+  },
+  {
+    sourceName: "ServiceNow ITSM",
+    targetName: "SAP S/4HANA",
+    name: "Asset CMDB Sync",
+    protocol: "REST_API" as const,
+    direction: "BIDIRECTIONAL" as const,
+    criticality: "INT_MEDIUM" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "INTERNAL" as const,
+    frequency: "Every 15 minutes",
+    dataFlowDescription: "IT asset records synced with ERP fixed asset module",
+  },
+  {
+    sourceName: "Legacy HR System",
+    targetName: "SAP S/4HANA",
+    name: "Payroll Journal Posting",
+    protocol: "FILE_TRANSFER" as const,
+    direction: "OUTBOUND" as const,
+    criticality: "INT_HIGH" as const,
+    status: "INT_ACTIVE" as const,
+    dataClassification: "RESTRICTED" as const,
+    frequency: "Bi-weekly",
+    dataFlowDescription: "Payroll journal entries posted to GL after each pay cycle",
+  },
+  {
+    sourceName: "Custom Reporting Tool",
+    targetName: "SAP S/4HANA",
+    name: "Legacy Report Extract",
+    protocol: "DATABASE_LINK" as const,
+    direction: "INBOUND" as const,
+    criticality: "INT_LOW" as const,
+    status: "INT_DEPRECATED" as const,
+    dataClassification: "CONFIDENTIAL" as const,
+    frequency: "Nightly batch",
+    dataFlowDescription: "Direct DB read from SAP — deprecated, migrating to Power BI",
+  },
+];
+
+async function seedDemoApplications(workspaceId: string) {
+  console.log(`Seeding demo applications into workspace ${workspaceId}...`);
+
+  // Verify workspace exists
+  const ws = await db.workspace.findUnique({ where: { id: workspaceId } });
+  if (!ws) {
+    console.error(`Workspace ${workspaceId} not found — skipping demo apps`);
+    return;
+  }
+
+  // Upsert applications (keyed by name within workspace)
+  const appIdMap: Record<string, string> = {};
+
+  // Find Workday to set as replacement for Legacy HR
+  for (const appData of DEMO_APPS) {
+    const existing = await db.application.findFirst({
+      where: { workspaceId, name: appData.name },
+    });
+
+    if (existing) {
+      appIdMap[appData.name] = existing.id;
+      console.log(`  ✓ ${appData.name} (exists)`);
+      continue;
+    }
+
+    const created = await db.application.create({
+      data: {
+        workspaceId,
+        name: appData.name,
+        description: appData.description,
+        vendor: appData.vendor,
+        applicationType: appData.applicationType,
+        deploymentModel: appData.deploymentModel,
+        lifecycle: appData.lifecycle,
+        businessValue: appData.businessValue,
+        technicalHealth: appData.technicalHealth,
+        functionalFit: appData.functionalFit,
+        dataClassification: appData.dataClassification,
+        rationalizationStatus: appData.rationalizationStatus,
+        annualCostUsd: appData.annualCostUsd,
+        costModel: appData.costModel,
+        licensedUsers: appData.licensedUsers,
+        actualUsers: appData.actualUsers,
+      },
+    });
+    appIdMap[appData.name] = created.id;
+    console.log(`  + ${appData.name}`);
+  }
+
+  // Set replacement: Legacy HR → Workday
+  if (appIdMap["Legacy HR System"] && appIdMap["Workday HCM"]) {
+    await db.application.update({
+      where: { id: appIdMap["Legacy HR System"] },
+      data: { replacementAppId: appIdMap["Workday HCM"] },
+    });
+  }
+
+  // Seed interfaces
+  for (const iface of DEMO_INTERFACES) {
+    const sourceId = appIdMap[iface.sourceName];
+    const targetId = appIdMap[iface.targetName];
+    if (!sourceId || !targetId) {
+      console.log(`  ⚠ Skipping interface ${iface.name} — app not found`);
+      continue;
+    }
+
+    await db.applicationInterface.upsert({
+      where: {
+        workspaceId_sourceAppId_targetAppId_name: {
+          workspaceId,
+          sourceAppId: sourceId,
+          targetAppId: targetId,
+          name: iface.name,
+        },
+      },
+      update: {
+        protocol: iface.protocol,
+        direction: iface.direction,
+        criticality: iface.criticality,
+        status: iface.status,
+        dataClassification: iface.dataClassification,
+        frequency: iface.frequency,
+        dataFlowDescription: iface.dataFlowDescription,
+      },
+      create: {
+        workspaceId,
+        sourceAppId: sourceId,
+        targetAppId: targetId,
+        name: iface.name,
+        protocol: iface.protocol,
+        direction: iface.direction,
+        criticality: iface.criticality,
+        status: iface.status,
+        dataClassification: iface.dataClassification,
+        frequency: iface.frequency,
+        dataFlowDescription: iface.dataFlowDescription,
+      },
+    });
+    console.log(`  + Interface: ${iface.sourceName} → ${iface.targetName} (${iface.name})`);
+  }
+
+  console.log(`Seeded ${DEMO_APPS.length} apps and ${DEMO_INTERFACES.length} interfaces`);
 }
 
 main()
