@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { X, Trash2, Table2, AlertCircle, Crown, Plus } from "lucide-react";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -15,8 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table2, Trash2, CheckCircle2, AlertCircle, Crown, Plus } from "lucide-react";
-import { trpc } from "@/lib/trpc/client";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { RecordQualityScoreModal } from "../modals/RecordQualityScoreModal";
@@ -43,6 +43,7 @@ interface Props {
 }
 
 export function EntityDetailPanel({ entityId, onClose }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showRecordScore, setShowRecordScore] = useState(false);
   const utils = trpc.useUtils();
   const { data: entity, isLoading } = trpc.dataEntity.getById.useQuery({ id: entityId });
@@ -83,409 +84,516 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
     update({ id: entity.id, regulatoryTags: next });
   }
 
+  if (isLoading || !entity) {
+    return (
+      <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card p-4 shadow-xl">
+        <div className="animate-pulse text-sm text-muted-foreground">Loading…</div>
+      </aside>
+    );
+  }
+
   const latestByDimension = new Map<string, { score: number; asOf: Date }>();
-  if (entity) {
-    for (const qs of entity.qualityScores) {
-      const existing = latestByDimension.get(qs.dimension);
-      const ts = new Date(qs.asOf);
-      if (!existing || ts > existing.asOf) {
-        latestByDimension.set(qs.dimension, { score: qs.score, asOf: ts });
-      }
+  for (const qs of entity.qualityScores) {
+    const existing = latestByDimension.get(qs.dimension);
+    const ts = new Date(qs.asOf);
+    if (!existing || ts > existing.asOf) {
+      latestByDimension.set(qs.dimension, { score: qs.score, asOf: ts });
     }
   }
 
   return (
     <>
-      <Sheet open onOpenChange={(open) => !open && onClose()}>
-        <SheetContent className="w-full sm:w-[560px] sm:max-w-[560px] p-0 flex flex-col">
-          <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <Table2 className="h-5 w-5 text-blue-600 shrink-0" />
-              <SheetTitle className="text-base font-semibold leading-snug line-clamp-2">
-                {isLoading ? "Loading…" : entity?.name}
-              </SheetTitle>
+      <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col overflow-hidden shadow-xl">
+        {/* Header */}
+        <div className="p-4 border-b flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Table2 className="h-5 w-5 text-blue-600 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-bold text-[15px] text-foreground truncate">{entity.name}</h2>
+              {entity.domain && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {entity.domain.name}
+                </p>
+              )}
             </div>
-          </SheetHeader>
+          </div>
+          <Button size="icon" variant="ghost" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-          {entity && (
-            <ScrollArea className="flex-1" key={entity.id}>
-              <div className="px-6 py-4 space-y-5">
-                {/* Name */}
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">
-                    Name
-                  </Label>
-                  <Input
-                    defaultValue={entity.name}
-                    className="h-8 text-sm"
-                    onBlur={(e) => {
-                      const v = e.target.value.trim();
-                      if (v && v !== entity.name) update({ id: entity.id, name: v });
-                    }}
-                  />
-                </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-4 space-y-5">
+            {/* Name */}
+            <section>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
+              <Input
+                defaultValue={entity.name}
+                className="h-8 text-sm"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== entity.name) update({ id: entity.id, name: v });
+                }}
+              />
+            </section>
 
-                {/* Description */}
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">
-                    Description
-                  </Label>
-                  <Textarea
-                    defaultValue={entity.description ?? ""}
-                    placeholder="What does this entity represent?"
-                    rows={2}
-                    onBlur={(e) => {
-                      const v = e.target.value;
-                      if (v !== (entity.description ?? "")) {
-                        update({ id: entity.id, description: v || null });
-                      }
-                    }}
-                  />
-                </div>
+            {/* Description */}
+            <section>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Description
+              </label>
+              <Textarea
+                defaultValue={entity.description ?? ""}
+                placeholder="What does this entity represent?"
+                rows={2}
+                onBlur={(e) => {
+                  const v = e.target.value;
+                  if (v !== (entity.description ?? "")) {
+                    update({ id: entity.id, description: v || null });
+                  }
+                }}
+              />
+            </section>
 
-                <Separator />
+            <Separator />
 
-                {/* Domain / Type / Classification */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Domain
-                    </Label>
-                    <Select
-                      value={entity.domainId}
-                      onValueChange={(v) => v && update({ id: entity.id, domainId: v })}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {domains.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Type
-                    </Label>
-                    <Select
-                      value={entity.entityType}
-                      onValueChange={(v) =>
-                        v && update({ id: entity.id, entityType: v as EntityType })
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ENTITY_TYPE_OPTIONS.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {ENTITY_TYPE_LABELS[t]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Classification
-                    </Label>
-                    <Select
-                      value={entity.classification}
-                      onValueChange={(v) =>
-                        v && update({ id: entity.id, classification: v as Classification })
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CLASSIFICATION_OPTIONS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {CLASSIFICATION_LABELS[c]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Retention (days)
-                    </Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      defaultValue={entity.retentionDays ?? ""}
-                      placeholder="e.g. 2555"
-                      className="h-8 text-xs"
-                      onBlur={(e) => {
-                        const raw = e.target.value.trim();
-                        if (raw === "") {
-                          if (entity.retentionDays != null)
-                            update({ id: entity.id, retentionDays: null });
-                          return;
-                        }
-                        const n = Number(raw);
-                        if (!isNaN(n) && n > 0 && n !== entity.retentionDays) {
-                          update({ id: entity.id, retentionDays: n });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Golden Source / Steward */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Golden Source App
-                    </Label>
-                    <Select
-                      value={entity.goldenSourceAppId ?? "__none__"}
-                      onValueChange={(v) =>
-                        update({
-                          id: entity.id,
-                          goldenSourceAppId: !v || v === "__none__" ? null : v,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="None" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">None</SelectItem>
-                        {apps.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">
-                      Data Steward
-                    </Label>
-                    <Select
-                      value={entity.stewardId ?? "__none__"}
-                      onValueChange={(v) =>
-                        update({
-                          id: entity.id,
-                          stewardId: !v || v === "__none__" ? null : v,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Unassigned" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Unassigned</SelectItem>
-                        {users.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.name ?? u.email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Status hints */}
-                <div className="flex flex-wrap gap-2 text-[11px]">
-                  {entity.goldenSourceApp ? (
-                    <span className="inline-flex items-center gap-1 text-green-600">
-                      <Crown className="h-3 w-3 text-amber-500" /> Golden source:{" "}
-                      {entity.goldenSourceApp.name}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-amber-600">
-                      <AlertCircle className="h-3 w-3" /> No golden source
-                    </span>
-                  )}
-                  {!entity.steward && (
-                    <span className="inline-flex items-center gap-1 text-amber-600">
-                      <AlertCircle className="h-3 w-3" /> Unassigned steward
-                    </span>
-                  )}
-                  {entity.entityType && (
-                    <span
-                      className="inline-flex items-center gap-1 px-1.5 rounded border"
-                      style={{
-                        color: ENTITY_TYPE_COLORS[entity.entityType],
-                        borderColor: `${ENTITY_TYPE_COLORS[entity.entityType]}55`,
-                        background: `${ENTITY_TYPE_COLORS[entity.entityType]}12`,
-                      }}
-                    >
-                      {ENTITY_TYPE_LABELS[entity.entityType]}
-                    </span>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Regulatory tags */}
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">
-                    Regulatory Tags
-                  </Label>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {REGULATORY_TAG_OPTIONS.map((tag) => {
-                      const active = (entity.regulatoryTags as RegTag[]).includes(tag);
-                      const color = REGULATORY_TAG_COLORS[tag];
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide border transition-colors"
-                          style={{
-                            color: active ? "#fff" : color,
-                            borderColor: `${color}77`,
-                            background: active ? color : `${color}12`,
-                          }}
-                        >
-                          {REGULATORY_TAG_LABELS[tag]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Applications using this entity */}
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    Applications using this entity ({entity.appUsages.length})
-                  </h4>
-                  {entity.appUsages.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">
-                      No application usages recorded yet. Use the CRUD Matrix view to add
-                      one.
-                    </p>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {entity.appUsages.map((u) => (
-                        <li
-                          key={u.id}
-                          className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-border bg-card"
-                        >
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {u.app.name}
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono">
-                            {(["creates", "reads", "updates", "deletes"] as const).map(
-                              (op) => (
-                                <span
-                                  key={op}
-                                  className={cn(
-                                    "inline-flex h-5 w-5 items-center justify-center rounded border",
-                                    u[op]
-                                      ? "bg-primary/10 text-primary border-primary/30"
-                                      : "bg-muted/40 text-muted-foreground border-border"
-                                  )}
-                                  title={op}
-                                >
-                                  {op.charAt(0).toUpperCase()}
-                                </span>
-                              )
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Data Quality */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Data Quality
-                    </h4>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowRecordScore(true)}
-                      className="h-7 gap-1 text-xs"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Record score
-                    </Button>
-                  </div>
-                  {latestByDimension.size === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">
-                      No quality scores recorded yet.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {Array.from(latestByDimension.entries()).map(([dim, v]) => (
-                        <div key={dim} className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground w-28 shrink-0">
-                            {DQ_DIMENSION_LABELS[dim]}
-                          </span>
-                          <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${v.score}%`,
-                                background: dqScoreColor(v.score),
-                              }}
-                            />
-                          </div>
-                          <span
-                            className="text-xs font-semibold tabular-nums w-8 text-right"
-                            style={{ color: dqScoreColor(v.score) }}
-                          >
-                            {v.score}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            {/* Classification — always open, top row */}
+            <section className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Domain</label>
+                <Select
+                  value={entity.domainId}
+                  onValueChange={(v) => v && update({ id: entity.id, domainId: v })}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue>
+                      {domains.find((d) => d.id === entity.domainId)?.name ??
+                        entity.domain?.name ??
+                        "Select domain"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {domains.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </ScrollArea>
-          )}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+                <Select
+                  value={entity.entityType}
+                  onValueChange={(v) =>
+                    v && update({ id: entity.id, entityType: v as EntityType })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ENTITY_TYPE_OPTIONS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {ENTITY_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Classification
+                </label>
+                <Select
+                  value={entity.classification}
+                  onValueChange={(v) =>
+                    v && update({ id: entity.id, classification: v as Classification })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLASSIFICATION_OPTIONS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {CLASSIFICATION_LABELS[c]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Retention (days)
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  defaultValue={entity.retentionDays ?? ""}
+                  placeholder="e.g. 2555"
+                  className="h-8 text-xs"
+                  onBlur={(e) => {
+                    const raw = e.target.value.trim();
+                    if (raw === "") {
+                      if (entity.retentionDays != null)
+                        update({ id: entity.id, retentionDays: null });
+                      return;
+                    }
+                    const n = Number(raw);
+                    if (!isNaN(n) && n > 0 && n !== entity.retentionDays) {
+                      update({ id: entity.id, retentionDays: n });
+                    }
+                  }}
+                />
+              </div>
+            </section>
 
-          <div className="px-6 py-3 border-t shrink-0 flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (entity && confirm(`Delete "${entity.name}"?`)) {
-                  deleteMutation.mutate({ id: entity.id });
-                }
-              }}
-              className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+            {/* Status hints */}
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              {entity.goldenSourceApp ? (
+                <span className="inline-flex items-center gap-1 text-green-600">
+                  <Crown className="h-3 w-3 text-amber-500" /> Golden source:{" "}
+                  {entity.goldenSourceApp.name}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-3 w-3" /> No golden source
+                </span>
+              )}
+              {!entity.steward && (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-3 w-3" /> Unassigned steward
+                </span>
+              )}
+              {entity.entityType && (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 rounded border"
+                  style={{
+                    color: ENTITY_TYPE_COLORS[entity.entityType],
+                    borderColor: `${ENTITY_TYPE_COLORS[entity.entityType]}55`,
+                    background: `${ENTITY_TYPE_COLORS[entity.entityType]}12`,
+                  }}
+                >
+                  {ENTITY_TYPE_LABELS[entity.entityType]}
+                </span>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Ownership */}
+            <CollapsibleSection title="Ownership" defaultOpen>
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Golden Source App
+                  </label>
+                  <Select
+                    value={entity.goldenSourceAppId ?? "__none__"}
+                    onValueChange={(v) =>
+                      update({
+                        id: entity.id,
+                        goldenSourceAppId: !v || v === "__none__" ? null : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue>
+                        {entity.goldenSourceAppId
+                          ? apps.find((a) => a.id === entity.goldenSourceAppId)?.name ??
+                            entity.goldenSourceApp?.name ??
+                            "None"
+                          : "None"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {apps.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <OwnerField
+                  label="Data Steward"
+                  owner={entity.steward ?? null}
+                  onChange={(id) => update({ id: entity.id, stewardId: id })}
+                  users={users}
+                />
+              </div>
+            </CollapsibleSection>
+
+            <Separator />
+
+            {/* Regulatory tags */}
+            <CollapsibleSection
+              title="Regulatory Tags"
+              count={(entity.regulatoryTags as RegTag[]).length}
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {REGULATORY_TAG_OPTIONS.map((tag) => {
+                  const active = (entity.regulatoryTags as RegTag[]).includes(tag);
+                  const color = REGULATORY_TAG_COLORS[tag];
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide border transition-colors"
+                      style={{
+                        color: active ? "#fff" : color,
+                        borderColor: `${color}77`,
+                        background: active ? color : `${color}12`,
+                      }}
+                    >
+                      {REGULATORY_TAG_LABELS[tag]}
+                    </button>
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
+
+            <Separator />
+
+            {/* Applications using this entity */}
+            <CollapsibleSection
+              title="Applications using this entity"
+              count={entity.appUsages.length}
+            >
+              {entity.appUsages.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">
+                  No application usages recorded yet. Use the CRUD Matrix view to add one.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {entity.appUsages.map((u) => (
+                    <li
+                      key={u.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-border bg-card"
+                    >
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {u.app.name}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono">
+                        {(["creates", "reads", "updates", "deletes"] as const).map(
+                          (op) => (
+                            <span
+                              key={op}
+                              className={cn(
+                                "inline-flex h-5 w-5 items-center justify-center rounded border",
+                                u[op]
+                                  ? "bg-primary/10 text-primary border-primary/30"
+                                  : "bg-muted/40 text-muted-foreground border-border"
+                              )}
+                              title={op}
+                            >
+                              {op.charAt(0).toUpperCase()}
+                            </span>
+                          )
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CollapsibleSection>
+
+            <Separator />
+
+            {/* Data Quality */}
+            <CollapsibleSection
+              title="Data Quality"
+              count={latestByDimension.size}
+              defaultOpen
+              actions={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRecordScore(true)}
+                  className="h-7 gap-1 text-xs"
+                >
+                  <Plus className="h-3 w-3" />
+                  Record
+                </Button>
+              }
+            >
+              {latestByDimension.size === 0 ? (
+                <p className="text-xs text-muted-foreground italic">
+                  No quality scores recorded yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {Array.from(latestByDimension.entries()).map(([dim, v]) => (
+                    <div key={dim} className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground w-28 shrink-0">
+                        {DQ_DIMENSION_LABELS[dim]}
+                      </span>
+                      <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${v.score}%`,
+                            background: dqScoreColor(v.score),
+                          }}
+                        />
+                      </div>
+                      <span
+                        className="text-xs font-semibold tabular-nums w-8 text-right"
+                        style={{ color: dqScoreColor(v.score) }}
+                      >
+                        {v.score}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CollapsibleSection>
+          </div>
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="p-4 border-t">
+          {confirmDelete ? (
+            <div className="space-y-2">
+              <p className="text-xs text-rose-600 text-center font-medium">
+                Delete &ldquo;{entity.name}&rdquo;? This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 px-3 py-2 text-sm border rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteMutation.mutate({ id: entity.id })}
+                  disabled={deleteMutation.isPending}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded-md font-medium transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {deleteMutation.isPending ? "Deleting…" : "Confirm Delete"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-md transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </Button>
-            {updateMutation.isPending && (
-              <span className="text-[11px] text-muted-foreground">Saving…</span>
-            )}
-            {!updateMutation.isPending && entity?.goldenSourceApp && (
-              <span className="ml-auto text-[11px] text-green-600 inline-flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Has golden source
-              </span>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+              Delete Entity
+            </button>
+          )}
+        </div>
+      </aside>
 
-      {entity && (
-        <RecordQualityScoreModal
-          open={showRecordScore}
-          entityId={entity.id}
-          onClose={() => setShowRecordScore(false)}
-        />
-      )}
+      <RecordQualityScoreModal
+        open={showRecordScore}
+        entityId={entity.id}
+        onClose={() => setShowRecordScore(false)}
+      />
     </>
+  );
+}
+
+function OwnerField({
+  label,
+  owner,
+  onChange,
+  users,
+}: {
+  label: string;
+  owner: { id: string; name: string | null; avatarUrl: string | null } | null;
+  onChange: (id: string | null) => void;
+  users?: { id: string; name: string | null; email: string; avatarUrl: string | null }[];
+}) {
+  const [search, setSearch] = useState("");
+
+  const filtered = (users ?? []).filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
+
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
+      {owner ? (
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-card group">
+          {owner.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={owner.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+          ) : (
+            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-primary">
+                {(owner.name ?? "?")[0]?.toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="text-xs font-medium truncate flex-1">
+            {owner.name ?? "Unknown"}
+          </span>
+          <button
+            onClick={() => onChange(null)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <Popover>
+          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition text-left">
+            + Assign {label.toLowerCase()}
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0" align="start">
+            <div className="p-2 border-b">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users..."
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-auto p-1">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-2 py-3 text-center">
+                  No users found
+                </p>
+              ) : (
+                filtered.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      onChange(u.id);
+                      setSearch("");
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-muted transition"
+                  >
+                    {u.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-primary">
+                          {(u.name ?? u.email)[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{u.name ?? "Unnamed"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 }

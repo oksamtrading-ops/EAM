@@ -1,20 +1,14 @@
 "use client";
 
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useState } from "react";
+import { X, Trash2, Layers } from "lucide-react";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Layers, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
@@ -25,6 +19,7 @@ interface Props {
 }
 
 export function DomainDetailPanel({ domainId, onClose }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const utils = trpc.useUtils();
   const { data: domain, isLoading } = trpc.dataDomain.getById.useQuery({ id: domainId });
   const { data: users = [] } = trpc.workspace.listUsers.useQuery();
@@ -50,172 +45,287 @@ export function DomainDetailPanel({ domainId, onClose }: Props) {
     updateMutation.mutate(patch);
   }
 
+  if (isLoading || !domain) {
+    return (
+      <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card p-4 shadow-xl">
+        <div className="animate-pulse text-sm text-muted-foreground">Loading…</div>
+      </aside>
+    );
+  }
+
+  const canDelete = domain.entities.length === 0;
+
   return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:w-[520px] sm:max-w-[520px] p-0 flex flex-col">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{
-                background: `${domain?.color ?? "#0B5CD6"}18`,
-                color: domain?.color ?? "#0B5CD6",
-              }}
-            >
-              <Layers className="h-4 w-4" />
-            </div>
-            <SheetTitle className="text-base font-semibold leading-snug line-clamp-2">
-              {isLoading ? "Loading…" : domain?.name}
-            </SheetTitle>
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col overflow-hidden shadow-xl">
+      {/* Header */}
+      <div className="p-4 border-b flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div
+            className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{
+              background: `${domain.color ?? "#0B5CD6"}18`,
+              color: domain.color ?? "#0B5CD6",
+            }}
+          >
+            <Layers className="h-4 w-4" />
           </div>
-        </SheetHeader>
+          <div className="min-w-0">
+            <h2 className="font-bold text-[15px] text-foreground truncate">{domain.name}</h2>
+            <p className="text-xs text-muted-foreground">
+              {domain.entities.length} entit{domain.entities.length === 1 ? "y" : "ies"}
+            </p>
+          </div>
+        </div>
+        <Button size="icon" variant="ghost" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
-        {domain && (
-          <ScrollArea className="flex-1" key={domain.id}>
-            <div className="px-6 py-4 space-y-5">
-              {/* Name */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Name</Label>
-                <Input
-                  defaultValue={domain.name}
-                  className="h-8 text-sm"
-                  onBlur={(e) => {
-                    const v = e.target.value.trim();
-                    if (v && v !== domain.name) update({ id: domain.id, name: v });
-                  }}
-                />
-              </div>
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-4 space-y-5">
+          {/* Name */}
+          <section>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
+            <Input
+              defaultValue={domain.name}
+              className="h-8 text-sm"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v && v !== domain.name) update({ id: domain.id, name: v });
+              }}
+            />
+          </section>
 
-              {/* Description */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">
-                  Description
-                </Label>
-                <Textarea
-                  defaultValue={domain.description ?? ""}
-                  placeholder="What data belongs in this domain?"
-                  rows={2}
-                  onBlur={(e) => {
-                    const v = e.target.value;
-                    if (v !== (domain.description ?? "")) {
-                      update({ id: domain.id, description: v || null });
-                    }
-                  }}
-                />
-              </div>
+          {/* Description */}
+          <section>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Description
+            </label>
+            <Textarea
+              defaultValue={domain.description ?? ""}
+              placeholder="What data belongs in this domain?"
+              rows={2}
+              onBlur={(e) => {
+                const v = e.target.value;
+                if (v !== (domain.description ?? "")) {
+                  update({ id: domain.id, description: v || null });
+                }
+              }}
+            />
+          </section>
 
-              {/* Owner + Color */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">
-                    Owner
-                  </Label>
-                  <Select
-                    value={domain.ownerId ?? "__none__"}
-                    onValueChange={(v) =>
-                      update({
-                        id: domain.id,
-                        ownerId: !v || v === "__none__" ? null : v,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="No owner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No owner</SelectItem>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name ?? u.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">
-                    Color
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      defaultValue={domain.color ?? "#0B5CD6"}
-                      className="h-8 w-10 rounded-md border border-border cursor-pointer bg-background"
-                      onBlur={(e) => {
-                        if (e.target.value !== domain.color) {
-                          update({ id: domain.id, color: e.target.value });
-                        }
-                      }}
-                    />
-                    <Input
-                      defaultValue={domain.color ?? "#0B5CD6"}
-                      className="h-8 text-xs font-mono"
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v && v !== domain.color) {
-                          update({ id: domain.id, color: v });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
+          <Separator />
 
-              <Separator />
-
-              {/* Entities list */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Entities in this domain ({domain.entities.length})
-                </h4>
-                {domain.entities.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No entities yet.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {domain.entities.map((e) => (
-                      <li
-                        key={e.id}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-border bg-card"
-                      >
-                        <span className="text-sm font-medium text-foreground truncate">
-                          {e.name}
-                        </span>
-                        <ClassificationBadge classification={e.classification} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+          {/* Color */}
+          <section>
+            <label className="text-xs text-muted-foreground mb-1 block">Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                defaultValue={domain.color ?? "#0B5CD6"}
+                className="h-8 w-10 rounded-md border border-border cursor-pointer bg-background"
+                onBlur={(e) => {
+                  if (e.target.value !== domain.color) {
+                    update({ id: domain.id, color: e.target.value });
+                  }
+                }}
+              />
+              <Input
+                defaultValue={domain.color ?? "#0B5CD6"}
+                className="h-8 text-xs font-mono"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== domain.color) {
+                    update({ id: domain.id, color: v });
+                  }
+                }}
+              />
             </div>
-          </ScrollArea>
-        )}
+          </section>
 
-        <div className="px-6 py-3 border-t shrink-0 flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+          <Separator />
+
+          {/* Ownership */}
+          <CollapsibleSection title="Ownership" defaultOpen>
+            <OwnerField
+              label="Owner"
+              owner={domain.owner ?? null}
+              onChange={(id) => update({ id: domain.id, ownerId: id })}
+              users={users}
+            />
+          </CollapsibleSection>
+
+          <Separator />
+
+          {/* Entities */}
+          <CollapsibleSection
+            title="Entities in this domain"
+            count={domain.entities.length}
+            defaultOpen
+          >
+            {domain.entities.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No entities yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {domain.entities.map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-border bg-card"
+                  >
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {e.name}
+                    </span>
+                    <ClassificationBadge classification={e.classification} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CollapsibleSection>
+        </div>
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="p-4 border-t">
+        {confirmDelete ? (
+          <div className="space-y-2">
+            <p className="text-xs text-rose-600 text-center font-medium">
+              Delete &ldquo;{domain.name}&rdquo;? This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 px-3 py-2 text-sm border rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate({ id: domain.id })}
+                disabled={deleteMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-rose-500 hover:bg-rose-600 text-white rounded-md font-medium transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deleteMutation.isPending ? "Deleting…" : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
             onClick={() => {
-              if (!domain) return;
-              if (domain.entities.length > 0) {
+              if (!canDelete) {
                 toast.error(
                   `Cannot delete: domain has ${domain.entities.length} entities. Move or delete entities first.`
                 );
                 return;
               }
-              if (confirm(`Delete "${domain.name}"?`)) {
-                deleteMutation.mutate({ id: domain.id });
-              }
+              setConfirmDelete(true);
             }}
-            className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={canDelete ? undefined : "Domain must be empty before deletion"}
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </Button>
-          {updateMutation.isPending && (
-            <span className="text-[11px] text-muted-foreground">Saving…</span>
+            Delete Domain
+          </button>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function OwnerField({
+  label,
+  owner,
+  onChange,
+  users,
+}: {
+  label: string;
+  owner: { id: string; name: string | null; avatarUrl: string | null } | null;
+  onChange: (id: string | null) => void;
+  users?: { id: string; name: string | null; email: string; avatarUrl: string | null }[];
+}) {
+  const [search, setSearch] = useState("");
+
+  const filtered = (users ?? []).filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
+
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
+      {owner ? (
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-card group">
+          {owner.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={owner.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+          ) : (
+            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-primary">
+                {(owner.name ?? "?")[0]?.toUpperCase()}
+              </span>
+            </div>
           )}
+          <span className="text-xs font-medium truncate flex-1">
+            {owner.name ?? "Unknown"}
+          </span>
+          <button
+            onClick={() => onChange(null)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition"
+          >
+            <X className="h-3 w-3" />
+          </button>
         </div>
-      </SheetContent>
-    </Sheet>
+      ) : (
+        <Popover>
+          <PopoverTrigger className="w-full h-8 px-2 rounded-md border border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition text-left">
+            + Assign {label.toLowerCase()}
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0" align="start">
+            <div className="p-2 border-b">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users..."
+                className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-auto p-1">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-2 py-3 text-center">
+                  No users found
+                </p>
+              ) : (
+                filtered.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      onChange(u.id);
+                      setSearch("");
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-muted transition"
+                  >
+                    {u.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={u.avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-primary">
+                          {(u.name ?? u.email)[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{u.name ?? "Unnamed"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 }
