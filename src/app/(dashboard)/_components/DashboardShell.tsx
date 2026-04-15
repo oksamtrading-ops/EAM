@@ -94,15 +94,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {/* Mobile close button */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-3 right-3 p-1 rounded-lg hover:bg-muted/50 transition-colors md:hidden z-10"
+            className="absolute top-3 right-3 p-1 rounded-lg hover:bg-[var(--sidebar-hover)] transition-colors md:hidden z-10"
             aria-label="Close menu"
           >
-            <X className="h-4 w-4 text-muted-foreground" />
+            <X className="h-4 w-4 text-[var(--sidebar-muted-foreground)]" />
           </button>
 
           {/* Logo area */}
           <div
-            className="h-14 flex items-center gap-2.5 px-4 shrink-0 cursor-pointer border-b border-border"
+            className="h-14 flex items-center gap-2.5 px-4 shrink-0 cursor-pointer border-b border-[var(--sidebar-border)]"
             onClick={() => {
               if (window.innerWidth >= 768) setSidebarExpanded((v) => !v);
             }}
@@ -112,7 +112,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
             <span
               className={cn(
-                "text-foreground font-semibold text-sm whitespace-nowrap transition-opacity duration-150",
+                "text-[var(--sidebar-foreground)] font-semibold text-sm whitespace-nowrap transition-opacity duration-150",
                 sidebarExpanded || sidebarOpen ? "opacity-100" : "opacity-0 md:hidden"
               )}
             >
@@ -131,7 +131,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {/* Navigation */}
           <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
             {(sidebarExpanded || sidebarOpen) && (
-              <p className="px-3 mb-2 mt-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+              <p className="px-3 mb-2 mt-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--sidebar-muted)]">
                 Modules
               </p>
             )}
@@ -151,17 +151,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       ? "px-3 py-2.5"
                       : "px-0 py-2.5 justify-center",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      ? "text-white shadow-[0_1px_6px_rgba(11,92,214,0.35)]"
+                      : "text-[var(--sidebar-muted-foreground)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-foreground)]"
                   )}
+                  style={isActive ? { background: "var(--sidebar-active)" } : undefined}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary-foreground rounded-r-full" />
+                    <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-white/80 rounded-r-full" />
                   )}
                   <item.icon
                     className={cn(
                       "h-[18px] w-[18px] shrink-0",
-                      isActive ? "text-primary-foreground" : "text-muted-foreground"
+                      isActive ? "text-white" : "text-[var(--sidebar-muted-foreground)]"
                     )}
                   />
                   {(sidebarExpanded || sidebarOpen) && (
@@ -181,7 +182,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {/* User section */}
           <div
             className={cn(
-              "flex items-center gap-3 px-4 py-3 border-t border-border",
+              "flex items-center gap-3 px-4 py-3 border-t border-[var(--sidebar-border)]",
               !sidebarExpanded && !sidebarOpen && "justify-center px-0"
             )}
           >
@@ -191,7 +192,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               }}
             />
             {(sidebarExpanded || sidebarOpen) && (
-              <p className="text-xs text-muted-foreground truncate">Signed in</p>
+              <p className="text-xs text-[var(--sidebar-muted-foreground)] truncate">Signed in</p>
             )}
           </div>
 
@@ -199,7 +200,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setSidebarExpanded((v) => !v)}
             className={cn(
-              "hidden md:flex items-center gap-2 py-3 border-t border-border text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer",
+              "hidden md:flex items-center gap-2 py-3 border-t border-[var(--sidebar-border)] text-[var(--sidebar-muted)] hover:text-[var(--sidebar-foreground)] transition-colors cursor-pointer",
               sidebarExpanded ? "px-4" : "justify-center"
             )}
           >

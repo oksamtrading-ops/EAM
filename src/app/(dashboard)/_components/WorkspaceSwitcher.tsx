@@ -29,7 +29,7 @@ export function WorkspaceSwitcher({ onCreateNew }: Props) {
       {/* Trigger */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors border-b border-border"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--sidebar-hover)] transition-colors border-b border-[var(--sidebar-border)]"
       >
         <div
           className="h-8 w-8 rounded-xl flex items-center justify-center shadow-sm shrink-0"
@@ -40,16 +40,16 @@ export function WorkspaceSwitcher({ onCreateNew }: Props) {
           <Building2 className="h-4 w-4 text-primary-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[13px] text-foreground tracking-tight leading-tight truncate">
+          <p className="font-semibold text-[13px] text-[var(--sidebar-foreground)] tracking-tight leading-tight truncate">
             {workspaceName}
           </p>
-          <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
+          <p className="text-[10px] text-[var(--sidebar-muted-foreground)] truncate leading-tight mt-0.5">
             {industry}
           </p>
         </div>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 text-muted-foreground/50 transition-transform shrink-0",
+            "h-3.5 w-3.5 text-[var(--sidebar-muted)] transition-transform shrink-0",
             open && "rotate-180"
           )}
         />
