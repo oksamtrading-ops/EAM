@@ -279,7 +279,10 @@ model User {
   acknowledgedEolEntries EolWatchEntry[]    @relation("EolAcknowledger")
   dashboardPins          DashboardPin[]
   ownedDataDomains       DataDomain[]       @relation("DataDomainOwner")
+  stewardedDataDomains   DataDomain[]       @relation("DataDomainSteward")
   stewardedDataEntities  DataEntity[]       @relation("DataEntitySteward")
+  dataEntitiesAsBusinessOwner DataEntity[]  @relation("DataEntityBusinessOwner")
+  dataEntitiesAsCustodian     DataEntity[]  @relation("DataEntityCustodian")
 
   @@map("users")
 }
@@ -1473,6 +1476,7 @@ model DataDomain {
   name        String
   description String?
   ownerId     String?
+  stewardId   String?
   color       String   @default("#0B5CD6")
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
@@ -1481,6 +1485,7 @@ model DataDomain {
 
   workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   owner     User?        @relation("DataDomainOwner", fields: [ownerId], references: [id])
+  steward   User?        @relation("DataDomainSteward", fields: [stewardId], references: [id])
   entities  DataEntity[]
 
   @@unique([workspaceId, name])
@@ -1500,6 +1505,8 @@ model DataEntity {
   goldenSourceAppId String?
   retentionDays     Int?
   stewardId         String?
+  businessOwnerId   String?
+  custodianId       String?
   isActive          Boolean            @default(true)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -1508,6 +1515,8 @@ model DataEntity {
   domain           DataDomain         @relation(fields: [domainId], references: [id], onDelete: Restrict)
   goldenSourceApp  Application?       @relation("DataEntityGoldenSource", fields: [goldenSourceAppId], references: [id])
   steward          User?              @relation("DataEntitySteward", fields: [stewardId], references: [id])
+  businessOwner    User?              @relation("DataEntityBusinessOwner", fields: [businessOwnerId], references: [id])
+  custodian        User?              @relation("DataEntityCustodian", fields: [custodianId], references: [id])
   appUsages        AppEntityUsage[]
   qualityScores    DataQualityScore[]
 
