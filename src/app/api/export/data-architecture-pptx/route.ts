@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const [domains, entities, findings] = await Promise.all([
+  const [domains, entities, findings, attributeStats] = await Promise.all([
     db.dataDomain.findMany({
       where: { workspaceId, isActive: true },
       include: {
@@ -88,6 +88,10 @@ export async function POST(req: Request) {
       orderBy: [{ classification: "desc" }, { name: "asc" }],
     }),
     computeDataFindings(db, workspaceId),
+    db.dataAttribute.findMany({
+      where: { workspaceId, entity: { isActive: true } },
+      select: { id: true, regulatoryTags: true },
+    }),
   ]);
 
   const totalEntities = entities.length;
@@ -107,6 +111,38 @@ export async function POST(req: Request) {
   for (const f of findings) {
     findingCounts.set(f.kind, (findingCounts.get(f.kind) ?? 0) + 1);
   }
+
+  // Field-level stats — derived from findings + raw attribute list.
+  const totalAttributes = attributeStats.length;
+  const attributesWithTags = attributeStats.filter((a) => a.regulatoryTags.length > 0).length;
+  const sensitiveUnclassifiedCount =
+    findingCounts.get("ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION") ?? 0;
+  const entitiesMissingPkCount = findingCounts.get("ENTITY_NO_PRIMARY_KEY") ?? 0;
+
+  // Top entities by sensitive-unclassified attribute count (for slide 5 table).
+  const susByEntity = new Map<
+    string,
+    { entityName: string; domainName: string; count: number }
+  >();
+  for (const f of findings) {
+    if (f.kind !== "ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION") continue;
+    const cur = susByEntity.get(f.entityId);
+    if (cur) {
+      cur.count += 1;
+    } else {
+      susByEntity.set(f.entityId, {
+        entityName: f.entityName,
+        domainName: f.domainName,
+        count: 1,
+      });
+    }
+  }
+  const topSusEntities = Array.from(susByEntity.entries())
+    .map(([entityId, v]) => ({ entityId, ...v }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  const baseUrl = new URL(req.url).origin;
 
   const pptx = new PptxGenJS();
   pptx.author = "V2V";
@@ -362,6 +398,93 @@ export async function POST(req: Request) {
     border: { type: "solid", color: "e9ecef", pt: 0.5 },
     colW: [1.2, 6.3, 1.5], rowH: 0.35,
   });
+
+  // ─── Slide 5: Field-Level Governance ────────────────────────────
+  const s5 = pptx.addSlide();
+  s5.addText("Field-Level Governance", {
+    x: 0.5, y: 0.2, w: 9, h: 0.5,
+    fontSize: 20, fontFace: "Arial", color: "1a1f2e", bold: true,
+  });
+  s5.addText(
+    `${totalAttributes} attribute${totalAttributes !== 1 ? "s" : ""} across ${totalEntities} entit${totalEntities === 1 ? "y" : "ies"}`,
+    { x: 0.5, y: 0.7, w: 9, h: 0.3, fontSize: 10, fontFace: "Arial", color: "64748b" }
+  );
+
+  // Top-line stats row
+  const fieldStats: { label: string; value: number; accent: string }[] = [
+    { label: "Total Attributes", value: totalAttributes, accent: "1a1f2e" },
+    { label: "With Regulatory Tags", value: attributesWithTags, accent: "b45309" },
+    { label: "Sensitive Unclassified", value: sensitiveUnclassifiedCount, accent: "ef4444" },
+    { label: "Entities Missing PK", value: entitiesMissingPkCount, accent: "f59e0b" },
+  ];
+  fieldStats.forEach((s, i) => {
+    const x = 0.5 + i * 2.25;
+    s5.addShape(pptx.ShapeType.rect, {
+      x, y: 1.1, w: 2.1, h: 1,
+      fill: { color: "FFFFFF" },
+      line: { color: "e5e7eb", width: 0.5 },
+      rectRadius: 0.05,
+    });
+    s5.addText(String(s.value), {
+      x, y: 1.15, w: 2.1, h: 0.5,
+      fontSize: 24, fontFace: "Arial", color: s.accent,
+      bold: true, align: "center",
+    });
+    s5.addText(s.label, {
+      x, y: 1.7, w: 2.1, h: 0.3,
+      fontSize: 9, fontFace: "Arial", color: "64748b",
+      align: "center",
+    });
+  });
+
+  // Top entities with sensitive-unclassified attributes
+  if (topSusEntities.length > 0) {
+    s5.addText(
+      `Top entities with sensitive attributes awaiting classification (${topSusEntities.length})`,
+      { x: 0.5, y: 2.3, w: 9, h: 0.3, fontSize: 11, fontFace: "Arial", color: "1a1f2e", bold: true }
+    );
+
+    const susRows: PptxGenJS.TableRow[] = [
+      [
+        { text: "Entity", options: { bold: true, fontSize: 9, color: "FFFFFF", fill: { color: "1a1f2e" } } },
+        { text: "Domain", options: { bold: true, fontSize: 9, color: "FFFFFF", fill: { color: "1a1f2e" } } },
+        { text: "Sensitive Unclassified", options: { bold: true, fontSize: 9, color: "FFFFFF", fill: { color: "1a1f2e" }, align: "center" } },
+      ],
+    ];
+    for (const row of topSusEntities) {
+      susRows.push([
+        {
+          text: row.entityName,
+          options: {
+            fontSize: 9, bold: true, color: "0B5CD6",
+            hyperlink: { url: `${baseUrl}/data?entity=${row.entityId}` },
+          },
+        },
+        { text: row.domainName, options: { fontSize: 9, color: "475569" } },
+        { text: String(row.count), options: { fontSize: 9, bold: true, color: "ef4444", align: "center" } },
+      ]);
+    }
+    s5.addTable(susRows, {
+      x: 0.5, y: 2.7, w: 9,
+      border: { type: "solid", color: "e9ecef", pt: 0.5 },
+      colW: [3.5, 3, 2.5], rowH: 0.32,
+    });
+  } else {
+    s5.addShape(pptx.ShapeType.rect, {
+      x: 0.5, y: 2.5, w: 9, h: 1.2,
+      fill: { color: "f0fdf4" },
+      line: { color: "bbf7d0", width: 0.5 },
+      rectRadius: 0.05,
+    });
+    s5.addText("No sensitive attributes awaiting classification", {
+      x: 0.5, y: 2.7, w: 9, h: 0.4,
+      fontSize: 13, fontFace: "Arial", color: "166534", bold: true, align: "center",
+    });
+    s5.addText(
+      "Every attribute with a regulatory tag has been assigned a classification.",
+      { x: 0.5, y: 3.15, w: 9, h: 0.3, fontSize: 10, fontFace: "Arial", color: "166534", align: "center" }
+    );
+  }
 
   const buffer = (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
   const uint8 = new Uint8Array(buffer);
