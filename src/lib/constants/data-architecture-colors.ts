@@ -2,11 +2,11 @@
 // Follows the pattern established in application-colors.ts
 
 export const CLASSIFICATION_COLORS: Record<string, string> = {
-  PUBLIC: "#94a3b8",
+  PUBLIC: "#0891b2",
   INTERNAL: "#3b82f6",
   CONFIDENTIAL: "#f97316",
   RESTRICTED: "#dc2626",
-  DC_UNKNOWN: "#cbd5e1",
+  DC_UNKNOWN: "#64748b",
 };
 
 export const CLASSIFICATION_LABELS: Record<string, string> = {

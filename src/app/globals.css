@@ -87,7 +87,7 @@
   --surface-glass-strong: rgba(255, 255, 255, 0.88);
   --surface-glass-subtle: rgba(255, 255, 255, 0.52);
   --surface-toolbar: rgba(255, 255, 255, 0.82);
-  --surface-sidebar: linear-gradient(180deg, #0d1526 0%, #0f1a35 50%, #0c1225 100%);
+  --surface-sidebar: #0f172a;
   --sidebar-foreground: #e1e8f0;
   --sidebar-muted: rgba(148, 180, 220, 0.3);
   --sidebar-muted-foreground: rgba(180, 200, 230, 0.5);
@@ -188,7 +188,7 @@
   --surface-glass-strong: rgba(20, 26, 40, 0.88);
   --surface-glass-subtle: rgba(20, 26, 40, 0.52);
   --surface-toolbar: rgba(15, 23, 42, 0.85);
-  --surface-sidebar: linear-gradient(180deg, #080c18 0%, #0a1228 50%, #080c18 100%);
+  --surface-sidebar: #0f172a;
   --sidebar-foreground: #d0d8e8;
   --sidebar-muted: rgba(120, 160, 220, 0.25);
   --sidebar-muted-foreground: rgba(160, 185, 220, 0.45);
