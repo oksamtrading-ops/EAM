@@ -20,6 +20,8 @@ import { dataDomainRouter } from "./dataDomain";
 import { dataEntityRouter } from "./dataEntity";
 import { dataAttributeRouter } from "./dataAttribute";
 import { appEntityUsageRouter } from "./appEntityUsage";
+import { diagramRouter } from "./diagram";
+import { interfaceDataFlowRouter } from "./interfaceDataFlow";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -43,6 +45,8 @@ export const appRouter = router({
   dataEntity: dataEntityRouter,
   dataAttribute: dataAttributeRouter,
   appEntityUsage: appEntityUsageRouter,
+  diagram: diagramRouter,
+  interfaceDataFlow: interfaceDataFlowRouter,
 });
 
 export type AppRouter = typeof appRouter;

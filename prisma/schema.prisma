@@ -215,6 +215,22 @@ enum InterfaceCriticality {
   INT_LOW
 }
 
+// Review lifecycle for integrations in the architecture diagram.
+// AI-suggested interfaces start as PENDING. Manual/imported start as ACCEPTED.
+// REJECTED rows are retained so AI regeneration won't re-propose them.
+enum InterfaceReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// Direction a data entity flows across an interface.
+enum DataFlowDirection {
+  SOURCE_TO_TARGET
+  TARGET_TO_SOURCE
+  BIDIRECTIONAL
+}
+
 // ============================================================
 // MODULE 6 ENUMS (Data Architecture)
 // ============================================================
@@ -260,29 +276,29 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspaces          Workspace[]
-  ownedCapabilities   BusinessCapability[]  @relation("CapabilityOwner")
-  businessOwnedCaps   BusinessCapability[]  @relation("CapabilityBusinessOwner")
-  itOwnedCaps         BusinessCapability[]  @relation("CapabilityITOwner")
-  auditLogs           AuditLog[]
-  createdVersions     CapabilityMapVersion[]
-  ownedApplications   Application[]         @relation("AppOwner")
-  businessOwnedApps   Application[]         @relation("AppBusinessOwner")
-  itOwnedApps         Application[]         @relation("AppITOwner")
-  ownedInitiatives    Initiative[]          @relation("InitiativeOwner")
-  ownedObjectives     Objective[]           @relation("ObjectiveOwner")
-  ownedMilestones     Milestone[]           @relation("MilestoneOwner")
-  createdArchStates   ArchitectureState[]   @relation("ArchStateCreator")
-  ownedRisks          TechRisk[]            @relation("RiskOwner")
-  reviewedRadarEntries TechRadarEntry[]     @relation("RadarReviewer")
-  assessedMappings    ComplianceMapping[]   @relation("ComplianceAssessor")
-  acknowledgedEolEntries EolWatchEntry[]    @relation("EolAcknowledger")
-  dashboardPins          DashboardPin[]
-  ownedDataDomains       DataDomain[]       @relation("DataDomainOwner")
-  stewardedDataDomains   DataDomain[]       @relation("DataDomainSteward")
-  stewardedDataEntities  DataEntity[]       @relation("DataEntitySteward")
-  dataEntitiesAsBusinessOwner DataEntity[]  @relation("DataEntityBusinessOwner")
-  dataEntitiesAsCustodian     DataEntity[]  @relation("DataEntityCustodian")
+  workspaces                  Workspace[]
+  ownedCapabilities           BusinessCapability[]   @relation("CapabilityOwner")
+  businessOwnedCaps           BusinessCapability[]   @relation("CapabilityBusinessOwner")
+  itOwnedCaps                 BusinessCapability[]   @relation("CapabilityITOwner")
+  auditLogs                   AuditLog[]
+  createdVersions             CapabilityMapVersion[]
+  ownedApplications           Application[]          @relation("AppOwner")
+  businessOwnedApps           Application[]          @relation("AppBusinessOwner")
+  itOwnedApps                 Application[]          @relation("AppITOwner")
+  ownedInitiatives            Initiative[]           @relation("InitiativeOwner")
+  ownedObjectives             Objective[]            @relation("ObjectiveOwner")
+  ownedMilestones             Milestone[]            @relation("MilestoneOwner")
+  createdArchStates           ArchitectureState[]    @relation("ArchStateCreator")
+  ownedRisks                  TechRisk[]             @relation("RiskOwner")
+  reviewedRadarEntries        TechRadarEntry[]       @relation("RadarReviewer")
+  assessedMappings            ComplianceMapping[]    @relation("ComplianceAssessor")
+  acknowledgedEolEntries      EolWatchEntry[]        @relation("EolAcknowledger")
+  dashboardPins               DashboardPin[]
+  ownedDataDomains            DataDomain[]           @relation("DataDomainOwner")
+  stewardedDataDomains        DataDomain[]           @relation("DataDomainSteward")
+  stewardedDataEntities       DataEntity[]           @relation("DataEntitySteward")
+  dataEntitiesAsBusinessOwner DataEntity[]           @relation("DataEntityBusinessOwner")
+  dataEntitiesAsCustodian     DataEntity[]           @relation("DataEntityCustodian")
 
   @@map("users")
 }
@@ -292,52 +308,55 @@ model User {
 // ============================================================
 
 model Workspace {
-  id          String       @id @default(cuid())
-  slug        String       @unique
-  name        String
-  clientName  String?
-  description String?
-  industry    IndustryType @default(GENERIC)
+  id                String       @id @default(cuid())
+  slug              String       @unique
+  name              String
+  clientName        String?
+  description       String?
+  industry          IndustryType @default(GENERIC)
   subIndustry       String?
   region            Region?
   regulatoryRegime  String?
   businessModelHint String?
   itVision          String?
   missionStatement  String?
-  logoUrl     String?
-  isDefault   Boolean      @default(false)
-  isActive    Boolean      @default(true)
-  userId      String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  logoUrl           String?
+  isDefault         Boolean      @default(false)
+  isActive          Boolean      @default(true)
+  userId            String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  capabilities   BusinessCapability[]
-  organizations  Organization[]
-  auditLogs      AuditLog[]
-  tags           CapabilityTag[]
-  versions       CapabilityMapVersion[]
-  applications   Application[]
-  initiatives    Initiative[]
-  objectives     Objective[]
-  archStates     ArchitectureState[]
-  initiativeTags InitiativeTag[]
-  techRisks          TechRisk[]
-  techRadarEntries   TechRadarEntry[]
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capabilities           BusinessCapability[]
+  organizations          Organization[]
+  auditLogs              AuditLog[]
+  tags                   CapabilityTag[]
+  versions               CapabilityMapVersion[]
+  applications           Application[]
+  initiatives            Initiative[]
+  objectives             Objective[]
+  archStates             ArchitectureState[]
+  initiativeTags         InitiativeTag[]
+  techRisks              TechRisk[]
+  techRadarEntries       TechRadarEntry[]
   complianceRequirements ComplianceRequirement[]
-  eolWatchEntries    EolWatchEntry[]
-  riskTags           RiskTag[]
-  dashboardPins      DashboardPin[]
-  aiMappingFeedback     AIMappingFeedback[]
-  aiMappingRuns         AIMappingRun[]
-  savedPaletteQueries   SavedPaletteQuery[]
-  valueStreams          ValueStream[]
-  applicationInterfaces ApplicationInterface[]
-  applicationTechLinks  ApplicationTechLink[]
-  dataDomains           DataDomain[]
-  dataEntities          DataEntity[]
-  dataAttributes        DataAttribute[]
-  appEntityUsages       AppEntityUsage[]
+  eolWatchEntries        EolWatchEntry[]
+  riskTags               RiskTag[]
+  dashboardPins          DashboardPin[]
+  aiMappingFeedback      AIMappingFeedback[]
+  aiMappingRuns          AIMappingRun[]
+  savedPaletteQueries    SavedPaletteQuery[]
+  valueStreams           ValueStream[]
+  applicationInterfaces  ApplicationInterface[]
+  applicationTechLinks   ApplicationTechLink[]
+  dataDomains            DataDomain[]
+  dataEntities           DataEntity[]
+  dataAttributes         DataAttribute[]
+  appEntityUsages        AppEntityUsage[]
+  interfaceDataFlows     InterfaceDataFlow[]
+  diagramLayouts         DiagramLayout[]
+  aiArchitectureRuns     AIArchitectureRun[]
 
   @@map("workspaces")
 }
@@ -356,9 +375,9 @@ model Organization {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent       Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
-  children     Organization[] @relation("OrgHierarchy")
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent       Organization?        @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children     Organization[]       @relation("OrgHierarchy")
   capabilities BusinessCapability[]
 
   @@map("organizations")
@@ -414,20 +433,20 @@ model BusinessCapability {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent       BusinessCapability?  @relation("CapabilityTree", fields: [parentId], references: [id])
-  children     BusinessCapability[] @relation("CapabilityTree")
-  owner        User?                @relation("CapabilityOwner", fields: [ownerId], references: [id])
-  businessOwner User?               @relation("CapabilityBusinessOwner", fields: [businessOwnerId], references: [id])
-  itOwner      User?                @relation("CapabilityITOwner", fields: [itOwnerId], references: [id])
-  organization Organization?        @relation(fields: [organizationId], references: [id])
-  valueStream  ValueStream?         @relation(fields: [valueStreamId], references: [id])
-  tags         CapabilityTagMap[]
-  assessments  CapabilityAssessment[]
+  workspace           Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent              BusinessCapability?        @relation("CapabilityTree", fields: [parentId], references: [id])
+  children            BusinessCapability[]       @relation("CapabilityTree")
+  owner               User?                      @relation("CapabilityOwner", fields: [ownerId], references: [id])
+  businessOwner       User?                      @relation("CapabilityBusinessOwner", fields: [businessOwnerId], references: [id])
+  itOwner             User?                      @relation("CapabilityITOwner", fields: [itOwnerId], references: [id])
+  organization        Organization?              @relation(fields: [organizationId], references: [id])
+  valueStream         ValueStream?               @relation(fields: [valueStreamId], references: [id])
+  tags                CapabilityTagMap[]
+  assessments         CapabilityAssessment[]
   applicationMappings ApplicationCapabilityMap[]
-  objectives   CapabilityObjectiveMap[]
-  dependsOn    CapabilityDependency[] @relation("DependentCapability")
-  dependedOnBy CapabilityDependency[] @relation("PrerequisiteCapability")
+  objectives          CapabilityObjectiveMap[]
+  dependsOn           CapabilityDependency[]     @relation("DependentCapability")
+  dependedOnBy        CapabilityDependency[]     @relation("PrerequisiteCapability")
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
@@ -446,7 +465,7 @@ model CapabilityTag {
   color       String  @default("#6366f1")
   description String?
 
-  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   mappings  CapabilityTagMap[]
 
   @@unique([workspaceId, name])
@@ -503,7 +522,7 @@ model CapabilityObjectiveMap {
   assignedAt   DateTime          @default(now())
 
   capability BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
-  objective  Objective          @relation(fields: [objectiveId],  references: [id], onDelete: Cascade)
+  objective  Objective          @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
 
   @@id([capabilityId, objectiveId])
   @@map("capability_objective_maps")
@@ -521,7 +540,7 @@ model CapabilityDependency {
   description    String?
   createdAt      DateTime @default(now())
 
-  dependent    BusinessCapability @relation("DependentCapability",    fields: [dependentId],    references: [id], onDelete: Cascade)
+  dependent    BusinessCapability @relation("DependentCapability", fields: [dependentId], references: [id], onDelete: Cascade)
   prerequisite BusinessCapability @relation("PrerequisiteCapability", fields: [prerequisiteId], references: [id], onDelete: Cascade)
 
   @@unique([dependentId, prerequisiteId])
@@ -555,56 +574,63 @@ model CapabilityTemplate {
 // ============================================================
 
 model Application {
-  id                    String                @id @default(cuid())
-  workspaceId           String
-  name                  String
-  description           String?
-  alias                 String?
-  vendor                String?
-  version               String?
-  applicationType       ApplicationType       @default(CUSTOM)
-  deploymentModel       DeploymentModel       @default(UNKNOWN)
-  lifecycle             ApplicationLifecycle  @default(ACTIVE)
-  lifecycleStartDate    DateTime?
-  lifecycleEndDate      DateTime?
-  businessValue         BusinessValueScore    @default(BV_UNKNOWN)
-  technicalHealth       TechnicalHealthScore  @default(TH_UNKNOWN)
-  rationalizationStatus RationalizationStatus @default(RAT_NOT_ASSESSED)
-  rationalizationNotes  String?
-  annualCostUsd         Decimal?              @db.Decimal(14, 2)
-  costCurrency          String                @default("USD")
-  costModel             CostModel?
-  costNotes             String?
-  costRenewalDate       DateTime?
-  licensedUsers         Int?
-  businessOwnerName     String?
-  itOwnerName           String?
-  businessOwnerId       String?
-  itOwnerId             String?
-  ownerId               String?
+  id                         String                @id @default(cuid())
+  workspaceId                String
+  name                       String
+  description                String?
+  alias                      String?
+  vendor                     String?
+  version                    String?
+  applicationType            ApplicationType       @default(CUSTOM)
+  deploymentModel            DeploymentModel       @default(UNKNOWN)
+  lifecycle                  ApplicationLifecycle  @default(ACTIVE)
+  lifecycleStartDate         DateTime?
+  lifecycleEndDate           DateTime?
+  businessValue              BusinessValueScore    @default(BV_UNKNOWN)
+  technicalHealth            TechnicalHealthScore  @default(TH_UNKNOWN)
+  rationalizationStatus      RationalizationStatus @default(RAT_NOT_ASSESSED)
+  rationalizationNotes       String?
+  annualCostUsd              Decimal?              @db.Decimal(14, 2)
+  costCurrency               String                @default("USD")
+  costModel                  CostModel?
+  costNotes                  String?
+  costRenewalDate            DateTime?
+  licensedUsers              Int?
+  businessOwnerName          String?
+  itOwnerName                String?
+  businessOwnerId            String?
+  itOwnerId                  String?
+  ownerId                    String?
   // --- AI-critical fields for TIME rationalization ---
-  functionalFit         FunctionalFitScore    @default(FF_UNKNOWN)
-  dataClassification    DataClassification    @default(DC_UNKNOWN)
-  actualUsers           Int?
-  replacementAppId      String?
-  sortOrder             Int                   @default(0)
-  isActive              Boolean               @default(true)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
+  functionalFit              FunctionalFitScore    @default(FF_UNKNOWN)
+  dataClassification         DataClassification    @default(DC_UNKNOWN)
+  actualUsers                Int?
+  replacementAppId           String?
+  // --- AI-critical fields for architecture diagram inference ---
+  // e.g. "CRM", "ERP", "DW", "ETL", "API Gateway", "Identity"
+  systemLandscapeRole        String?
+  // comma-separated: "customer-data, order-mgmt, billing"
+  businessCapabilityKeywords String?
+  // comma-separated: "Java, PostgreSQL, REST, Kafka"
+  technicalStackKeywords     String?
+  sortOrder                  Int                   @default(0)
+  isActive                   Boolean               @default(true)
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
 
-  workspace       Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner           User?                    @relation("AppOwner", fields: [ownerId], references: [id])
-  businessOwner   User?                    @relation("AppBusinessOwner", fields: [businessOwnerId], references: [id])
-  itOwner         User?                    @relation("AppITOwner", fields: [itOwnerId], references: [id])
-  replacementApp  Application?             @relation("ReplacementTarget", fields: [replacementAppId], references: [id])
-  replacedBy      Application[]            @relation("ReplacementTarget")
-  capabilities    ApplicationCapabilityMap[]
-  assessments     ApplicationAssessment[]
-  techStackLinks  ApplicationTechLink[]
-  interfacesFrom  ApplicationInterface[]   @relation("InterfaceSource")
-  interfacesTo    ApplicationInterface[]   @relation("InterfaceTarget")
-  entityUsages    AppEntityUsage[]
-  goldenSourceEntities DataEntity[]        @relation("DataEntityGoldenSource")
+  workspace            Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner                User?                      @relation("AppOwner", fields: [ownerId], references: [id])
+  businessOwner        User?                      @relation("AppBusinessOwner", fields: [businessOwnerId], references: [id])
+  itOwner              User?                      @relation("AppITOwner", fields: [itOwnerId], references: [id])
+  replacementApp       Application?               @relation("ReplacementTarget", fields: [replacementAppId], references: [id])
+  replacedBy           Application[]              @relation("ReplacementTarget")
+  capabilities         ApplicationCapabilityMap[]
+  assessments          ApplicationAssessment[]
+  techStackLinks       ApplicationTechLink[]
+  interfacesFrom       ApplicationInterface[]     @relation("InterfaceSource")
+  interfacesTo         ApplicationInterface[]     @relation("InterfaceTarget")
+  entityUsages         AppEntityUsage[]
+  goldenSourceEntities DataEntity[]               @relation("DataEntityGoldenSource")
 
   @@index([workspaceId])
   @@index([workspaceId, lifecycle])
@@ -626,13 +652,13 @@ model ApplicationCapabilityMap {
   assignedAt    DateTime @default(now())
 
   // AI mapping metadata
-  source            MappingSource     @default(MANUAL)
-  relationshipType  RelationshipType  @default(PRIMARY)
-  aiConfidence      Int?
-  aiRationale       String?
-  aiModel           String?
-  aiPromptVersion   String?
-  createdById       String?
+  source           MappingSource    @default(MANUAL)
+  relationshipType RelationshipType @default(PRIMARY)
+  aiConfidence     Int?
+  aiRationale      String?
+  aiModel          String?
+  aiPromptVersion  String?
+  createdById      String?
 
   application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   capability  BusinessCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
@@ -647,7 +673,7 @@ model ApplicationCapabilityMap {
 // ============================================================
 
 model AIMappingFeedback {
-  id                   String           @id @default(cuid())
+  id                   String            @id @default(cuid())
   workspaceId          String
   applicationId        String
   capabilityId         String
@@ -661,10 +687,10 @@ model AIMappingFeedback {
   promptVersion        String
   model                String
   tier                 String
-  createdAt            DateTime         @default(now())
+  createdAt            DateTime          @default(now())
   createdById          String?
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, createdAt])
   @@index([applicationId])
@@ -703,7 +729,7 @@ model AIMappingRun {
 // ============================================================
 
 model ApplicationAssessment {
-  id                    String                 @id @default(cuid())
+  id                    String                @id @default(cuid())
   applicationId         String
   assessedById          String?
   businessValue         BusinessValueScore
@@ -711,7 +737,7 @@ model ApplicationAssessment {
   rationalizationStatus RationalizationStatus
   functionalFit         FunctionalFitScore?
   notes                 String?
-  assessedAt            DateTime               @default(now())
+  assessedAt            DateTime              @default(now())
 
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
@@ -724,29 +750,41 @@ model ApplicationAssessment {
 // ============================================================
 
 model ApplicationInterface {
-  id                    String               @id @default(cuid())
-  workspaceId           String
-  sourceAppId           String
-  targetAppId           String
-  name                  String
-  description           String?
-  protocol              InterfaceProtocol    @default(REST_API)
-  direction             InterfaceDirection   @default(OUTBOUND)
-  status                InterfaceStatus      @default(INT_ACTIVE)
-  criticality           InterfaceCriticality @default(INT_MEDIUM)
-  dataFlowDescription   String?
-  frequency             String?
-  dataClassification    DataClassification?
-  isActive              Boolean              @default(true)
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  id                  String               @id @default(cuid())
+  workspaceId         String
+  sourceAppId         String
+  targetAppId         String
+  name                String
+  description         String?
+  protocol            InterfaceProtocol    @default(REST_API)
+  direction           InterfaceDirection   @default(OUTBOUND)
+  status              InterfaceStatus      @default(INT_ACTIVE)
+  criticality         InterfaceCriticality @default(INT_MEDIUM)
+  dataFlowDescription String?
+  frequency           String?
+  dataClassification  DataClassification?
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  sourceApp Application @relation("InterfaceSource", fields: [sourceAppId], references: [id], onDelete: Cascade)
-  targetApp Application @relation("InterfaceTarget", fields: [targetAppId], references: [id], onDelete: Cascade)
+  // --- Architecture diagram fields ---
+  scenario        ArchStateType         @default(AS_IS)
+  source          MappingSource         @default(MANUAL)
+  reviewStatus    InterfaceReviewStatus @default(ACCEPTED)
+  aiConfidence    Int?
+  aiRationale     String?
+  aiModel         String?
+  aiPromptVersion String?
+  createdById     String?
 
-  @@unique([workspaceId, sourceAppId, targetAppId, name])
+  workspace Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceApp Application         @relation("InterfaceSource", fields: [sourceAppId], references: [id], onDelete: Cascade)
+  targetApp Application         @relation("InterfaceTarget", fields: [targetAppId], references: [id], onDelete: Cascade)
+  dataFlows InterfaceDataFlow[]
+
+  @@unique([workspaceId, sourceAppId, targetAppId, name, scenario], map: "application_interfaces_ws_src_tgt_name_scenario_key")
   @@index([workspaceId])
+  @@index([workspaceId, scenario, reviewStatus])
   @@index([sourceAppId])
   @@index([targetAppId])
   @@map("application_interfaces")
@@ -867,9 +905,9 @@ model Objective {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner       User?                  @relation("ObjectiveOwner", fields: [ownerId], references: [id])
-  initiatives InitiativeObjectiveMap[]
+  workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner        User?                    @relation("ObjectiveOwner", fields: [ownerId], references: [id])
+  initiatives  InitiativeObjectiveMap[]
   capabilities CapabilityObjectiveMap[]
 
   @@index([workspaceId])
@@ -881,38 +919,38 @@ model Objective {
 // ============================================================
 
 model Initiative {
-  id              String             @id @default(cuid())
-  workspaceId     String
-  name            String
-  description     String?
-  category        InitiativeCategory @default(MODERNISATION)
-  status          InitiativeStatus   @default(DRAFT)
-  priority        InitiativePriority @default(MEDIUM)
-  horizon         RoadmapHorizon     @default(H2_NEXT)
-  startDate       DateTime?
-  endDate         DateTime?
-  budgetUsd       Decimal?           @db.Decimal(14, 2)
+  id                 String             @id @default(cuid())
+  workspaceId        String
+  name               String
+  description        String?
+  category           InitiativeCategory @default(MODERNISATION)
+  status             InitiativeStatus   @default(DRAFT)
+  priority           InitiativePriority @default(MEDIUM)
+  horizon            RoadmapHorizon     @default(H2_NEXT)
+  startDate          DateTime?
+  endDate            DateTime?
+  budgetUsd          Decimal?           @db.Decimal(14, 2)
   budgetCurrency     String             @default("USD")
   cancellationReason String?
   sourceType         String?
   sourceContext      String?
   ownerId            String?
   businessSponsor    String?
-  progressPct     Int                @default(0)
-  ragStatus       String             @default("GREEN")
-  isActive        Boolean            @default(true)
-  sortOrder       Int                @default(0)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  progressPct        Int                @default(0)
+  ragStatus          String             @default("GREEN")
+  isActive           Boolean            @default(true)
+  sortOrder          Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner        User?                    @relation("InitiativeOwner", fields: [ownerId], references: [id])
+  workspace    Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner        User?                      @relation("InitiativeOwner", fields: [ownerId], references: [id])
   milestones   Milestone[]
   capabilities InitiativeCapabilityMap[]
   applications InitiativeApplicationMap[]
   objectives   InitiativeObjectiveMap[]
-  dependsOn    InitiativeDependency[]   @relation("DependentInitiative")
-  blockedBy    InitiativeDependency[]   @relation("BlockingInitiative")
+  dependsOn    InitiativeDependency[]     @relation("DependentInitiative")
+  blockedBy    InitiativeDependency[]     @relation("BlockingInitiative")
   archStates   ArchitectureState[]
   tags         InitiativeTagMap[]
 
@@ -941,8 +979,8 @@ model Milestone {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  initiative Initiative          @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
-  owner      User?               @relation("MilestoneOwner", fields: [ownerId], references: [id])
+  initiative Initiative            @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  owner      User?                 @relation("MilestoneOwner", fields: [ownerId], references: [id])
   blockedBy  MilestoneDependency[] @relation("DependentMilestone")
   blocks     MilestoneDependency[] @relation("BlockingMilestone")
 
@@ -966,7 +1004,7 @@ model InitiativeDependency {
   createdAt      DateTime       @default(now())
 
   dependent Initiative @relation("DependentInitiative", fields: [dependentId], references: [id], onDelete: Cascade)
-  blocking  Initiative @relation("BlockingInitiative",  fields: [blockingId],  references: [id], onDelete: Cascade)
+  blocking  Initiative @relation("BlockingInitiative", fields: [blockingId], references: [id], onDelete: Cascade)
 
   @@unique([dependentId, blockingId])
   @@index([workspaceId])
@@ -979,7 +1017,7 @@ model MilestoneDependency {
   createdAt   DateTime @default(now())
 
   dependent Milestone @relation("DependentMilestone", fields: [dependentId], references: [id], onDelete: Cascade)
-  blocking  Milestone @relation("BlockingMilestone",  fields: [blockingId],  references: [id], onDelete: Cascade)
+  blocking  Milestone @relation("BlockingMilestone", fields: [blockingId], references: [id], onDelete: Cascade)
 
   @@id([dependentId, blockingId])
   @@map("milestone_dependencies")
@@ -1035,7 +1073,7 @@ model InitiativeObjectiveMap {
   assignedAt   DateTime @default(now())
 
   initiative Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
-  objective  Objective  @relation(fields: [objectiveId],  references: [id], onDelete: Cascade)
+  objective  Objective  @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
 
   @@id([initiativeId, objectiveId])
   @@map("initiative_objective_maps")
@@ -1056,9 +1094,9 @@ model ArchitectureState {
   createdById  String?
   createdAt    DateTime      @default(now())
 
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  initiative  Initiative? @relation(fields: [initiativeId], references: [id])
-  createdBy   User?       @relation("ArchStateCreator", fields: [createdById], references: [id])
+  workspace  Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  initiative Initiative? @relation(fields: [initiativeId], references: [id])
+  createdBy  User?       @relation("ArchStateCreator", fields: [createdById], references: [id])
 
   @@index([workspaceId, stateType])
   @@index([initiativeId])
@@ -1075,7 +1113,7 @@ model InitiativeTag {
   name        String
   color       String @default("#6366f1")
 
-  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   mappings  InitiativeTagMap[]
 
   @@unique([workspaceId, name])
@@ -1088,7 +1126,7 @@ model InitiativeTagMap {
   assignedAt   DateTime @default(now())
 
   initiative Initiative    @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
-  tag        InitiativeTag @relation(fields: [tagId],        references: [id], onDelete: Cascade)
+  tag        InitiativeTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([initiativeId, tagId])
   @@map("initiative_tag_maps")
@@ -1231,8 +1269,8 @@ model TechRisk {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner            User?                @relation("RiskOwner", fields: [ownerId], references: [id])
+  workspace        Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner            User?                 @relation("RiskOwner", fields: [ownerId], references: [id])
   applicationLinks RiskApplicationLink[]
   capabilityLinks  RiskCapabilityLink[]
   remediations     RiskRemediation[]
@@ -1324,22 +1362,22 @@ model RiskTagMap {
 // ============================================================
 
 model ComplianceRequirement {
-  id              String              @id @default(cuid())
-  workspaceId     String
-  framework       ComplianceFramework
-  controlId       String
-  title           String
-  description     String?
-  category        String?
-  isApplicable    Boolean             @default(true)
-  isMandatory     Boolean             @default(true)
-  auditFrequency  String?
-  evidenceNotes   String?
-  sortOrder       Int                 @default(0)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id             String              @id @default(cuid())
+  workspaceId    String
+  framework      ComplianceFramework
+  controlId      String
+  title          String
+  description    String?
+  category       String?
+  isApplicable   Boolean             @default(true)
+  isMandatory    Boolean             @default(true)
+  auditFrequency String?
+  evidenceNotes  String?
+  sortOrder      Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
-  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   mappings  ComplianceMapping[]
 
   @@unique([workspaceId, framework, controlId])
@@ -1363,8 +1401,8 @@ model ComplianceMapping {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
-  requirement  ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  assessedBy   User?                 @relation("ComplianceAssessor", fields: [assessedById], references: [id])
+  requirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  assessedBy  User?                 @relation("ComplianceAssessor", fields: [assessedById], references: [id])
 
   @@unique([requirementId, entityType, entityId])
   @@index([workspaceId, requirementId])
@@ -1376,23 +1414,23 @@ model ComplianceMapping {
 // ============================================================
 
 model EolWatchEntry {
-  id                    String    @id @default(cuid())
-  workspaceId           String
-  entityType            String
-  entityId              String
-  entityName            String
-  eolDate               DateTime?
-  eosDate               DateTime?
-  vendor                String?
-  affectedAppCount      Int       @default(0)
-  urgencyBand           String    @default("HEALTHY")
+  id                      String    @id @default(cuid())
+  workspaceId             String
+  entityType              String
+  entityId                String
+  entityName              String
+  eolDate                 DateTime?
+  eosDate                 DateTime?
+  vendor                  String?
+  affectedAppCount        Int       @default(0)
+  urgencyBand             String    @default("HEALTHY")
   remediationInitiativeId String?
-  isAcknowledged        Boolean   @default(false)
-  acknowledgedById      String?
-  acknowledgedAt        DateTime?
-  notes                 String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  isAcknowledged          Boolean   @default(false)
+  acknowledgedById        String?
+  acknowledgedAt          DateTime?
+  notes                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   acknowledgedBy User?     @relation("EolAcknowledger", fields: [acknowledgedById], references: [id])
@@ -1512,15 +1550,16 @@ model DataEntity {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  domain           DataDomain         @relation(fields: [domainId], references: [id], onDelete: Restrict)
-  goldenSourceApp  Application?       @relation("DataEntityGoldenSource", fields: [goldenSourceAppId], references: [id])
-  steward          User?              @relation("DataEntitySteward", fields: [stewardId], references: [id])
-  businessOwner    User?              @relation("DataEntityBusinessOwner", fields: [businessOwnerId], references: [id])
-  custodian        User?              @relation("DataEntityCustodian", fields: [custodianId], references: [id])
-  appUsages        AppEntityUsage[]
-  qualityScores    DataQualityScore[]
-  attributes       DataAttribute[]
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domain          DataDomain          @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  goldenSourceApp Application?        @relation("DataEntityGoldenSource", fields: [goldenSourceAppId], references: [id])
+  steward         User?               @relation("DataEntitySteward", fields: [stewardId], references: [id])
+  businessOwner   User?               @relation("DataEntityBusinessOwner", fields: [businessOwnerId], references: [id])
+  custodian       User?               @relation("DataEntityCustodian", fields: [custodianId], references: [id])
+  appUsages       AppEntityUsage[]
+  qualityScores   DataQualityScore[]
+  attributes      DataAttribute[]
+  interfaceFlows  InterfaceDataFlow[]
 
   @@unique([workspaceId, domainId, name])
   @@index([workspaceId])
@@ -1594,4 +1633,75 @@ model DataAttribute {
   @@unique([entityId, name])
   @@index([workspaceId, entityId])
   @@map("data_attributes")
+}
+
+// ============================================================
+// MODULE 7 — AS-IS / TO-BE ARCHITECTURE DIAGRAM
+// ============================================================
+
+// Join table: which DataEntities flow across which ApplicationInterface.
+// Only populated when the "+ Data flows" toggle is used on the diagram.
+model InterfaceDataFlow {
+  id           String            @id @default(cuid())
+  workspaceId  String
+  interfaceId  String
+  dataEntityId String
+  direction    DataFlowDirection @default(SOURCE_TO_TARGET)
+  frequency    String?
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  workspace Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  interface ApplicationInterface @relation(fields: [interfaceId], references: [id], onDelete: Cascade)
+  entity    DataEntity           @relation(fields: [dataEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([interfaceId, dataEntityId])
+  @@index([workspaceId])
+  @@index([workspaceId, interfaceId])
+  @@index([workspaceId, dataEntityId])
+  @@map("interface_data_flows")
+}
+
+// One layout per (workspace, scenario). Stores user-arranged node positions
+// and canvas viewport. Regeneration preserves positions for existing nodes.
+model DiagramLayout {
+  id            String        @id @default(cuid())
+  workspaceId   String
+  scenario      ArchStateType @default(AS_IS)
+  // { [applicationId]: { x: number, y: number } }
+  nodePositions Json          @default("{}")
+  // { x: number, y: number, zoom: number }
+  viewport      Json?
+  updatedById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, scenario])
+  @@map("diagram_layouts")
+}
+
+// Telemetry for the architecture-discovery AI endpoint (mirrors AIMappingRun).
+model AIArchitectureRun {
+  id                   String   @id @default(cuid())
+  workspaceId          String
+  mode                 String // "global" | "per-app"
+  scopeAppId           String? // set when mode = per-app
+  appsProcessed        Int      @default(0)
+  suggestionsGenerated Int      @default(0)
+  tokensUsed           Int      @default(0)
+  durationMs           Int      @default(0)
+  model                String
+  promptVersion        String
+  status               String   @default("completed")
+  errorMessage         String?
+  createdAt            DateTime @default(now())
+  createdById          String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@map("ai_architecture_runs")
 }

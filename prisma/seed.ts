@@ -1761,11 +1761,12 @@ async function seedDemoApplications(workspaceId: string) {
 
     await db.applicationInterface.upsert({
       where: {
-        workspaceId_sourceAppId_targetAppId_name: {
+        workspaceId_sourceAppId_targetAppId_name_scenario: {
           workspaceId,
           sourceAppId: sourceId,
           targetAppId: targetId,
           name: iface.name,
+          scenario: "AS_IS",
         },
       },
       update: {

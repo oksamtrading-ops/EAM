@@ -39,6 +39,9 @@ const ApplicationCreateInput = z.object({
   dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).default("DC_UNKNOWN"),
   actualUsers: z.number().int().nonnegative().optional(),
   replacementAppId: z.string().nullable().optional(),
+  systemLandscapeRole: z.string().max(50).optional(),
+  businessCapabilityKeywords: z.string().max(500).optional(),
+  technicalStackKeywords: z.string().max(500).optional(),
   capabilityIds: z.array(z.string()).optional(),
 });
 
@@ -70,6 +73,9 @@ const ApplicationUpdateInput = z.object({
   dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).optional(),
   actualUsers: z.number().int().nonnegative().nullable().optional(),
   replacementAppId: z.string().nullable().optional(),
+  systemLandscapeRole: z.string().max(50).nullable().optional(),
+  businessCapabilityKeywords: z.string().max(500).nullable().optional(),
+  technicalStackKeywords: z.string().max(500).nullable().optional(),
   capabilityIds: z.array(z.string()).optional(),
 });
 
@@ -81,6 +87,8 @@ const AssessInput = z.object({
   functionalFit: z.enum(FUNCTIONAL_FIT_VALUES).optional(),
   notes: z.string().optional(),
 });
+
+const SCENARIO_VALUES = ["AS_IS", "TO_BE"] as const;
 
 const InterfaceInput = z.object({
   sourceAppId: z.string(),
@@ -94,6 +102,7 @@ const InterfaceInput = z.object({
   dataFlowDescription: z.string().optional(),
   frequency: z.string().optional(),
   dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).optional(),
+  scenario: z.enum(SCENARIO_VALUES).default("AS_IS"),
 });
 
 export const applicationRouter = router({
@@ -627,12 +636,20 @@ export const applicationRouter = router({
 
   // ─── Interface CRUD ─────────────────────────────────────
   listInterfaces: workspaceProcedure
-    .input(z.object({ appId: z.string().optional() }).optional())
+    .input(
+      z
+        .object({
+          appId: z.string().optional(),
+          scenario: z.enum(SCENARIO_VALUES).optional(),
+        })
+        .optional()
+    )
     .query(async ({ ctx, input }) => {
       return ctx.db.applicationInterface.findMany({
         where: {
           workspaceId: ctx.workspaceId,
           isActive: true,
+          ...(input?.scenario ? { scenario: input.scenario } : {}),
           ...(input?.appId
             ? { OR: [{ sourceAppId: input.appId }, { targetAppId: input.appId }] }
             : {}),
@@ -671,6 +688,7 @@ export const applicationRouter = router({
         dataFlowDescription: z.string().nullable().optional(),
         frequency: z.string().nullable().optional(),
         dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).nullable().optional(),
+        scenario: z.enum(SCENARIO_VALUES).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

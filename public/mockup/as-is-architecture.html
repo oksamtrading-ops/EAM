@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>As-is Architecture Diagram — Wireframe</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-panel: #ffffff;
+    --border: #e4e7ec;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --primary: #0B5CD6;
+    --primary-hover: #094cb0;
+    --ai: #7c3aed;
+    --ai-soft: #f3eaff;
+    --success: #16a34a;
+    --warn: #f97316;
+    --danger: #dc2626;
+    --sidebar-bg: #0f172a;
+    --sidebar-fg: #e2e8f0;
+    --sidebar-muted: #94a3b8;
+    --sidebar-hover: #1e293b;
+    --sidebar-active: #1e40af;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    height: 100%;
+  }
+  .app { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { background: var(--sidebar-bg); color: var(--sidebar-fg); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .brand { font-weight: 700; font-size: 14px; letter-spacing: .3px; padding: 6px 10px 18px; }
+  .sidebar .brand span { color: #60a5fa; }
+  .nav-group { color: var(--sidebar-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 14px 10px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--sidebar-fg); font-size: 13px; cursor: pointer; }
+  .nav-item:hover { background: var(--sidebar-hover); }
+  .nav-item.active { background: var(--sidebar-active); color: #fff; font-weight: 500; }
+  .nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .6; }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+  .crumb { color: var(--text-muted); font-size: 12px; }
+  .crumb b { color: var(--text); }
+  .toggle-group { display: inline-flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+  .toggle-group button { border: 0; background: transparent; padding: 6px 12px; font-size: 12px; font-weight: 500; color: var(--text-muted); border-radius: 6px; cursor: pointer; }
+  .toggle-group button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .spacer { flex: 1; }
+  .btn { border: 1px solid var(--border); background: var(--surface); padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-ai { background: var(--ai); color: #fff; border-color: var(--ai); }
+  .btn-ai:hover { background: #6d28d9; }
+
+  /* Screen switcher */
+  .screens { display: flex; gap: 8px; padding: 12px 20px; background: #eef0f3; border-bottom: 1px solid var(--border); }
+  .screens button { border: 1px solid var(--border); background: var(--surface); padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: var(--text-muted); }
+  .screens button.on { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* Body */
+  .body { flex: 1; display: grid; grid-template-columns: 220px 1fr 340px; min-height: 0; }
+  .filters { border-right: 1px solid var(--border); background: var(--surface); padding: 16px; overflow-y: auto; }
+  .filters h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 18px 0 8px; }
+  .filters h4:first-child { margin-top: 0; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; background: var(--surface); cursor: pointer; }
+  .chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .chip.ai.on { background: var(--ai); border-color: var(--ai); }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 3px 0; color: var(--text-muted); }
+  .legend-line { width: 28px; height: 0; border-top: 2px solid var(--text); }
+  .legend-line.dashed { border-top: 2px dashed var(--ai); }
+  .legend-line.double { border-top: 2px double var(--success); height: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Canvas */
+  .canvas-wrap { position: relative; background: linear-gradient(var(--bg), #eef1f5); overflow: hidden; }
+  .canvas-wrap svg { width: 100%; height: 100%; display: block; }
+  .canvas-hint { position: absolute; top: 12px; left: 12px; background: var(--surface); border: 1px solid var(--border); padding: 6px 10px; font-size: 11px; border-radius: 6px; color: var(--text-muted); }
+  .canvas-controls { position: absolute; right: 12px; bottom: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; }
+  .canvas-controls button { border: 0; background: transparent; padding: 8px 10px; cursor: pointer; font-size: 14px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .canvas-controls button:last-child { border-bottom: 0; }
+
+  /* Node style (for SVG <foreignObject>) */
+  .node { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow); width: 140px; }
+  .node .nm { font-weight: 600; font-size: 12px; line-height: 1.3; }
+  .node .meta { display: flex; gap: 5px; margin-top: 6px; align-items: center; }
+  .node .role { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .node .dot-crit { width: 6px; height: 6px; border-radius: 50%; }
+  .node.pending { border: 1.5px dashed var(--ai); background: var(--ai-soft); }
+  .node.selected { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11,92,214,.15), var(--shadow); }
+  .node .badge { font-size: 9px; padding: 1px 5px; border-radius: 999px; background: var(--ai); color: #fff; margin-left: auto; }
+
+  /* Detail panel */
+  .detail { background: var(--surface-panel); border-left: 1px solid var(--border); padding: 18px; overflow-y: auto; }
+  .detail h3 { margin: 0 0 4px; font-size: 16px; }
+  .detail .sub { color: var(--text-muted); font-size: 12px; margin-bottom: 16px; }
+  .sec { border-top: 1px solid var(--border); padding: 14px 0; }
+  .sec h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 12px; }
+  .kv dt { color: var(--text-muted); }
+  .kv dd { margin: 0; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 500; }
+  .pill.ai { background: var(--ai-soft); color: var(--ai); }
+  .pill.hi { background: #dcfce7; color: var(--success); }
+  .pill.md { background: #fef3c7; color: #a16207; }
+  .pill.manual { background: #e0f2fe; color: #0369a1; }
+  .row-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .rationale { background: var(--ai-soft); border-left: 3px solid var(--ai); padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 12px; color: #4c1d95; margin: 10px 0; }
+
+  /* Review queue table (screen 3) */
+  .review-list { padding: 20px; overflow-y: auto; }
+  .review-list table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .review-list th, .review-list td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .review-list th { background: var(--bg); color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .review-list tr:last-child td { border-bottom: 0; }
+  .review-list .bulk { display: flex; gap: 8px; margin-bottom: 12px; }
+
+  /* Empty state */
+  .empty { display: flex; align-items: center; justify-content: center; height: 100%; }
+  .empty-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px 48px; text-align: center; max-width: 500px; box-shadow: var(--shadow); }
+  .empty-card h3 { margin: 0 0 8px; font-size: 18px; }
+  .empty-card p { color: var(--text-muted); font-size: 13px; margin: 0 0 20px; }
+  .empty-ill { font-size: 44px; margin-bottom: 12px; }
+
+  .screen { display: none; flex: 1; min-height: 0; }
+  .screen.on { display: grid; grid-template-columns: 220px 1fr 340px; }
+  .screen.full.on { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar nav -->
+  <aside class="sidebar">
+    <div class="brand">EAM<span>·</span>Platform</div>
+    <div class="nav-group">Portfolio</div>
+    <div class="nav-item"><span class="dot"></span>Applications</div>
+    <div class="nav-item"><span class="dot"></span>Capabilities</div>
+    <div class="nav-item"><span class="dot"></span>Data Architecture</div>
+    <div class="nav-group">Architecture</div>
+    <div class="nav-item active"><span class="dot"></span>As-is / To-be Diagram</div>
+    <div class="nav-group">Lifecycle</div>
+    <div class="nav-item"><span class="dot"></span>Roadmap (ARP)</div>
+    <div class="nav-item"><span class="dot"></span>Risk & Compliance</div>
+    <div class="nav-item"><span class="dot"></span>Executive Dashboard</div>
+  </aside>
+
+  <main class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="crumb">Architecture / <b>As-is Diagram</b></div>
+      <div class="toggle-group" style="margin-left:20px">
+        <button class="on">AS-IS</button>
+        <button>TO-BE</button>
+      </div>
+      <div class="toggle-group">
+        <button class="on">Integrations</button>
+        <button>+ Data flows</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn">⎘ Export</button>
+      <button class="btn-ai btn">✨ Regenerate with AI</button>
+    </div>
+
+    <!-- Screen switcher -->
+    <div class="screens">
+      <button class="on" data-screen="s1">① Populated canvas + review a suggestion</button>
+      <button data-screen="s2">② Data flows toggle ON</button>
+      <button data-screen="s3">③ Review queue (bulk)</button>
+      <button data-screen="s4">④ Empty state (first-time)</button>
+    </div>
+
+    <!-- ============ SCREEN 1: populated canvas, AI suggestion selected ============ -->
+    <div class="screen on" id="s1">
+      <!-- Filters / legend -->
+      <aside class="filters">
+        <h4>Filters</h4>
+        <div class="chip-row">
+          <div class="chip on">All domains</div>
+          <div class="chip">Sales</div>
+          <div class="chip">Finance</div>
+          <div class="chip">HR</div>
+          <div class="chip">Ops</div>
+        </div>
+        <h4>Integration type</h4>
+        <div class="chip-row">
+          <div class="chip on">API</div>
+          <div class="chip on">File</div>
+          <div class="chip on">Event</div>
+          <div class="chip on">ETL</div>
+        </div>
+        <h4>AI suggestions</h4>
+        <div class="chip-row">
+          <div class="chip ai on">Show pending (6)</div>
+          <div class="chip">Hide rejected</div>
+        </div>
+        <h4>Legend</h4>
+        <div class="legend-row"><span class="legend-line"></span> Manual, accepted</div>
+        <div class="legend-row"><span class="legend-line dashed"></span> AI-suggested, pending</div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--danger)"></span> Critical integration</div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--warn)"></span> High criticality</div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--text-muted)"></span> Standard</div>
+      </aside>
+
+      <!-- Canvas -->
+      <div class="canvas-wrap">
+        <div class="canvas-hint">3 domains · 12 apps · 14 integrations · <span style="color:var(--ai)">6 AI pending</span></div>
+        <svg viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- arrowheads -->
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+            </marker>
+            <marker id="arrAi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"/>
+            </marker>
+            <marker id="arrSel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0B5CD6"/>
+            </marker>
+          </defs>
+
+          <!-- Domain groupings (subtle) -->
+          <rect x="30" y="30" width="240" height="260" rx="14" fill="#eef6ff" stroke="#dbeafe"/>
+          <text x="46" y="50" fill="#1e40af" font-size="11" font-weight="600">SALES</text>
+          <rect x="330" y="30" width="240" height="500" rx="14" fill="#f3f0ff" stroke="#e9d5ff"/>
+          <text x="346" y="50" fill="#6d28d9" font-size="11" font-weight="600">OPS / CORE</text>
+          <rect x="630" y="30" width="240" height="260" rx="14" fill="#ecfdf5" stroke="#d1fae5"/>
+          <text x="646" y="50" fill="#047857" font-size="11" font-weight="600">FINANCE</text>
+
+          <!-- EDGES -->
+          <!-- Salesforce -> SAP S/4 (manual, selected-target) -->
+          <path d="M 210 130 C 280 130, 320 180, 390 180" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+          <text x="268" y="148" font-size="10" fill="#334155">REST · hourly</text>
+
+          <!-- Salesforce -> Marketo (manual) -->
+          <path d="M 170 200 C 170 240, 170 240, 170 260" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+
+          <!-- SAP -> Oracle EBS (manual) -->
+          <path d="M 470 180 C 540 180, 580 150, 660 150" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+          <text x="540" y="140" font-size="10" fill="#334155">ETL · nightly</text>
+
+          <!-- SAP -> Workday (manual) -->
+          <path d="M 470 220 C 540 220, 580 240, 660 240" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+
+          <!-- AI SUGGESTION: ServiceNow -> SAP  (SELECTED, highlighted) -->
+          <path d="M 470 350 C 500 350, 500 260, 470 260" stroke="#0B5CD6" stroke-width="3" stroke-dasharray="6 4" fill="none" marker-end="url(#arrSel)"/>
+          <text x="480" y="310" font-size="10" fill="#0B5CD6" font-weight="600">AI · MEDIUM</text>
+
+          <!-- AI: Salesforce -> ServiceNow (pending) -->
+          <path d="M 210 170 C 290 260, 330 340, 390 360" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrAi)"/>
+
+          <!-- AI: Marketo -> Salesforce (pending bidirectional) -->
+          <path d="M 170 265 C 150 230, 150 230, 170 205" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrAi)"/>
+
+          <!-- AI: SAP -> NetSuite (pending) -->
+          <path d="M 470 280 C 560 290, 600 390, 660 410" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrAi)"/>
+
+          <!-- AI: Workday -> ADP (pending) -->
+          <path d="M 770 280 C 770 340, 770 380, 770 420" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrAi)"/>
+
+          <!-- AI: Workday -> Okta (pending) -->
+          <path d="M 720 250 C 560 480, 360 500, 210 490" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrAi)"/>
+
+          <!-- NODES using foreignObject so we keep CSS -->
+          <!-- Salesforce -->
+          <foreignObject x="60" y="90" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">Salesforce</div>
+              <div class="role">CRM</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--danger)"></span> <span style="font-size:10px;color:var(--text-muted)">Critical</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- Marketo -->
+          <foreignObject x="100" y="210" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">Marketo</div>
+              <div class="role">Marketing auto.</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--warn)"></span> <span style="font-size:10px;color:var(--text-muted)">High</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- SAP S/4 -->
+          <foreignObject x="380" y="140" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node selected">
+              <div class="nm">SAP S/4HANA</div>
+              <div class="role">ERP</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--danger)"></span> <span style="font-size:10px;color:var(--text-muted)">Critical</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- Oracle EBS -->
+          <foreignObject x="660" y="110" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">Oracle EBS</div>
+              <div class="role">Legacy ERP</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--warn)"></span> <span style="font-size:10px;color:var(--text-muted)">High</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- Workday -->
+          <foreignObject x="660" y="200" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">Workday</div>
+              <div class="role">HRIS</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--warn)"></span> <span style="font-size:10px;color:var(--text-muted)">High</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- ServiceNow (source of selected AI edge) -->
+          <foreignObject x="380" y="330" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node pending">
+              <div class="nm">ServiceNow</div>
+              <div class="role">ITSM <span class="badge">AI edge</span></div>
+              <div class="meta"><span class="dot-crit" style="background:var(--warn)"></span> <span style="font-size:10px;color:var(--text-muted)">High</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- NetSuite -->
+          <foreignObject x="660" y="380" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">NetSuite</div>
+              <div class="role">Finance</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--text-muted)"></span> <span style="font-size:10px;color:var(--text-muted)">Medium</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- ADP -->
+          <foreignObject x="660" y="420" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">ADP</div>
+              <div class="role">Payroll</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--text-muted)"></span> <span style="font-size:10px;color:var(--text-muted)">Medium</span></div>
+            </div>
+          </foreignObject>
+
+          <!-- Okta -->
+          <foreignObject x="100" y="450" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node">
+              <div class="nm">Okta</div>
+              <div class="role">Identity</div>
+              <div class="meta"><span class="dot-crit" style="background:var(--warn)"></span> <span style="font-size:10px;color:var(--text-muted)">High</span></div>
+            </div>
+          </foreignObject>
+        </svg>
+
+        <div class="canvas-controls">
+          <button title="Zoom in">+</button>
+          <button title="Zoom out">−</button>
+          <button title="Fit">⛶</button>
+          <button title="Auto-layout">⟳</button>
+        </div>
+      </div>
+
+      <!-- Right detail panel: an AI suggested edge is selected -->
+      <aside class="detail">
+        <h3>ServiceNow → SAP S/4HANA</h3>
+        <div class="sub">Proposed integration <span class="pill ai">AI · MEDIUM</span></div>
+
+        <div class="rationale">
+          <b>Why Claude proposed this:</b><br>
+          ServiceNow ITSM commonly syncs incident/change data into SAP for asset and cost allocation reporting. Both apps are in your portfolio and share "Operations" business capability keywords.
+        </div>
+
+        <div class="sec">
+          <h4>Proposed properties</h4>
+          <dl class="kv">
+            <dt>Type</dt><dd>API · REST</dd>
+            <dt>Direction</dt><dd>ServiceNow → SAP (one-way)</dd>
+            <dt>Frequency</dt><dd>Batch — Hourly</dd>
+            <dt>Criticality</dt><dd>Medium</dd>
+            <dt>Status</dt><dd>Active</dd>
+            <dt>Scenario</dt><dd>AS-IS</dd>
+          </dl>
+        </div>
+
+        <div class="row-actions">
+          <button class="btn btn-primary" style="flex:1">✓ Accept</button>
+          <button class="btn" style="flex:1">✕ Reject</button>
+          <button class="btn">Edit…</button>
+        </div>
+
+        <div class="sec">
+          <h4>Source app</h4>
+          <dl class="kv">
+            <dt>Name</dt><dd>ServiceNow</dd>
+            <dt>Role</dt><dd>ITSM</dd>
+            <dt>Vendor</dt><dd>ServiceNow Inc.</dd>
+            <dt>Owner</dt><dd>IT Ops</dd>
+          </dl>
+        </div>
+        <div class="sec">
+          <h4>Target app</h4>
+          <dl class="kv">
+            <dt>Name</dt><dd>SAP S/4HANA</dd>
+            <dt>Role</dt><dd>ERP</dd>
+            <dt>Vendor</dt><dd>SAP SE</dd>
+            <dt>Owner</dt><dd>Finance / IT</dd>
+          </dl>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ============ SCREEN 2: Data flows toggle ON ============ -->
+    <div class="screen" id="s2">
+      <aside class="filters">
+        <h4>Filters</h4>
+        <div class="chip-row">
+          <div class="chip on">Customer</div>
+          <div class="chip on">Order</div>
+          <div class="chip on">Invoice</div>
+          <div class="chip on">Employee</div>
+          <div class="chip">PII only</div>
+        </div>
+        <h4>Legend</h4>
+        <div class="legend-row"><span class="legend-dot" style="background:#7c3aed"></span> Master data</div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--success)"></span> Transactional</div>
+        <div class="legend-row"><span class="legend-dot" style="background:#eab308"></span> Analytical</div>
+      </aside>
+
+      <div class="canvas-wrap">
+        <div class="canvas-hint">"Show data flows" is ON — each edge now shows the data entities it carries.</div>
+        <svg viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+            </marker>
+          </defs>
+
+          <!-- edges with data entity labels -->
+          <path d="M 210 130 C 290 130, 320 180, 390 180" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr2)"/>
+          <g transform="translate(260, 145)">
+            <rect x="0" y="-12" width="56" height="18" rx="9" fill="#7c3aed"/>
+            <text x="28" y="0" fill="#fff" font-size="10" text-anchor="middle">Customer</text>
+            <rect x="60" y="-12" width="46" height="18" rx="9" fill="#16a34a"/>
+            <text x="83" y="0" fill="#fff" font-size="10" text-anchor="middle">Order</text>
+          </g>
+
+          <path d="M 470 180 C 540 180, 580 150, 660 150" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr2)"/>
+          <g transform="translate(540, 140)">
+            <rect x="0" y="-12" width="50" height="18" rx="9" fill="#16a34a"/>
+            <text x="25" y="0" fill="#fff" font-size="10" text-anchor="middle">Invoice</text>
+            <rect x="54" y="-12" width="44" height="18" rx="9" fill="#eab308"/>
+            <text x="76" y="0" fill="#fff" font-size="10" text-anchor="middle">G/L</text>
+          </g>
+
+          <path d="M 470 220 C 540 220, 580 240, 660 240" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arr2)"/>
+          <g transform="translate(540, 235)">
+            <rect x="0" y="-12" width="66" height="18" rx="9" fill="#7c3aed"/>
+            <text x="33" y="0" fill="#fff" font-size="10" text-anchor="middle">Employee</text>
+          </g>
+
+          <!-- nodes -->
+          <foreignObject x="60" y="90" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node"><div class="nm">Salesforce</div><div class="role">CRM</div></div>
+          </foreignObject>
+          <foreignObject x="380" y="140" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node"><div class="nm">SAP S/4HANA</div><div class="role">ERP</div></div>
+          </foreignObject>
+          <foreignObject x="660" y="110" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node"><div class="nm">Oracle EBS</div><div class="role">Legacy ERP</div></div>
+          </foreignObject>
+          <foreignObject x="660" y="200" width="140" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node"><div class="nm">Workday</div><div class="role">HRIS</div></div>
+          </foreignObject>
+        </svg>
+      </div>
+
+      <aside class="detail">
+        <h3>Data Flow detail</h3>
+        <div class="sub">Click any entity chip on an edge to inspect</div>
+
+        <div class="sec">
+          <h4>Edge: Salesforce → SAP</h4>
+          <dl class="kv">
+            <dt>Integration</dt><dd>REST · hourly</dd>
+            <dt>Carries</dt>
+            <dd>
+              <span class="pill" style="background:#ede9fe;color:#6d28d9">Customer</span>
+              <span class="pill" style="background:#dcfce7;color:var(--success)">Order</span>
+            </dd>
+          </dl>
+        </div>
+        <div class="sec">
+          <h4>Entity: Customer</h4>
+          <dl class="kv">
+            <dt>Type</dt><dd>Master</dd>
+            <dt>Classification</dt><dd>PII · Confidential</dd>
+            <dt>Golden source</dt><dd>Salesforce</dd>
+            <dt>Used by</dt><dd>SAP, Marketo, NetSuite</dd>
+          </dl>
+        </div>
+        <div class="sec">
+          <h4>Add a data flow to this edge</h4>
+          <button class="btn" style="width:100%">+ Attach data entity</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ============ SCREEN 3: Review queue bulk ============ -->
+    <div class="screen full" id="s3">
+      <div class="review-list" style="flex:1">
+        <h3 style="margin:0 0 4px">AI Suggestions · Review Queue</h3>
+        <div style="color:var(--text-muted); font-size:12px; margin-bottom:16px">6 pending · generated 14 min ago from full portfolio regeneration</div>
+
+        <div class="bulk">
+          <button class="btn btn-primary">✓ Accept all HIGH confidence (3)</button>
+          <button class="btn">✕ Reject selected</button>
+          <button class="btn">Export queue CSV</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox"></th>
+              <th>Source</th><th>Target</th><th>Type</th><th>Direction</th><th>Freq</th>
+              <th>Confidence</th><th>Rationale</th><th style="width:170px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" checked></td>
+              <td>Salesforce</td><td>Marketo</td><td>API REST</td><td>↔ bidir</td><td>Real-time</td>
+              <td><span class="pill hi">HIGH</span></td>
+              <td>Vendor-native CRM ↔ MAP integration (standard)</td>
+              <td><button class="btn" style="padding:4px 8px">✓</button> <button class="btn" style="padding:4px 8px">✕</button> <button class="btn" style="padding:4px 8px">Edit</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked></td>
+              <td>SAP S/4</td><td>Oracle EBS</td><td>ETL</td><td>→</td><td>Nightly</td>
+              <td><span class="pill hi">HIGH</span></td>
+              <td>Legacy-to-new ERP consolidation pattern</td>
+              <td><button class="btn" style="padding:4px 8px">✓</button> <button class="btn" style="padding:4px 8px">✕</button> <button class="btn" style="padding:4px 8px">Edit</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked></td>
+              <td>Workday</td><td>ADP</td><td>API REST</td><td>→</td><td>Daily</td>
+              <td><span class="pill hi">HIGH</span></td>
+              <td>HRIS feeds payroll (standard)</td>
+              <td><button class="btn" style="padding:4px 8px">✓</button> <button class="btn" style="padding:4px 8px">✕</button> <button class="btn" style="padding:4px 8px">Edit</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>ServiceNow</td><td>SAP S/4</td><td>API REST</td><td>→</td><td>Hourly</td>
+              <td><span class="pill md">MED</span></td>
+              <td>ITSM-to-ERP for asset/cost allocation</td>
+              <td><button class="btn" style="padding:4px 8px">✓</button> <button class="btn" style="padding:4px 8px">✕</button> <button class="btn" style="padding:4px 8px">Edit</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>Workday</td><td>Okta</td><td>API REST</td><td>→</td><td>Real-time</td>
+              <td><span class="pill md">MED</span></td>
+              <td>Joiner-mover-leaver provisioning pattern</td>
+              <td><button class="btn" style="padding:4px 8px">✓</button> <button class="btn" style="padding:4px 8px">✕</button> <button class="btn" style="padding:4px 8px">Edit</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>SAP S/4</td><td>NetSuite</td><td>File</td><td>→</td><td>Monthly</td>
+              <td><span class="pill md">MED</span></td>
+              <td>Subsidiary financial consolidation</td>
+              <td><button class="btn" style="padding:4px 8px">✓</button> <button class="btn" style="padding:4px 8px">✕</button> <button class="btn" style="padding:4px 8px">Edit</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px; color:var(--text-muted); font-size:11px">
+          <b>Rejected suggestions</b> are remembered so regeneration won't re-propose them. You can review/restore from Settings.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN 4: Empty state ============ -->
+    <div class="screen full" id="s4">
+      <div class="empty" style="flex:1">
+        <div class="empty-card">
+          <div class="empty-ill">🕸️</div>
+          <h3>No integrations yet</h3>
+          <p>Generate an initial draft of your as-is architecture with AI. Claude will analyze your 47 applications and propose integrations based on system roles, business capabilities, and technology stacks. You'll review each suggestion before accepting.</p>
+          <button class="btn btn-ai" style="font-size:13px; padding:10px 18px">✨ Generate initial diagram</button>
+          <div style="margin-top:10px; font-size:11px; color:var(--text-muted)">or <a href="#">add an integration manually</a> · <a href="#">import from CSV</a></div>
+          <div style="margin-top:22px; background:var(--ai-soft); padding:12px 14px; border-radius:8px; text-align:left; font-size:12px; color:#4c1d95">
+            <b>💡 Tip for better results:</b> 12 of your 47 apps are missing <code>systemLandscapeRole</code> or <code>businessCapabilityKeywords</code>. Fill these in <a href="#">Applications → Edit</a> before generating to improve suggestion quality.
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const btns = document.querySelectorAll('.screens button');
+  const screens = document.querySelectorAll('.screen');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    const target = b.dataset.screen;
+    screens.forEach(s => s.classList.toggle('on', s.id === target));
+  }));
+</script>
+</body>
+</html>
