@@ -97,6 +97,7 @@
   --surface-overlay: rgba(255, 255, 255, 0.92);
   --surface-card: rgba(255, 255, 255, 0.78);
   --surface-elevated: rgba(255, 255, 255, 0.96);
+  --surface-panel: #ffffff;
   /* Glass borders */
   --border-glass: rgba(255, 255, 255, 0.30);
   --border-glass-strong: rgba(255, 255, 255, 0.45);
@@ -197,6 +198,7 @@
   --surface-overlay: rgba(20, 26, 40, 0.96);
   --surface-card: rgba(20, 26, 40, 0.78);
   --surface-elevated: rgba(20, 26, 40, 0.96);
+  --surface-panel: #0f1729;
   /* Glass borders — dark */
   --border-glass: rgba(255, 255, 255, 0.08);
   --border-glass-strong: rgba(255, 255, 255, 0.15);
@@ -425,6 +427,13 @@ textarea:focus {
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate-strong));
   background: var(--surface-overlay) !important;
   border: 1px solid var(--border-glass-strong) !important;
+  box-shadow: var(--shadow-xl);
+}
+
+/* Detail panels — fixed-right aside overlays need to be fully opaque for readability */
+aside.fixed.right-0,
+aside[data-slot="detail-panel"] {
+  background: var(--surface-panel) !important;
   box-shadow: var(--shadow-xl);
 }
 
