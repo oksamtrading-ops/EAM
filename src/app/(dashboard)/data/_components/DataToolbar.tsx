@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Database, Layers, Table2, GitBranch } from "lucide-react";
+import { Plus, Database, Layers, Table2, GitBranch, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { useDataContext, type DataViewMode } from "./DataContext";
@@ -14,9 +14,10 @@ const VIEWS: { id: DataViewMode; label: string; icon: React.ElementType }[] = [
 interface Props {
   onNewDomain: () => void;
   onNewEntity: () => void;
+  onImport: () => void;
 }
 
-export function DataToolbar({ onNewDomain, onNewEntity }: Props) {
+export function DataToolbar({ onNewDomain, onNewEntity, onImport }: Props) {
   const { view, setView } = useDataContext();
   const { data: stats } = trpc.dataEntity.stats.useQuery();
 
@@ -35,6 +36,14 @@ export function DataToolbar({ onNewDomain, onNewEntity }: Props) {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onImport}
+            title="Import / Export Excel"
+            className="relative group hidden sm:inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border text-[12px] font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            Excel
+          </button>
           <button
             onClick={onNewDomain}
             title="New Domain"

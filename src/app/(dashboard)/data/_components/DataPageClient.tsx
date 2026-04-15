@@ -11,6 +11,7 @@ import { EntityDetailPanel } from "./panels/EntityDetailPanel";
 import { DomainDetailPanel } from "./panels/DomainDetailPanel";
 import { DomainFormModal } from "./modals/DomainFormModal";
 import { EntityFormModal } from "./modals/EntityFormModal";
+import { ImportDataExcelDialog } from "./modals/ImportDataExcelDialog";
 
 export function DataPageClient() {
   const [view, setView] = useState<DataViewMode>("entities");
@@ -18,6 +19,7 @@ export function DataPageClient() {
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const [showDomainForm, setShowDomainForm] = useState(false);
   const [showEntityForm, setShowEntityForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   // Prefetch the shared queries used across views
   trpc.dataDomain.list.useQuery();
@@ -39,6 +41,7 @@ export function DataPageClient() {
         <DataToolbar
           onNewDomain={() => setShowDomainForm(true)}
           onNewEntity={() => setShowEntityForm(true)}
+          onImport={() => setShowImport(true)}
         />
 
         <div className="flex-1 overflow-hidden">
@@ -70,6 +73,11 @@ export function DataPageClient() {
       <EntityFormModal
         open={showEntityForm}
         onClose={() => setShowEntityForm(false)}
+      />
+
+      <ImportDataExcelDialog
+        open={showImport}
+        onClose={() => setShowImport(false)}
       />
     </DataContext.Provider>
   );
