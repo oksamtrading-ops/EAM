@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Database, Layers, Table2, GitBranch, FileSpreadsheet, Presentation } from "lucide-react";
+import { Plus, Database, Layers, Table2, GitBranch, Network, FileSpreadsheet, Presentation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -12,6 +12,7 @@ const VIEWS: { id: DataViewMode; label: string; icon: React.ElementType }[] = [
   { id: "domains", label: "Domains", icon: Layers },
   { id: "entities", label: "Data Entities", icon: Table2 },
   { id: "crud", label: "CRUD Matrix", icon: GitBranch },
+  { id: "erd", label: "ERD", icon: Network },
 ];
 
 interface Props {

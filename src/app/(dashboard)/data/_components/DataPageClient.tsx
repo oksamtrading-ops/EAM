@@ -7,6 +7,7 @@ import { DataToolbar } from "./DataToolbar";
 import { DomainsView } from "./views/DomainsView";
 import { EntitiesView } from "./views/EntitiesView";
 import { CrudMatrixView } from "./views/CrudMatrixView";
+import { ErdView } from "./views/ErdView";
 import { EntityDetailPanel } from "./panels/EntityDetailPanel";
 import { DomainDetailPanel } from "./panels/DomainDetailPanel";
 import { DomainFormModal } from "./modals/DomainFormModal";
@@ -48,6 +49,7 @@ export function DataPageClient() {
           {view === "domains" && <DomainsView />}
           {view === "entities" && <EntitiesView />}
           {view === "crud" && <CrudMatrixView />}
+          {view === "erd" && <ErdView />}
         </div>
       </div>
 

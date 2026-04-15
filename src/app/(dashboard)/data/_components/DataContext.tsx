@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-export type DataViewMode = "domains" | "entities" | "crud";
+export type DataViewMode = "domains" | "entities" | "crud" | "erd";
 
 type DataContextValue = {
   view: DataViewMode;

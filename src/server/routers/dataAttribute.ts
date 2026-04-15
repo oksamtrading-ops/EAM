@@ -44,6 +44,18 @@ export const dataAttributeRouter = router({
       });
     }),
 
+  listByDomain: workspaceProcedure
+    .input(z.object({ domainId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.dataAttribute.findMany({
+        where: {
+          workspaceId: ctx.workspaceId,
+          entity: { domainId: input.domainId, isActive: true },
+        },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      });
+    }),
+
   create: workspaceProcedure
     .input(AttributeCreateInput)
     .mutation(async ({ ctx, input }) => {
