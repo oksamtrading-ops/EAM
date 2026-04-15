@@ -34,61 +34,41 @@ type EntityType = (typeof ENTITY_TYPE_OPTIONS)[number];
 type Classification = (typeof CLASSIFICATION_OPTIONS)[number];
 type RegTag = (typeof REGULATORY_TAG_OPTIONS)[number];
 
-interface EntitySeed {
-  id: string;
-  domainId: string;
-  name: string;
-  description?: string | null;
-  entityType: EntityType;
-  classification: Classification;
-  regulatoryTags: RegTag[];
-  goldenSourceAppId?: string | null;
-  retentionDays?: number | null;
-}
-
 interface Props {
   open: boolean;
-  entity?: EntitySeed;
   defaultDomainId?: string;
   onClose: () => void;
 }
 
-export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Props) {
+export function EntityFormModal({ open, defaultDomainId, onClose }: Props) {
   const utils = trpc.useUtils();
   const { data: domains = [] } = trpc.dataDomain.list.useQuery();
   const { data: apps = [] } = trpc.application.list.useQuery();
+  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
 
-  const [domainId, setDomainId] = useState(entity?.domainId ?? defaultDomainId ?? "");
-  const [name, setName] = useState(entity?.name ?? "");
-  const [description, setDescription] = useState(entity?.description ?? "");
-  const [entityType, setEntityType] = useState<EntityType>(
-    entity?.entityType ?? "TRANSACTIONAL"
-  );
-  const [classification, setClassification] = useState<Classification>(
-    entity?.classification ?? "DC_UNKNOWN"
-  );
-  const [regulatoryTags, setRegulatoryTags] = useState<RegTag[]>(
-    entity?.regulatoryTags ?? []
-  );
-  const [goldenSourceAppId, setGoldenSourceAppId] = useState(
-    entity?.goldenSourceAppId ?? ""
-  );
-  const [retentionDays, setRetentionDays] = useState<string>(
-    entity?.retentionDays != null ? String(entity.retentionDays) : ""
-  );
+  const [domainId, setDomainId] = useState(defaultDomainId ?? "");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [entityType, setEntityType] = useState<EntityType>("TRANSACTIONAL");
+  const [classification, setClassification] = useState<Classification>("DC_UNKNOWN");
+  const [regulatoryTags, setRegulatoryTags] = useState<RegTag[]>([]);
+  const [goldenSourceAppId, setGoldenSourceAppId] = useState("");
+  const [retentionDays, setRetentionDays] = useState("");
+  const [stewardId, setStewardId] = useState("");
 
   useEffect(() => {
     if (open) {
-      setDomainId(entity?.domainId ?? defaultDomainId ?? domains[0]?.id ?? "");
-      setName(entity?.name ?? "");
-      setDescription(entity?.description ?? "");
-      setEntityType(entity?.entityType ?? "TRANSACTIONAL");
-      setClassification(entity?.classification ?? "DC_UNKNOWN");
-      setRegulatoryTags(entity?.regulatoryTags ?? []);
-      setGoldenSourceAppId(entity?.goldenSourceAppId ?? "");
-      setRetentionDays(entity?.retentionDays != null ? String(entity.retentionDays) : "");
+      setDomainId(defaultDomainId ?? domains[0]?.id ?? "");
+      setName("");
+      setDescription("");
+      setEntityType("TRANSACTIONAL");
+      setClassification("DC_UNKNOWN");
+      setRegulatoryTags([]);
+      setGoldenSourceAppId("");
+      setRetentionDays("");
+      setStewardId("");
     }
-  }, [open, entity, defaultDomainId, domains]);
+  }, [open, defaultDomainId, domains]);
 
   const createMutation = trpc.dataEntity.create.useMutation({
     onSuccess: () => {
@@ -96,17 +76,6 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
       utils.dataEntity.list.invalidate();
       utils.dataEntity.stats.invalidate();
       utils.dataDomain.list.invalidate();
-      onClose();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const updateMutation = trpc.dataEntity.update.useMutation({
-    onSuccess: () => {
-      toast.success("Entity updated");
-      utils.dataEntity.list.invalidate();
-      utils.dataEntity.stats.invalidate();
-      if (entity) utils.dataEntity.getById.invalidate({ id: entity.id });
       onClose();
     },
     onError: (err) => toast.error(err.message),
@@ -131,7 +100,7 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
       return;
     }
 
-    const payload = {
+    createMutation.mutate({
       domainId,
       name,
       description: description || undefined,
@@ -140,23 +109,17 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
       regulatoryTags,
       goldenSourceAppId: goldenSourceAppId || undefined,
       retentionDays: parsedRetention,
-    };
-
-    if (entity) {
-      updateMutation.mutate({ id: entity.id, ...payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+      stewardId: stewardId || undefined,
+    });
   }
 
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const noDomains = domains.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{entity ? "Edit Entity" : "New Data Entity"}</DialogTitle>
+          <DialogTitle>New Data Entity</DialogTitle>
         </DialogHeader>
 
         {noDomains ? (
@@ -216,7 +179,7 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                value={description ?? ""}
+                value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What does this entity represent?"
                 rows={2}
@@ -255,26 +218,49 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
               </div>
             </div>
 
-            <div>
-              <Label>Golden Source Application</Label>
-              <Select
-                value={goldenSourceAppId || "__none__"}
-                onValueChange={(v) =>
-                  setGoldenSourceAppId(!v || v === "__none__" ? "" : v)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {apps.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Golden Source Application</Label>
+                <Select
+                  value={goldenSourceAppId || "__none__"}
+                  onValueChange={(v) =>
+                    setGoldenSourceAppId(!v || v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {apps.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Data Steward</Label>
+                <Select
+                  value={stewardId || "__none__"}
+                  onValueChange={(v) =>
+                    setStewardId(!v || v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Unassigned</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name ?? u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
@@ -308,10 +294,10 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={createMutation.isPending}
                 className="bg-primary hover:bg-primary/90 text-white"
               >
-                {isSubmitting ? "Saving…" : entity ? "Update Entity" : "Create Entity"}
+                {createMutation.isPending ? "Saving…" : "Create Entity"}
               </Button>
             </div>
           </form>
