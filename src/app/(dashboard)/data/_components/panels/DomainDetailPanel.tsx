@@ -147,12 +147,20 @@ export function DomainDetailPanel({ domainId, onClose }: Props) {
 
           {/* Ownership */}
           <CollapsibleSection title="Ownership" defaultOpen>
-            <OwnerField
-              label="Owner"
-              owner={domain.owner ?? null}
-              onChange={(id) => update({ id: domain.id, ownerId: id })}
-              users={users}
-            />
+            <div className="grid grid-cols-1 gap-3">
+              <OwnerField
+                label="Owner"
+                owner={domain.owner ?? null}
+                onChange={(id) => update({ id: domain.id, ownerId: id })}
+                users={users}
+              />
+              <OwnerField
+                label="Domain Steward"
+                owner={domain.steward ?? null}
+                onChange={(id) => update({ id: domain.id, stewardId: id })}
+                users={users}
+              />
+            </div>
           </CollapsibleSection>
 
           <Separator />

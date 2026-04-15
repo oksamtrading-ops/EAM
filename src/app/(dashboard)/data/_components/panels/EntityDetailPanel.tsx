@@ -261,9 +261,19 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
                   <AlertCircle className="h-3 w-3" /> No golden source
                 </span>
               )}
+              {!entity.businessOwner && (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-3 w-3" /> No business owner
+                </span>
+              )}
               {!entity.steward && (
                 <span className="inline-flex items-center gap-1 text-amber-600">
                   <AlertCircle className="h-3 w-3" /> Unassigned steward
+                </span>
+              )}
+              {!entity.custodian && (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-3 w-3" /> No custodian
                 </span>
               )}
               {entity.entityType && (
@@ -318,9 +328,21 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
                   </Select>
                 </div>
                 <OwnerField
+                  label="Business Owner"
+                  owner={entity.businessOwner ?? null}
+                  onChange={(id) => update({ id: entity.id, businessOwnerId: id })}
+                  users={users}
+                />
+                <OwnerField
                   label="Data Steward"
                   owner={entity.steward ?? null}
                   onChange={(id) => update({ id: entity.id, stewardId: id })}
+                  users={users}
+                />
+                <OwnerField
+                  label="Technical Custodian"
+                  owner={entity.custodian ?? null}
+                  onChange={(id) => update({ id: entity.id, custodianId: id })}
                   users={users}
                 />
               </div>
