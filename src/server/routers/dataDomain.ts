@@ -7,6 +7,7 @@ const DomainCreateInput = z.object({
   name: z.string().min(1).max(120),
   description: z.string().optional(),
   ownerId: z.string().optional(),
+  stewardId: z.string().optional(),
   color: z.string().optional(),
   sortOrder: z.number().int().optional(),
 });
@@ -16,6 +17,7 @@ const DomainUpdateInput = z.object({
   name: z.string().min(1).max(120).optional(),
   description: z.string().nullable().optional(),
   ownerId: z.string().nullable().optional(),
+  stewardId: z.string().nullable().optional(),
   color: z.string().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
@@ -27,6 +29,7 @@ export const dataDomainRouter = router({
       where: { workspaceId: ctx.workspaceId, isActive: true },
       include: {
         owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
+        steward: { select: { id: true, name: true, email: true, avatarUrl: true } },
         _count: { select: { entities: true } },
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -40,6 +43,7 @@ export const dataDomainRouter = router({
         where: { id: input.id, workspaceId: ctx.workspaceId },
         include: {
           owner: true,
+          steward: true,
           entities: {
             where: { isActive: true },
             orderBy: { name: "asc" },

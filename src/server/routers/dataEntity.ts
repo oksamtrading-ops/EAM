@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { auditLog } from "@/server/services/audit";
+import { computeDataFindings } from "@/server/services/dataFindings";
 
 const ENTITY_TYPES = ["MASTER", "REFERENCE", "TRANSACTIONAL", "ANALYTICAL", "METADATA"] as const;
 const CLASSIFICATIONS = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "DC_UNKNOWN"] as const;
@@ -20,6 +21,8 @@ const EntityCreateInput = z.object({
   goldenSourceAppId: z.string().optional(),
   retentionDays: z.number().int().positive().optional(),
   stewardId: z.string().optional(),
+  businessOwnerId: z.string().optional(),
+  custodianId: z.string().optional(),
 });
 
 const EntityUpdateInput = z.object({
@@ -33,6 +36,8 @@ const EntityUpdateInput = z.object({
   goldenSourceAppId: z.string().nullable().optional(),
   retentionDays: z.number().int().positive().nullable().optional(),
   stewardId: z.string().nullable().optional(),
+  businessOwnerId: z.string().nullable().optional(),
+  custodianId: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -81,6 +86,8 @@ export const dataEntityRouter = router({
           domain: true,
           goldenSourceApp: true,
           steward: true,
+          businessOwner: true,
+          custodian: true,
           appUsages: {
             include: {
               app: { select: { id: true, name: true, lifecycle: true } },
@@ -193,12 +200,16 @@ export const dataEntityRouter = router({
         entityType: true,
         regulatoryTags: true,
         stewardId: true,
+        businessOwnerId: true,
+        custodianId: true,
         goldenSourceAppId: true,
       },
     });
 
     const total = entities.length;
     const withoutSteward = entities.filter((e) => !e.stewardId).length;
+    const withoutBusinessOwner = entities.filter((e) => !e.businessOwnerId).length;
+    const withoutCustodian = entities.filter((e) => !e.custodianId).length;
     const withoutGoldenSource = entities.filter((e) => !e.goldenSourceAppId).length;
     const unclassified = entities.filter((e) => e.classification === "DC_UNKNOWN").length;
     const sensitive = entities.filter(
@@ -215,11 +226,22 @@ export const dataEntityRouter = router({
     return {
       total,
       withoutSteward,
+      withoutBusinessOwner,
+      withoutCustodian,
       withoutGoldenSource,
       unclassified,
       sensitive,
       byClassification,
       byType,
     };
+  }),
+
+  /**
+   * Single source of truth for "governance gaps" across the data catalog.
+   * Used by Risk auto-scan (to emit DATA_* findings) AND the Dashboard
+   * DataKpiStrip. Backed by {@link computeDataFindings}.
+   */
+  autoScanFindings: workspaceProcedure.query(async ({ ctx }) => {
+    return computeDataFindings(ctx.db, ctx.workspaceId);
   }),
 });
