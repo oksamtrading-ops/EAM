@@ -336,6 +336,7 @@ model Workspace {
   applicationTechLinks  ApplicationTechLink[]
   dataDomains           DataDomain[]
   dataEntities          DataEntity[]
+  dataAttributes        DataAttribute[]
   appEntityUsages       AppEntityUsage[]
 
   @@map("workspaces")
@@ -1519,6 +1520,7 @@ model DataEntity {
   custodian        User?              @relation("DataEntityCustodian", fields: [custodianId], references: [id])
   appUsages        AppEntityUsage[]
   qualityScores    DataQualityScore[]
+  attributes       DataAttribute[]
 
   @@unique([workspaceId, domainId, name])
   @@index([workspaceId])
@@ -1563,4 +1565,33 @@ model DataQualityScore {
 
   @@index([entityId, dimension])
   @@map("data_quality_scores")
+}
+
+// Field-level schema under a DataEntity. fkTargetEntityId is a soft
+// reference — no DB foreign key — so xlsx imports can tolerate forward
+// references and cross-entity renames. The router validates existence
+// when non-null.
+model DataAttribute {
+  id               String             @id @default(cuid())
+  workspaceId      String
+  entityId         String
+  name             String
+  dataType         String
+  isNullable       Boolean            @default(true)
+  isPrimaryKey     Boolean            @default(false)
+  isForeignKey     Boolean            @default(false)
+  fkTargetEntityId String?
+  classification   DataClassification @default(DC_UNKNOWN)
+  regulatoryTags   RegulatoryTag[]    @default([])
+  description      String?
+  sortOrder        Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  entity    DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, name])
+  @@index([workspaceId, entityId])
+  @@map("data_attributes")
 }

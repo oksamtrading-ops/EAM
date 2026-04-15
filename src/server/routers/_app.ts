@@ -18,6 +18,7 @@ import { searchRouter } from "./search";
 import { paletteQueryRouter } from "./paletteQuery";
 import { dataDomainRouter } from "./dataDomain";
 import { dataEntityRouter } from "./dataEntity";
+import { dataAttributeRouter } from "./dataAttribute";
 import { appEntityUsageRouter } from "./appEntityUsage";
 
 export const appRouter = router({
@@ -40,6 +41,7 @@ export const appRouter = router({
   eol: eolRouter,
   dataDomain: dataDomainRouter,
   dataEntity: dataEntityRouter,
+  dataAttribute: dataAttributeRouter,
   appEntityUsage: appEntityUsageRouter,
 });
 
