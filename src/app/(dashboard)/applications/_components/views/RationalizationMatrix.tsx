@@ -89,16 +89,13 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
               const dotSize = Math.min(36, 20 + ifaceCount * 3);
               const clampedX = Math.max(4, Math.min(96, app.x));
               const clampedY = Math.max(4, Math.min(96, app.y));
-              // If dot is on the right half, put label to the left of it; otherwise to the right.
-              const labelOnLeft = clampedX > 70;
               const isSelected = selectedId === app.id;
               return (
                 <button
                   key={app.id}
                   onClick={() => onSelect(app.id)}
                   className={cn(
-                    "absolute flex items-center gap-1.5 transition-all hover:z-20 group",
-                    labelOnLeft && "flex-row-reverse",
+                    "absolute flex flex-col items-center gap-0.5 transition-all hover:z-20 group",
                     isSelected && "z-20"
                   )}
                   style={{
@@ -121,8 +118,8 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
                   />
                   <span
                     className={cn(
-                      "text-[11px] font-medium text-foreground bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded border border-border shadow-sm whitespace-nowrap max-w-[140px] truncate transition-all",
-                      isSelected && "bg-primary text-primary-foreground border-primary max-w-none"
+                      "text-[9px] font-medium text-foreground/80 leading-tight whitespace-nowrap max-w-[100px] truncate transition-all",
+                      isSelected && "text-primary font-semibold max-w-none"
                     )}
                   >
                     {app.name}
