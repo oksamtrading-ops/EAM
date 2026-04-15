@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EAM Platform",
+  title: "V2V",
   description: "Enterprise Architecture Management — Business Capability Map",
 };
 

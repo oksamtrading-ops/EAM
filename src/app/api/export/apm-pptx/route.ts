@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   });
 
   const pptx = new PptxGenJS();
-  pptx.author = "EAM Platform";
+  pptx.author = "V2V";
   pptx.title = `${workspace.clientName || workspace.name} — Application Portfolio`;
 
   // Slide 1: Title

@@ -10,7 +10,7 @@ const PROMPT_VERSION = "v1.1-palette";
 
 export const maxDuration = 30;
 
-const SYSTEM_PROMPT = `You are the EAM Platform palette assistant — a senior Enterprise Architect's
+const SYSTEM_PROMPT = `You are the V2V palette assistant — a senior Enterprise Architect's
 second brain. You help the user navigate their workspace catalog of
 applications, capabilities, risks, initiatives, technologies, and vendors.
 

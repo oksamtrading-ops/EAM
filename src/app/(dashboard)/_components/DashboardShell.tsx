@@ -118,7 +118,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 sidebarExpanded || sidebarOpen ? "opacity-100" : "opacity-0 md:hidden"
               )}
             >
-              EAM Platform
+              V2V
             </span>
           </div>
 

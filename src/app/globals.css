@@ -144,14 +144,14 @@
   --chart-4: #1E40AF;
   --chart-5: #63666A;
   --radius: 0.875rem;
-  --sidebar: rgba(255, 255, 255, 0.68);
-  --sidebar-foreground: #1a1a1a;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #e1e8f0;
   --sidebar-primary: #0B5CD6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(11, 92, 214, 0.10);
-  --sidebar-accent-foreground: #1a1a1a;
-  --sidebar-border: rgba(0, 0, 0, 0.06);
-  --sidebar-ring: rgba(11, 92, 214, 0.35);
+  --sidebar-accent: rgba(79, 143, 229, 0.15);
+  --sidebar-accent-foreground: #e1e8f0;
+  --sidebar-border: rgba(79, 143, 229, 0.08);
+  --sidebar-ring: rgba(79, 143, 229, 0.35);
 }
 
 /* ─────────────────────────────────────────────────────────────

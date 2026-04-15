@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 
   // Generate PPTX
   const pptx = new PptxGenJS();
-  pptx.author = "EAM Platform";
+  pptx.author = "V2V";
   pptx.title = `${workspace.clientName || workspace.name} — Business Capability Map`;
 
   // ── Slide 1: Title
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       fontSize: 11, fontFace: "Arial", color: "94a3b8",
     }
   );
-  slide1.addText("EAM Platform", {
+  slide1.addText("V2V", {
     x: 0.8, y: 4.8, w: 3, h: 0.4,
     fontSize: 10, fontFace: "Arial", color: "86BC25",
   });
