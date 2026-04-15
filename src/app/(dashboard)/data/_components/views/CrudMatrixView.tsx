@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AppWindow, Table2, Filter, Grid3x3 } from "lucide-react";
+import { AppWindow, Table2, Filter, Grid3x3, StickyNote } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { useDataContext } from "../DataContext";
 import { ENTITY_TYPE_LABELS } from "@/lib/constants/data-architecture-colors";
 
@@ -65,6 +67,20 @@ export function CrudMatrixView() {
       reads: op === "reads" ? !current : existing?.reads ?? false,
       updates: op === "updates" ? !current : existing?.updates ?? false,
       deletes: op === "deletes" ? !current : existing?.deletes ?? false,
+    });
+  }
+
+  function saveNotes(appId: string, entityId: string, notes: string | null) {
+    const existing = lookup(appId, entityId);
+    if (!existing) return; // Notes only on rows that already have at least one CRUD flag
+    upsertMutation.mutate({
+      appId,
+      entityId,
+      creates: existing.creates,
+      reads: existing.reads,
+      updates: existing.updates,
+      deletes: existing.deletes,
+      notes,
     });
   }
 
@@ -165,6 +181,10 @@ export function CrudMatrixView() {
                             onClick={() => toggle(u.appId, u.entityId, op.key)}
                           />
                         ))}
+                        <NotesCell
+                          notes={u.notes}
+                          onSave={(next) => saveNotes(u.appId, u.entityId, next)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -290,6 +310,12 @@ export function CrudMatrixView() {
                           onClick={() => toggle(appId, entityId, op.key)}
                         />
                       ))}
+                      {usage && (
+                        <NotesCell
+                          notes={usage.notes}
+                          onSave={(next) => saveNotes(appId, entityId, next)}
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -336,6 +362,47 @@ function CrudCell({
     >
       {letter}
     </button>
+  );
+}
+
+function NotesCell({
+  notes,
+  onSave,
+}: {
+  notes: string | null;
+  onSave: (next: string | null) => void;
+}) {
+  const hasNotes = !!notes && notes.trim().length > 0;
+  return (
+    <Popover>
+      <PopoverTrigger
+        className={cn(
+          "inline-flex h-6 w-6 items-center justify-center rounded border transition-colors",
+          hasNotes
+            ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
+            : "bg-muted/30 text-muted-foreground/60 border-border hover:bg-muted/60 hover:text-foreground"
+        )}
+        title={hasNotes ? "Edit note" : "Add a note"}
+      >
+        <StickyNote className="h-3 w-3" />
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-3 space-y-2" align="end">
+        <div className="text-[10px] font-medium text-muted-foreground uppercase">
+          Note
+        </div>
+        <Textarea
+          defaultValue={notes ?? ""}
+          rows={4}
+          placeholder="Why does this app use this entity this way? (e.g. 'reads historical only', 'batch nightly')"
+          className="text-xs"
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            const next = v ? v : null;
+            if (next !== (notes ?? null)) onSave(next);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
