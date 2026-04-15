@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Workflow,
@@ -24,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
 import { ArchitectureCanvas, type DiagramApplication, type DiagramInterface } from "./ArchitectureCanvas";
 import { InterfaceDetailPanel } from "./InterfaceDetailPanel";
 import { ReviewQueuePanel } from "./ReviewQueuePanel";
@@ -148,103 +148,167 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
     );
   }
 
+  const overflowActions: OverflowAction[] = [
+    {
+      label: showDataFlows ? "Hide data flows" : "Show data flows",
+      icon: <Database className="h-4 w-4" />,
+      onClick: () => setShowDataFlows((v) => !v),
+      active: showDataFlows,
+    },
+    {
+      label: showPending ? "Hide pending" : "Show pending",
+      icon: showPending ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />,
+      onClick: () => setShowPending((v) => !v),
+    },
+    {
+      label: pendingCount > 0 ? `Review queue (${pendingCount})` : "Review queue",
+      icon: <Inbox className="h-4 w-4" />,
+      onClick: () => setReviewOpen(true),
+    },
+    {
+      label: "Export",
+      icon: <Download className="h-4 w-4" />,
+      onClick: () => handleExport("png"),
+    },
+    {
+      label: aiRunning ? "Discovering..." : "AI Discover",
+      icon: <Sparkles className="h-4 w-4" />,
+      onClick: handleDiscover,
+      active: aiRunning,
+    },
+  ];
+
   return (
     <div className="h-[calc(100vh-52px)] md:h-screen flex flex-col">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b bg-background">
-        <div className="flex items-center gap-2">
-          <Workflow className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">Architecture Diagram</h1>
-        </div>
+      <div className="shrink-0 border-b glass-toolbar">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Workflow className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-md font-semibold text-foreground truncate">
+                Architecture Diagram
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {apps.length} apps · {interfaces.filter((i) => i.reviewStatus === "ACCEPTED").length} integrations
+                {pendingCount > 0 ? ` · ${pendingCount} pending` : ""}
+              </p>
+            </div>
+          </div>
 
-        <div className="inline-flex items-center gap-1 rounded-lg border p-0.5 text-sm bg-muted/40">
-          <Link
-            href="/architecture/as-is"
-            className={cn(
-              "px-3 py-1 rounded-md transition-colors",
-              scenario === "AS_IS"
-                ? "bg-background shadow-sm font-medium"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            As-Is
-          </Link>
-          <Link
-            href="/architecture/to-be"
-            className={cn(
-              "px-3 py-1 rounded-md transition-colors",
-              scenario === "TO_BE"
-                ? "bg-background shadow-sm font-medium"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            To-Be
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowDataFlows((v) => !v)}
-            title="Toggle data-flow labels on edges"
-          >
-            <Database className="h-4 w-4" />
-            {showDataFlows ? "Hide data flows" : "Show data flows"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPending((v) => !v)}
-            title="Toggle visibility of pending AI suggestions"
-          >
-            {showPending ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            {showPending ? "Hide pending" : "Show pending"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setReviewOpen(true)}
-            className="relative"
-          >
-            <Inbox className="h-4 w-4" />
-            Review queue
-            {pendingCount > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-1 h-5 min-w-[20px] justify-center px-1.5 text-[10px]"
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Scenario toggle */}
+            <div className="flex bg-muted/40 rounded-lg p-0.5">
+              <Link
+                href="/architecture/as-is"
+                className={cn(
+                  "flex items-center px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                  scenario === "AS_IS"
+                    ? "bg-white shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                {pendingCount}
-              </Badge>
-            )}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={exporting}
-              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-muted/60 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" />
-              {exporting ? "Exporting..." : "Export"}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport("png")}>
-                PNG image
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("svg")}>
-                SVG vector
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("pptx")}>
-                PowerPoint (.pptx)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("csv")}>
-                CSV (integrations)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button size="sm" onClick={handleDiscover} disabled={aiRunning}>
-            <Sparkles className="h-4 w-4" />
-            {aiRunning ? "Discovering..." : "AI Discover"}
-          </Button>
+                As-Is
+              </Link>
+              <Link
+                href="/architecture/to-be"
+                className={cn(
+                  "flex items-center px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                  scenario === "TO_BE"
+                    ? "bg-white shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                To-Be
+              </Link>
+            </div>
+
+            {/* Icon buttons — hidden below lg */}
+            <div className="hidden lg:flex items-center gap-1">
+              <div className="w-px h-6 bg-border mx-1" />
+
+              <button
+                onClick={() => setShowDataFlows((v) => !v)}
+                title={showDataFlows ? "Hide data flows" : "Show data flows"}
+                className={cn(
+                  "relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all",
+                  showDataFlows
+                    ? "bg-primary/10 text-primary border-primary/40"
+                    : "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <Database className="h-[15px] w-[15px]" />
+                <Tip>{showDataFlows ? "Hide data flows" : "Show data flows"}</Tip>
+              </button>
+
+              <button
+                onClick={() => setShowPending((v) => !v)}
+                title={showPending ? "Hide pending" : "Show pending"}
+                className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+              >
+                {showPending ? (
+                  <Eye className="h-[15px] w-[15px]" />
+                ) : (
+                  <EyeOff className="h-[15px] w-[15px]" />
+                )}
+                <Tip>{showPending ? "Hide pending" : "Show pending"}</Tip>
+              </button>
+
+              <button
+                onClick={() => setReviewOpen(true)}
+                title="Review queue"
+                className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+              >
+                <Inbox className="h-[15px] w-[15px]" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-[var(--ai)] text-white text-[9px] font-bold flex items-center justify-center">
+                    {pendingCount > 99 ? "99+" : pendingCount}
+                  </span>
+                )}
+                <Tip>Review queue</Tip>
+              </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={exporting}
+                  title={exporting ? "Exporting..." : "Export"}
+                  className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all disabled:opacity-50"
+                >
+                  <Download className="h-[15px] w-[15px]" />
+                  <Tip>{exporting ? "Exporting..." : "Export"}</Tip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport("png")}>
+                    PNG image
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("svg")}>
+                    SVG vector
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("pptx")}>
+                    PowerPoint (.pptx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("csv")}>
+                    CSV (integrations)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <button
+                onClick={handleDiscover}
+                disabled={aiRunning}
+                title={aiRunning ? "Discovering..." : "AI Discover"}
+                className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] transition-all disabled:opacity-50"
+              >
+                <Sparkles className="h-[15px] w-[15px]" />
+                <Tip>{aiRunning ? "Discovering..." : "AI Discover"}</Tip>
+              </button>
+            </div>
+
+            {/* Overflow menu — visible below lg */}
+            <OverflowMenu actions={overflowActions} className="lg:hidden" />
+          </div>
         </div>
       </div>
 
@@ -288,6 +352,14 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
         />
       )}
     </div>
+  );
+}
+
+function Tip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
+      {children}
+    </span>
   );
 }
 
