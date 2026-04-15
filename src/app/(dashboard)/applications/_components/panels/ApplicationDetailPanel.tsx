@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink } from "lucide-react";
+import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, Crown, Database } from "lucide-react";
+import Link from "next/link";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
   const { data: allApps } = trpc.application.listForMapping.useQuery();
   const { data: radarData } = trpc.techRadar.getRadar.useQuery();
   const { data: workspaceUsers } = trpc.workspace.listUsers.useQuery();
+  const { data: dataUsages = [] } = trpc.appEntityUsage.list.useQuery({ appId: applicationId });
   const radarEntries = radarData?.entries ?? [];
 
   const updateMutation = trpc.application.update.useMutation({
@@ -564,6 +567,78 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
                   </Button>
                 )}
               </div>
+          </CollapsibleSection>
+
+          <Separator />
+
+          {/* Data Entities */}
+          <CollapsibleSection title="Data Entities" count={dataUsages.length}>
+            {dataUsages.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                No data entities yet. Use the{" "}
+                <Link href="/data?view=matrix" className="text-primary hover:underline">
+                  CRUD Matrix
+                </Link>
+                {" "}to record which entities this application touches.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {dataUsages.map((u) => {
+                  const isGolden = u.entity.goldenSourceAppId === applicationId;
+                  return (
+                    <li
+                      key={u.id}
+                      className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card"
+                    >
+                      <Database className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {u.entity.name}
+                          </span>
+                          {isGolden && (
+                            <span
+                              className="inline-flex items-center gap-0.5 text-[10px] text-amber-600"
+                              title="This application is the golden source for this entity"
+                            >
+                              <Crown className="h-3 w-3" />
+                              Golden
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: u.entity.domain.color }}
+                            />
+                            {u.entity.domain.name}
+                          </span>
+                          <ClassificationBadge classification={u.entity.classification} />
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono shrink-0">
+                        {(["creates", "reads", "updates", "deletes"] as const).map((op) => (
+                          <span
+                            key={op}
+                            className={
+                              u[op]
+                                ? "inline-flex h-5 w-5 items-center justify-center rounded border bg-primary/10 text-primary border-primary/30"
+                                : "inline-flex h-5 w-5 items-center justify-center rounded border bg-muted/40 text-muted-foreground border-border"
+                            }
+                            title={op}
+                          >
+                            {op.charAt(0).toUpperCase()}
+                          </span>
+                        ))}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </CollapsibleSection>
 
           <Separator />

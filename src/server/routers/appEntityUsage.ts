@@ -37,6 +37,8 @@ export const appEntityUsageRouter = router({
               id: true,
               name: true,
               classification: true,
+              goldenSourceAppId: true,
+              regulatoryTags: true,
               domain: { select: { id: true, name: true, color: true } },
             },
           },
