@@ -9,6 +9,7 @@ import type { DateRangeKey } from "@/lib/contracts/dashboard";
 
 import { DateRangeSelect } from "./DateRangeSelect";
 import { KpiStripV2 } from "./KpiStripV2";
+import { DataKpiStrip } from "./DataKpiStrip";
 import { AppPortfolioHealthChart } from "./AppPortfolioHealthChart";
 import { CapabilityMaturityChart } from "./CapabilityMaturityChart";
 import { ActionRequiredFeed } from "./ActionRequiredFeed";
@@ -72,6 +73,9 @@ export function DashboardPageClient() {
         loading={kpisLoading}
         isError={kpisError}
       />
+
+      {/* Data Architecture KPIs */}
+      <DataKpiStrip />
 
       {/* Charts row 1: Portfolio Health + IT Spend */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
