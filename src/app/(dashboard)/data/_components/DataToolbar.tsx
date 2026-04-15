@@ -1,8 +1,11 @@
 "use client";
 
-import { Plus, Database, Layers, Table2, GitBranch, FileSpreadsheet } from "lucide-react";
+import { Plus, Database, Layers, Table2, GitBranch, FileSpreadsheet, Presentation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { toast } from "sonner";
+import { useState } from "react";
 import { useDataContext, type DataViewMode } from "./DataContext";
 
 const VIEWS: { id: DataViewMode; label: string; icon: React.ElementType }[] = [
@@ -19,7 +22,33 @@ interface Props {
 
 export function DataToolbar({ onNewDomain, onNewEntity, onImport }: Props) {
   const { view, setView } = useDataContext();
+  const { workspaceId } = useWorkspace();
   const { data: stats } = trpc.dataEntity.stats.useQuery();
+  const [exportingPptx, setExportingPptx] = useState(false);
+
+  async function handleExportPptx() {
+    setExportingPptx(true);
+    try {
+      const res = await fetch("/api/export/data-architecture-pptx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Data_Architecture.pptx";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Boardroom deck downloaded");
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setExportingPptx(false);
+    }
+  }
 
   return (
     <div className="shrink-0 border-b glass-toolbar">
@@ -36,6 +65,15 @@ export function DataToolbar({ onNewDomain, onNewEntity, onImport }: Props) {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleExportPptx}
+            disabled={exportingPptx}
+            title="Export Boardroom Deck (PPTX)"
+            className="relative group hidden sm:inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border text-[12px] font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all disabled:opacity-50"
+          >
+            <Presentation className="h-3.5 w-3.5" />
+            {exportingPptx ? "Building…" : "Deck"}
+          </button>
           <button
             onClick={onImport}
             title="Import / Export Excel"
