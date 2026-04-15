@@ -49,6 +49,21 @@ const QUALITY_COLUMNS: ColDef[] = [
   { header: "Note", key: "note" },
 ];
 
+/** Attribute columns — keyed to prisma fields on DataAttribute (+ resolved entity + FK target). */
+const ATTRIBUTE_COLUMNS: ColDef[] = [
+  { header: "Domain", key: "domainName", required: true },
+  { header: "Entity", key: "entityName", required: true },
+  { header: "Attribute", key: "name", required: true },
+  { header: "Data Type", key: "dataType", required: true },
+  { header: "Nullable", key: "isNullable", allowed: "true / false (default true)" },
+  { header: "PK", key: "isPrimaryKey", allowed: "true / false" },
+  { header: "FK", key: "isForeignKey", allowed: "true / false" },
+  { header: "FK Target Entity", key: "fkTargetEntityName" },
+  { header: "Classification", key: "classification", allowed: "PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED, DC_UNKNOWN" },
+  { header: "Regulatory Tags", key: "regulatoryTagsCsv", allowed: "Comma-separated: PII, PHI, PCI, GDPR, CCPA, SOX, HIPAA, FERPA" },
+  { header: "Description", key: "description" },
+];
+
 function sheetFromRows<T extends { header: string; key: string }>(
   columns: readonly T[],
   rows: Record<string, unknown>[]
@@ -92,7 +107,7 @@ export async function POST(req: Request) {
   const wb = XLSX.utils.book_new();
 
   if (mode === "data") {
-    const [domains, entities, usages, scores] = await Promise.all([
+    const [domains, entities, usages, scores, attributes] = await Promise.all([
       db.dataDomain.findMany({
         where: { workspaceId, isActive: true },
         include: {
@@ -125,7 +140,33 @@ export async function POST(req: Request) {
         include: { entity: { select: { name: true } } },
         orderBy: { asOf: "desc" },
       }),
+      db.dataAttribute.findMany({
+        where: { workspaceId, entity: { isActive: true } },
+        include: {
+          entity: {
+            select: { name: true, domain: { select: { name: true } } },
+          },
+        },
+        orderBy: [
+          { entity: { domain: { name: "asc" } } },
+          { entity: { name: "asc" } },
+          { sortOrder: "asc" },
+          { name: "asc" },
+        ],
+      }),
     ]);
+
+    // Resolve FK target names (separate query — otherwise self-relation bloats the include)
+    const fkTargetIds = Array.from(
+      new Set(attributes.map((a) => a.fkTargetEntityId).filter((v): v is string => !!v))
+    );
+    const fkTargetEntities = fkTargetIds.length
+      ? await db.dataEntity.findMany({
+          where: { id: { in: fkTargetIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const fkTargetNameById = new Map(fkTargetEntities.map((e) => [e.id, e.name]));
 
     XLSX.utils.book_append_sheet(
       wb,
@@ -188,6 +229,29 @@ export async function POST(req: Request) {
       ),
       "Quality Scores"
     );
+
+    XLSX.utils.book_append_sheet(
+      wb,
+      sheetFromRows(
+        ATTRIBUTE_COLUMNS,
+        attributes.map((a) => ({
+          domainName: a.entity.domain.name,
+          entityName: a.entity.name,
+          name: a.name,
+          dataType: a.dataType,
+          isNullable: a.isNullable,
+          isPrimaryKey: a.isPrimaryKey,
+          isForeignKey: a.isForeignKey,
+          fkTargetEntityName: a.fkTargetEntityId
+            ? fkTargetNameById.get(a.fkTargetEntityId) ?? ""
+            : "",
+          classification: a.classification,
+          regulatoryTagsCsv: a.regulatoryTags.join(", "),
+          description: a.description ?? "",
+        }))
+      ),
+      "Attributes"
+    );
   } else {
     // Template mode with example rows
     XLSX.utils.book_append_sheet(
@@ -240,15 +304,34 @@ export async function POST(req: Request) {
       "Quality Scores"
     );
 
+    XLSX.utils.book_append_sheet(
+      wb,
+      templateSheet(ATTRIBUTE_COLUMNS, {
+        domainName: "Customer",
+        entityName: "Customer Profile",
+        name: "email",
+        dataType: "varchar(255)",
+        isNullable: "false",
+        isPrimaryKey: "false",
+        isForeignKey: "false",
+        fkTargetEntityName: "",
+        classification: "CONFIDENTIAL",
+        regulatoryTagsCsv: "PII, GDPR",
+        description: "Primary contact email address",
+      }),
+      "Attributes"
+    );
+
     // Instructions sheet
     const sectionHeader = (title: string) => [title];
     const instructions: (string | number)[][] = [
       ["Data Architecture Import Template — Instructions"],
       [""],
-      ["1. Fill out each sheet with your data. Order matters: Domains first, then Entities (which reference domains), then CRUD Matrix (which references Applications + Entities)."],
+      ["1. Fill out each sheet with your data. Order matters: Domains first, then Entities (which reference domains), then CRUD Matrix + Attributes (which reference Entities)."],
       ["2. Applications must already exist in the workspace — import them separately first if needed."],
       ["3. Required columns are marked below. Delete example rows before importing."],
       ["4. For enum columns, use EXACTLY the values listed below."],
+      ["5. Attributes are keyed by (Entity, Attribute) — re-importing with the same pair updates the existing field."],
       [""],
       sectionHeader("— Domains sheet —"),
       ["Column", "Required", "Allowed Values"],
@@ -265,6 +348,10 @@ export async function POST(req: Request) {
       sectionHeader("— Quality Scores sheet —"),
       ["Column", "Required", "Allowed Values"],
       ...QUALITY_COLUMNS.map((c) => [c.header, c.required ? "Yes" : "No", c.allowed ?? "Free text"]),
+      [""],
+      sectionHeader("— Attributes sheet —"),
+      ["Column", "Required", "Allowed Values"],
+      ...ATTRIBUTE_COLUMNS.map((c) => [c.header, c.required ? "Yes" : "No", c.allowed ?? "Free text"]),
     ];
     const wsInstructions = XLSX.utils.aoa_to_sheet(instructions);
     wsInstructions["!cols"] = [{ wch: 28 }, { wch: 10 }, { wch: 72 }];

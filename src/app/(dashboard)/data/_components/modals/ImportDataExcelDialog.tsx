@@ -26,6 +26,7 @@ type ValidationResult = {
   entities: { total: number; valid: number };
   crud: { total: number; valid: number };
   quality: { total: number; valid: number };
+  attributes: { total: number; valid: number };
   errors: RowError[];
 };
 
@@ -35,6 +36,7 @@ type ImportResult = ValidationResult & {
     entities: number;
     usages: number;
     qualityScores: number;
+    attributes: number;
   };
 };
 
@@ -153,12 +155,14 @@ export function ImportDataExcelDialog({ open, onClose }: Props) {
       const result = (await res.json()) as ImportResult;
       const { imported } = result;
       toast.success(
-        `Imported: ${imported.domains} domains, ${imported.entities} entities, ${imported.usages} CRUD rows, ${imported.qualityScores} quality scores`
+        `Imported: ${imported.domains} domains, ${imported.entities} entities, ${imported.attributes} attributes, ${imported.usages} CRUD rows, ${imported.qualityScores} quality scores`
       );
       utils.dataDomain.list.invalidate();
       utils.dataEntity.list.invalidate();
       utils.dataEntity.stats.invalidate();
       utils.appEntityUsage.list.invalidate();
+      utils.dataAttribute.list.invalidate();
+      utils.dataEntity.autoScanFindings.invalidate();
       handleClose();
     } catch {
       toast.error("Import failed");
@@ -171,13 +175,15 @@ export function ImportDataExcelDialog({ open, onClose }: Props) {
     ? validation.domains.valid +
       validation.entities.valid +
       validation.crud.valid +
-      validation.quality.valid
+      validation.quality.valid +
+      validation.attributes.valid
     : 0;
   const totalRows = validation
     ? validation.domains.total +
       validation.entities.total +
       validation.crud.total +
-      validation.quality.total
+      validation.quality.total +
+      validation.attributes.total
     : 0;
   const invalidCount = validation?.errors.length ?? 0;
 
@@ -274,6 +280,7 @@ export function ImportDataExcelDialog({ open, onClose }: Props) {
                 {([
                   ["Domains", validation.domains],
                   ["Entities", validation.entities],
+                  ["Attributes", validation.attributes],
                   ["CRUD Matrix", validation.crud],
                   ["Quality Scores", validation.quality],
                 ] as const).map(([label, s]) => (

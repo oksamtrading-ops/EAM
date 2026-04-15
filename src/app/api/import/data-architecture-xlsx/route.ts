@@ -60,13 +60,26 @@ export async function POST(req: Request) {
   const wb = XLSX.read(buffer, { type: "buffer" });
 
   const domainRows = readRows(findSheet(wb, "domain"));
-  const entityRows = readRows(findSheet(wb, "entit"));
+  // Entities and Attributes both match "entit" — look up Entities by the more specific "entities" label first,
+  // and then exclude the matched sheet when resolving the Attributes sheet.
+  const entitiesSheetName =
+    wb.SheetNames.find((n) => n.toLowerCase() === "entities") ??
+    wb.SheetNames.find((n) => {
+      const l = n.toLowerCase();
+      return l.includes("entit") && !l.includes("attribute");
+    }) ??
+    null;
+  const attributesSheetName =
+    wb.SheetNames.find((n) => n.toLowerCase().includes("attribute")) ?? null;
+  const entityRows = readRows(entitiesSheetName ? wb.Sheets[entitiesSheetName]! : null);
+  const attributeRows = readRows(attributesSheetName ? wb.Sheets[attributesSheetName]! : null);
   const usageRows = readRows(findSheet(wb, "crud") ?? findSheet(wb, "matrix") ?? findSheet(wb, "usage"));
   const qualityRows = readRows(findSheet(wb, "quality"));
 
   if (
     domainRows.length === 0 &&
     entityRows.length === 0 &&
+    attributeRows.length === 0 &&
     usageRows.length === 0 &&
     qualityRows.length === 0
   ) {
@@ -144,11 +157,25 @@ export async function POST(req: Request) {
     score: number;
     note: string | null;
   };
+  type AttributeRecord = {
+    rowNum: number;
+    entityName: string;
+    name: string;
+    dataType: string;
+    isNullable: boolean;
+    isPrimaryKey: boolean;
+    isForeignKey: boolean;
+    fkTargetEntityName: string;
+    classification: (typeof VALID_CLASSIFICATIONS)[number];
+    regulatoryTags: (typeof VALID_REG_TAGS)[number][];
+    description: string | null;
+  };
 
   const domainsValid: DomainRecord[] = [];
   const entitiesValid: EntityRecord[] = [];
   const usagesValid: UsageRecord[] = [];
   const qualityValid: QualityRecord[] = [];
+  const attributesValid: AttributeRecord[] = [];
   const rowErrors: RowError[] = [];
 
   // Domains
@@ -326,11 +353,80 @@ export async function POST(req: Request) {
     });
   });
 
+  // Attributes — keyed by (Entity, Attribute). Entity must exist in DB or be in the import batch.
+  // FK Target Entity is a soft reference: if unresolvable, attribute still imports with fkTargetEntityId=null.
+  attributeRows.forEach((row, i) => {
+    const rowNum = i + 2;
+    const entityName = toStr(row["Entity"]);
+    const name = toStr(row["Attribute"]);
+    const dataType = toStr(row["Data Type"]);
+    const errors: string[] = [];
+
+    if (!entityName) errors.push("Entity is required");
+    if (!name) errors.push("Attribute is required");
+    if (!dataType) errors.push("Data Type is required");
+
+    if (entityName) {
+      const inDb = entityByName.has(entityName.toLowerCase());
+      const inBatch = entitiesValid.some(
+        (e) => e.name.toLowerCase() === entityName.toLowerCase()
+      );
+      if (!inDb && !inBatch) {
+        errors.push(`Entity "${entityName}" not found (add it to the Entities sheet)`);
+      }
+    }
+
+    const classificationRaw = toStr(row["Classification"]).toUpperCase();
+    const classification = (classificationRaw || "DC_UNKNOWN") as (typeof VALID_CLASSIFICATIONS)[number];
+    if (classificationRaw && !VALID_CLASSIFICATIONS.includes(classification)) {
+      errors.push(`Classification: invalid value "${classificationRaw}"`);
+    }
+
+    const regTagsRaw = toStr(row["Regulatory Tags"]);
+    const regulatoryTags: (typeof VALID_REG_TAGS)[number][] = [];
+    if (regTagsRaw) {
+      const parts = regTagsRaw.split(/[,;]/).map((s) => s.trim().toUpperCase()).filter(Boolean);
+      for (const p of parts) {
+        if (VALID_REG_TAGS.includes(p as (typeof VALID_REG_TAGS)[number])) {
+          regulatoryTags.push(p as (typeof VALID_REG_TAGS)[number]);
+        } else {
+          errors.push(`Regulatory Tag: invalid value "${p}"`);
+        }
+      }
+    }
+
+    const nullableRaw = row["Nullable"];
+    const isNullable =
+      nullableRaw === undefined || toStr(nullableRaw) === "" ? true : parseBool(nullableRaw);
+    const isPrimaryKey = parseBool(row["PK"]);
+    const isForeignKey = parseBool(row["FK"]);
+
+    if (errors.length > 0) {
+      rowErrors.push({ sheet: "Attributes", rowNum, name: `${entityName}.${name}`, errors });
+      return;
+    }
+
+    attributesValid.push({
+      rowNum,
+      entityName,
+      name,
+      dataType,
+      isNullable,
+      isPrimaryKey,
+      isForeignKey,
+      fkTargetEntityName: toStr(row["FK Target Entity"]),
+      classification,
+      regulatoryTags,
+      description: toStr(row["Description"]) || null,
+    });
+  });
+
   const summary = {
     domains: { total: domainRows.length, valid: domainsValid.length },
     entities: { total: entityRows.length, valid: entitiesValid.length },
     crud: { total: usageRows.length, valid: usagesValid.length },
     quality: { total: qualityRows.length, valid: qualityValid.length },
+    attributes: { total: attributeRows.length, valid: attributesValid.length },
     errors: rowErrors,
   };
 
@@ -472,6 +568,45 @@ export async function POST(req: Request) {
     scoresWritten = res.count;
   }
 
+  // 5) Attributes — upsert by compound unique (entityId, name).
+  // FK Target Entity is soft: unresolvable names null the fkTargetEntityId rather than failing the row.
+  let attributesWritten = 0;
+  for (const a of attributesValid) {
+    const entity = entityByName.get(a.entityName.toLowerCase());
+    if (!entity) continue; // validation prevented this, belt-and-suspenders
+    const fkTargetEntityId =
+      a.isForeignKey && a.fkTargetEntityName
+        ? entityByName.get(a.fkTargetEntityName.toLowerCase())?.id ?? null
+        : null;
+    await db.dataAttribute.upsert({
+      where: { entityId_name: { entityId: entity.id, name: a.name } },
+      create: {
+        workspaceId,
+        entityId: entity.id,
+        name: a.name,
+        dataType: a.dataType,
+        isNullable: a.isNullable,
+        isPrimaryKey: a.isPrimaryKey,
+        isForeignKey: a.isForeignKey,
+        fkTargetEntityId,
+        classification: a.classification,
+        regulatoryTags: a.regulatoryTags,
+        description: a.description,
+      },
+      update: {
+        dataType: a.dataType,
+        isNullable: a.isNullable,
+        isPrimaryKey: a.isPrimaryKey,
+        isForeignKey: a.isForeignKey,
+        fkTargetEntityId,
+        classification: a.classification,
+        regulatoryTags: a.regulatoryTags,
+        description: a.description,
+      },
+    });
+    attributesWritten++;
+  }
+
   return NextResponse.json({
     ...summary,
     imported: {
@@ -479,6 +614,7 @@ export async function POST(req: Request) {
       entities: upsertedEntityIds.size,
       usages: usagesWritten,
       qualityScores: scoresWritten,
+      attributes: attributesWritten,
     },
   });
 }
