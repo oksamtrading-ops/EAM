@@ -26,6 +26,8 @@ const FINDING_LABELS: Record<DataFindingKind, string> = {
   NO_CUSTODIAN: "No technical custodian",
   NO_GOLDEN: "No golden source",
   SENSITIVE_NO_STEWARD: "Sensitive without steward",
+  ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION: "Sensitive attribute unclassified",
+  ENTITY_NO_PRIMARY_KEY: "No primary key defined",
 };
 
 const FINDING_SEVERITY: Record<DataFindingKind, "HIGH" | "MEDIUM" | "LOW"> = {
@@ -35,6 +37,8 @@ const FINDING_SEVERITY: Record<DataFindingKind, "HIGH" | "MEDIUM" | "LOW"> = {
   NO_STEWARD: "MEDIUM",
   NO_CUSTODIAN: "LOW",
   UNCLASSIFIED: "MEDIUM",
+  ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION: "HIGH",
+  ENTITY_NO_PRIMARY_KEY: "LOW",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {

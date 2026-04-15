@@ -6,6 +6,7 @@ import { computeRiskScore, eolUrgencyBand } from "@/server/services/riskScoring"
 import {
   computeDataFindings,
   dataFindingSourceType,
+  dataFindingSourceEntityId,
   type DataFinding,
   type DataFindingKind,
 } from "@/server/services/dataFindings";
@@ -433,7 +434,7 @@ export const riskRouter = router({
       const { likelihood, impact, title, description } = severityForFinding(f);
       const riskScore = computeRiskScore(likelihood, impact);
       const sourceType = dataFindingSourceType(f.kind);
-      const sourceEntityId = f.entityId;
+      const sourceEntityId = dataFindingSourceEntityId(f);
 
       const existing = await ctx.db.techRisk.findFirst({
         where: { workspaceId: ctx.workspaceId, sourceEntityId, sourceType },
@@ -531,6 +532,18 @@ function severityForFinding(f: DataFinding): {
       impact: "LOW",
       title: `Unclassified entity: ${f.entityName}`,
       description: `${where} has no data classification set. Until classified, we cannot tell whether regulatory controls apply.`,
+    },
+    ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION: {
+      likelihood: "HIGH",
+      impact: "HIGH",
+      title: `Sensitive attribute without classification: ${f.entityName}.${f.attributeName ?? "?"}`,
+      description: `Attribute "${f.attributeName ?? "?"}" on ${where} is tagged ${f.regulatoryTags.join(", ") || "sensitive"} but has no data classification set. Access controls and retention policies cannot be applied consistently until this is classified.`,
+    },
+    ENTITY_NO_PRIMARY_KEY: {
+      likelihood: "LOW",
+      impact: "MEDIUM",
+      title: `No primary key defined: ${f.entityName}`,
+      description: `${where} has attributes defined but none are marked as a primary key. Without a PK, reliable identity, deduplication, and cross-system lineage all break.`,
     },
   };
 
