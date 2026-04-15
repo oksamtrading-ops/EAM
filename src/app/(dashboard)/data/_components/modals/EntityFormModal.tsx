@@ -44,6 +44,7 @@ interface EntitySeed {
   regulatoryTags: RegTag[];
   goldenSourceAppId?: string | null;
   retentionDays?: number | null;
+  stewardId?: string | null;
 }
 
 interface Props {
@@ -57,6 +58,7 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
   const utils = trpc.useUtils();
   const { data: domains = [] } = trpc.dataDomain.list.useQuery();
   const { data: apps = [] } = trpc.application.list.useQuery();
+  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
 
   const [domainId, setDomainId] = useState(entity?.domainId ?? defaultDomainId ?? "");
   const [name, setName] = useState(entity?.name ?? "");
@@ -76,6 +78,7 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
   const [retentionDays, setRetentionDays] = useState<string>(
     entity?.retentionDays != null ? String(entity.retentionDays) : ""
   );
+  const [stewardId, setStewardId] = useState(entity?.stewardId ?? "");
 
   useEffect(() => {
     if (open) {
@@ -87,6 +90,7 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
       setRegulatoryTags(entity?.regulatoryTags ?? []);
       setGoldenSourceAppId(entity?.goldenSourceAppId ?? "");
       setRetentionDays(entity?.retentionDays != null ? String(entity.retentionDays) : "");
+      setStewardId(entity?.stewardId ?? "");
     }
   }, [open, entity, defaultDomainId, domains]);
 
@@ -140,6 +144,7 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
       regulatoryTags,
       goldenSourceAppId: goldenSourceAppId || undefined,
       retentionDays: parsedRetention,
+      stewardId: stewardId || undefined,
     };
 
     if (entity) {
@@ -255,26 +260,49 @@ export function EntityFormModal({ open, entity, defaultDomainId, onClose }: Prop
               </div>
             </div>
 
-            <div>
-              <Label>Golden Source Application</Label>
-              <Select
-                value={goldenSourceAppId || "__none__"}
-                onValueChange={(v) =>
-                  setGoldenSourceAppId(!v || v === "__none__" ? "" : v)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {apps.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Golden Source Application</Label>
+                <Select
+                  value={goldenSourceAppId || "__none__"}
+                  onValueChange={(v) =>
+                    setGoldenSourceAppId(!v || v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {apps.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Data Steward</Label>
+                <Select
+                  value={stewardId || "__none__"}
+                  onValueChange={(v) =>
+                    setStewardId(!v || v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Unassigned</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name ?? u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>

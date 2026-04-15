@@ -5,11 +5,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table2, Edit, Trash2, CheckCircle2, AlertCircle, Crown } from "lucide-react";
+import { Table2, Edit, Trash2, CheckCircle2, AlertCircle, Crown, Plus } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { EntityFormModal } from "../modals/EntityFormModal";
+import { RecordQualityScoreModal } from "../modals/RecordQualityScoreModal";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
 import { RegulatoryTagList } from "@/components/shared/RegulatoryTagList";
 import {
@@ -26,6 +27,7 @@ interface Props {
 
 export function EntityDetailPanel({ entityId, onClose }: Props) {
   const [showEdit, setShowEdit] = useState(false);
+  const [showRecordScore, setShowRecordScore] = useState(false);
   const utils = trpc.useUtils();
   const { data: entity, isLoading } = trpc.dataEntity.getById.useQuery({ id: entityId });
 
@@ -186,40 +188,53 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
                   )}
                 </div>
 
-                {latestByDimension.size > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                        Data Quality
-                      </h4>
-                      <div className="space-y-2">
-                        {Array.from(latestByDimension.entries()).map(([dim, v]) => (
-                          <div key={dim} className="flex items-center gap-3">
-                            <span className="text-xs text-muted-foreground w-28 shrink-0">
-                              {DQ_DIMENSION_LABELS[dim]}
-                            </span>
-                            <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                              <div
-                                className="h-full rounded-full"
-                                style={{
-                                  width: `${v.score}%`,
-                                  background: dqScoreColor(v.score),
-                                }}
-                              />
-                            </div>
-                            <span
-                              className="text-xs font-semibold tabular-nums w-8 text-right"
-                              style={{ color: dqScoreColor(v.score) }}
-                            >
-                              {v.score}
-                            </span>
+                <Separator />
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Data Quality
+                    </h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowRecordScore(true)}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Record score
+                    </Button>
+                  </div>
+                  {latestByDimension.size === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">
+                      No quality scores recorded yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Array.from(latestByDimension.entries()).map(([dim, v]) => (
+                        <div key={dim} className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-28 shrink-0">
+                            {DQ_DIMENSION_LABELS[dim]}
+                          </span>
+                          <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${v.score}%`,
+                                background: dqScoreColor(v.score),
+                              }}
+                            />
                           </div>
-                        ))}
-                      </div>
+                          <span
+                            className="text-xs font-semibold tabular-nums w-8 text-right"
+                            style={{ color: dqScoreColor(v.score) }}
+                          >
+                            {v.score}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </ScrollArea>
           )}
@@ -257,6 +272,14 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
       </Sheet>
 
       {entity && (
+        <RecordQualityScoreModal
+          open={showRecordScore}
+          entityId={entity.id}
+          onClose={() => setShowRecordScore(false)}
+        />
+      )}
+
+      {entity && (
         <EntityFormModal
           open={showEdit}
           entity={{
@@ -269,6 +292,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
             regulatoryTags: entity.regulatoryTags as ("PII" | "PHI" | "PCI" | "GDPR" | "CCPA" | "SOX" | "HIPAA" | "FERPA")[],
             goldenSourceAppId: entity.goldenSourceAppId,
             retentionDays: entity.retentionDays,
+            stewardId: entity.stewardId,
           }}
           onClose={() => setShowEdit(false)}
         />
