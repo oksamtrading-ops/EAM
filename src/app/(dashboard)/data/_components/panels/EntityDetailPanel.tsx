@@ -20,6 +20,7 @@ import { OwnerField } from "@/components/shared/OwnerField";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { RecordQualityScoreModal } from "../modals/RecordQualityScoreModal";
+import { AttributeTable } from "./AttributeTable";
 import {
   CLASSIFICATION_LABELS,
   CLASSIFICATION_OPTIONS,
@@ -50,6 +51,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
   const { data: domains = [] } = trpc.dataDomain.list.useQuery();
   const { data: apps = [] } = trpc.application.list.useQuery();
   const { data: users = [] } = trpc.workspace.listUsers.useQuery();
+  const { data: allEntities = [] } = trpc.dataEntity.list.useQuery();
 
   const updateMutation = trpc.dataEntity.update.useMutation({
     onSuccess: () => {
@@ -376,6 +378,13 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
                   );
                 })}
               </div>
+            </CollapsibleSection>
+
+            <Separator />
+
+            {/* Attributes (field-level schema) */}
+            <CollapsibleSection title="Attributes" defaultOpen>
+              <AttributeTable entityId={entity.id} allEntities={allEntities} />
             </CollapsibleSection>
 
             <Separator />
