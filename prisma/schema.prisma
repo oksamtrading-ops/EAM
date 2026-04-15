@@ -216,6 +216,38 @@ enum InterfaceCriticality {
 }
 
 // ============================================================
+// MODULE 6 ENUMS (Data Architecture)
+// ============================================================
+
+enum DataEntityType {
+  MASTER
+  REFERENCE
+  TRANSACTIONAL
+  ANALYTICAL
+  METADATA
+}
+
+enum RegulatoryTag {
+  PII
+  PHI
+  PCI
+  GDPR
+  CCPA
+  SOX
+  HIPAA
+  FERPA
+}
+
+enum DataQualityDimension {
+  COMPLETENESS
+  ACCURACY
+  CONSISTENCY
+  TIMELINESS
+  UNIQUENESS
+  VALIDITY
+}
+
+// ============================================================
 // USER (synced from Clerk)
 // ============================================================
 
@@ -246,6 +278,8 @@ model User {
   assessedMappings    ComplianceMapping[]   @relation("ComplianceAssessor")
   acknowledgedEolEntries EolWatchEntry[]    @relation("EolAcknowledger")
   dashboardPins          DashboardPin[]
+  ownedDataDomains       DataDomain[]       @relation("DataDomainOwner")
+  stewardedDataEntities  DataEntity[]       @relation("DataEntitySteward")
 
   @@map("users")
 }
@@ -297,6 +331,9 @@ model Workspace {
   valueStreams          ValueStream[]
   applicationInterfaces ApplicationInterface[]
   applicationTechLinks  ApplicationTechLink[]
+  dataDomains           DataDomain[]
+  dataEntities          DataEntity[]
+  appEntityUsages       AppEntityUsage[]
 
   @@map("workspaces")
 }
@@ -562,6 +599,8 @@ model Application {
   techStackLinks  ApplicationTechLink[]
   interfacesFrom  ApplicationInterface[]   @relation("InterfaceSource")
   interfacesTo    ApplicationInterface[]   @relation("InterfaceTarget")
+  entityUsages    AppEntityUsage[]
+  goldenSourceEntities DataEntity[]        @relation("DataEntityGoldenSource")
 
   @@index([workspaceId])
   @@index([workspaceId, lifecycle])
@@ -1422,4 +1461,97 @@ model AuditLog {
   @@index([workspaceId, entityType])
   @@index([workspaceId, createdAt])
   @@map("audit_logs")
+}
+
+// ============================================================
+// MODULE 6: DATA ARCHITECTURE
+// ============================================================
+
+model DataDomain {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  ownerId     String?
+  color       String   @default("#0B5CD6")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner     User?        @relation("DataDomainOwner", fields: [ownerId], references: [id])
+  entities  DataEntity[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("data_domains")
+}
+
+model DataEntity {
+  id                String             @id @default(cuid())
+  workspaceId       String
+  domainId          String
+  name              String
+  description       String?
+  entityType        DataEntityType     @default(TRANSACTIONAL)
+  classification    DataClassification @default(DC_UNKNOWN)
+  regulatoryTags    RegulatoryTag[]    @default([])
+  goldenSourceAppId String?
+  retentionDays     Int?
+  stewardId         String?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domain           DataDomain         @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  goldenSourceApp  Application?       @relation("DataEntityGoldenSource", fields: [goldenSourceAppId], references: [id])
+  steward          User?              @relation("DataEntitySteward", fields: [stewardId], references: [id])
+  appUsages        AppEntityUsage[]
+  qualityScores    DataQualityScore[]
+
+  @@unique([workspaceId, domainId, name])
+  @@index([workspaceId])
+  @@index([workspaceId, domainId])
+  @@index([workspaceId, classification])
+  @@map("data_entities")
+}
+
+model AppEntityUsage {
+  id          String   @id @default(cuid())
+  workspaceId String
+  appId       String
+  entityId    String
+  creates     Boolean  @default(false)
+  reads       Boolean  @default(false)
+  updates     Boolean  @default(false)
+  deletes     Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app       Application @relation(fields: [appId], references: [id], onDelete: Cascade)
+  entity    DataEntity  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, entityId])
+  @@index([workspaceId])
+  @@index([workspaceId, appId])
+  @@index([workspaceId, entityId])
+  @@map("app_entity_usages")
+}
+
+model DataQualityScore {
+  id        String               @id @default(cuid())
+  entityId  String
+  dimension DataQualityDimension
+  score     Int
+  note      String?
+  asOf      DateTime             @default(now())
+
+  entity DataEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId, dimension])
+  @@map("data_quality_scores")
 }

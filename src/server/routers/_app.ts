@@ -16,6 +16,9 @@ import { organizationRouter } from "./organization";
 import { dashboardRouter } from "./dashboard";
 import { searchRouter } from "./search";
 import { paletteQueryRouter } from "./paletteQuery";
+import { dataDomainRouter } from "./dataDomain";
+import { dataEntityRouter } from "./dataEntity";
+import { appEntityUsageRouter } from "./appEntityUsage";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -35,6 +38,9 @@ export const appRouter = router({
   techRadar: techRadarRouter,
   compliance: complianceRouter,
   eol: eolRouter,
+  dataDomain: dataDomainRouter,
+  dataEntity: dataEntityRouter,
+  appEntityUsage: appEntityUsageRouter,
 });
 
 export type AppRouter = typeof appRouter;
