@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const [domains, entities, findings, attributeStats] = await Promise.all([
+  const [domains, entities, findings, allAttributes] = await Promise.all([
     db.dataDomain.findMany({
       where: { workspaceId, isActive: true },
       include: {
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     db.dataEntity.findMany({
       where: { workspaceId, isActive: true },
       include: {
-        domain: { select: { name: true } },
+        domain: { select: { id: true, name: true } },
         goldenSourceApp: { select: { name: true } },
         steward: { select: { name: true, email: true } },
       },
@@ -90,7 +90,19 @@ export async function POST(req: Request) {
     computeDataFindings(db, workspaceId),
     db.dataAttribute.findMany({
       where: { workspaceId, entity: { isActive: true } },
-      select: { id: true, regulatoryTags: true },
+      select: {
+        id: true,
+        entityId: true,
+        name: true,
+        dataType: true,
+        isPrimaryKey: true,
+        isForeignKey: true,
+        fkTargetEntityId: true,
+        classification: true,
+        regulatoryTags: true,
+        sortOrder: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
   ]);
 
@@ -113,8 +125,8 @@ export async function POST(req: Request) {
   }
 
   // Field-level stats — derived from findings + raw attribute list.
-  const totalAttributes = attributeStats.length;
-  const attributesWithTags = attributeStats.filter((a) => a.regulatoryTags.length > 0).length;
+  const totalAttributes = allAttributes.length;
+  const attributesWithTags = allAttributes.filter((a) => a.regulatoryTags.length > 0).length;
   const sensitiveUnclassifiedCount =
     findingCounts.get("ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION") ?? 0;
   const entitiesMissingPkCount = findingCounts.get("ENTITY_NO_PRIMARY_KEY") ?? 0;
@@ -484,6 +496,210 @@ export async function POST(req: Request) {
       "Every attribute with a regulatory tag has been assigned a classification.",
       { x: 0.5, y: 3.15, w: 9, h: 0.3, fontSize: 10, fontFace: "Arial", color: "166534", align: "center" }
     );
+  }
+
+  // ─── Slides 6..N: ERD per Domain ────────────────────────────────
+  // One slide per domain with ≥1 entity. Deterministic grid layout so the
+  // deck is reproducible. FK arrows drawn only when both endpoints sit in
+  // the same domain; cross-domain references shown as text-only.
+  const attrsByEntity = new Map<string, typeof allAttributes>();
+  for (const a of allAttributes) {
+    const arr = attrsByEntity.get(a.entityId) ?? [];
+    arr.push(a);
+    attrsByEntity.set(a.entityId, arr);
+  }
+
+  const sensitiveUnclassifiedAttrIds = new Set<string>();
+  for (const f of findings) {
+    if (f.kind === "ATTRIBUTE_SENSITIVE_NO_CLASSIFICATION" && f.attributeId) {
+      sensitiveUnclassifiedAttrIds.add(f.attributeId);
+    }
+  }
+
+  const entityNameById = new Map<string, string>();
+  for (const e of entities) entityNameById.set(e.id, e.name);
+
+  const entitiesByDomain = new Map<string, typeof entities>();
+  for (const e of entities) {
+    const arr = entitiesByDomain.get(e.domain.id) ?? [];
+    arr.push(e);
+    entitiesByDomain.set(e.domain.id, arr);
+  }
+
+  for (const domain of domains) {
+    const domainEntities = (entitiesByDomain.get(domain.id) ?? [])
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (domainEntities.length === 0) continue;
+
+    const slide = pptx.addSlide();
+    slide.addText(`ERD — ${domain.name}`, {
+      x: 0.5, y: 0.2, w: 9, h: 0.5,
+      fontSize: 20, fontFace: "Arial", color: "1a1f2e", bold: true,
+    });
+
+    const domainEntityIds = new Set(domainEntities.map((e) => e.id));
+    let relCount = 0;
+    for (const e of domainEntities) {
+      for (const a of attrsByEntity.get(e.id) ?? []) {
+        if (
+          a.isForeignKey &&
+          a.fkTargetEntityId &&
+          domainEntityIds.has(a.fkTargetEntityId)
+        ) {
+          relCount += 1;
+        }
+      }
+    }
+    slide.addText(
+      `${domainEntities.length} entit${domainEntities.length === 1 ? "y" : "ies"} · ${relCount} relationship${relCount === 1 ? "" : "s"}`,
+      { x: 0.5, y: 0.7, w: 9, h: 0.3, fontSize: 10, fontFace: "Arial", color: "64748b" }
+    );
+
+    // Canvas geometry (slide 10" × 7.5"; reserve 1.1" top for title).
+    const canvasX = 0.3, canvasY = 1.1, canvasW = 9.4, canvasH = 6.1;
+    const n = domainEntities.length;
+    const cols = Math.ceil(Math.sqrt(n));
+    const rows = Math.ceil(n / cols);
+    const gap = 0.2;
+    const boxW = (canvasW - gap * (cols - 1)) / cols;
+    const boxH = (canvasH - gap * (rows - 1)) / rows;
+    const headerH = 0.32;
+    const attrRowH = 0.2;
+    const footerH = 0.22;
+    const maxAttrsVisible = Math.max(
+      1,
+      Math.floor((boxH - headerH - footerH) / attrRowH)
+    );
+
+    type Layout = {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      visibleAttrs: typeof allAttributes;
+    };
+    const layouts = new Map<string, Layout>();
+    domainEntities.forEach((e, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = canvasX + col * (boxW + gap);
+      const y = canvasY + row * (boxH + gap);
+      const attrs = attrsByEntity.get(e.id) ?? [];
+      layouts.set(e.id, {
+        x, y, w: boxW, h: boxH,
+        visibleAttrs: attrs.slice(0, maxAttrsVisible),
+      });
+    });
+
+    // FK edges first (render behind boxes).
+    for (const e of domainEntities) {
+      const srcLayout = layouts.get(e.id);
+      if (!srcLayout) continue;
+      const attrs = attrsByEntity.get(e.id) ?? [];
+      for (const a of attrs) {
+        if (!a.isForeignKey || !a.fkTargetEntityId) continue;
+        const tgtLayout = layouts.get(a.fkTargetEntityId);
+        if (!tgtLayout) continue; // cross-domain or missing — text-only below
+        const visIdx = srcLayout.visibleAttrs.findIndex((va) => va.id === a.id);
+        const x1 = srcLayout.x + srcLayout.w;
+        const y1 =
+          visIdx >= 0
+            ? srcLayout.y + headerH + (visIdx + 0.5) * attrRowH
+            : srcLayout.y + headerH / 2;
+        const x2 = tgtLayout.x;
+        const y2 = tgtLayout.y + headerH / 2;
+        slide.addShape(pptx.ShapeType.line, {
+          x: Math.min(x1, x2),
+          y: Math.min(y1, y2),
+          w: Math.max(Math.abs(x2 - x1), 0.01),
+          h: Math.max(Math.abs(y2 - y1), 0.01),
+          flipH: x2 < x1,
+          flipV: y2 < y1,
+          line: { color: "94a3b8", width: 0.75, endArrowType: "triangle" },
+        });
+      }
+    }
+
+    // Entity boxes on top of edges.
+    const headerColor = (domain.color ?? "#0B5CD6").replace("#", "");
+    for (const e of domainEntities) {
+      const layout = layouts.get(e.id)!;
+      const attrs = attrsByEntity.get(e.id) ?? [];
+      const hiddenCount = attrs.length - layout.visibleAttrs.length;
+
+      slide.addShape(pptx.ShapeType.rect, {
+        x: layout.x, y: layout.y, w: layout.w, h: layout.h,
+        fill: { color: "FFFFFF" },
+        line: { color: "e5e7eb", width: 0.5 },
+        rectRadius: 0.05,
+      });
+      slide.addShape(pptx.ShapeType.rect, {
+        x: layout.x, y: layout.y, w: layout.w, h: headerH,
+        fill: { color: headerColor },
+        line: { color: headerColor, width: 0 },
+        rectRadius: 0.05,
+      });
+      slide.addText(e.name, {
+        x: layout.x + 0.1, y: layout.y + 0.02, w: layout.w - 0.2, h: headerH - 0.04,
+        fontSize: 10, fontFace: "Arial", bold: true, color: "FFFFFF",
+        valign: "middle",
+      });
+
+      if (attrs.length === 0) {
+        slide.addText("No attributes defined", {
+          x: layout.x + 0.08,
+          y: layout.y + headerH,
+          w: layout.w - 0.16,
+          h: layout.h - headerH,
+          fontSize: 8, fontFace: "Arial", italic: true, color: "94a3b8",
+          align: "center", valign: "middle",
+        });
+        continue;
+      }
+
+      layout.visibleAttrs.forEach((a, i) => {
+        const y = layout.y + headerH + i * attrRowH;
+        const isRed = sensitiveUnclassifiedAttrIds.has(a.id);
+        const prefix = a.isPrimaryKey ? "PK " : a.isForeignKey ? "FK " : "   ";
+        let fkTargetName = "";
+        if (a.isForeignKey && a.fkTargetEntityId) {
+          const tgt = entityNameById.get(a.fkTargetEntityId);
+          fkTargetName = tgt ? ` → ${tgt}` : "";
+        }
+        const text = `${prefix}${a.name} : ${a.dataType || "?"}${fkTargetName}`;
+        const classColor = CLASSIFICATION_COLORS[a.classification] ?? "94a3b8";
+        slide.addText(text, {
+          x: layout.x + 0.08,
+          y,
+          w: layout.w - 0.28,
+          h: attrRowH,
+          fontSize: 7.5, fontFace: "Arial",
+          color: isRed ? "ef4444" : a.isPrimaryKey ? "1a1f2e" : "475569",
+          bold: a.isPrimaryKey,
+          valign: "middle",
+        });
+        // Classification dot on right edge.
+        slide.addShape(pptx.ShapeType.ellipse, {
+          x: layout.x + layout.w - 0.18,
+          y: y + (attrRowH - 0.08) / 2,
+          w: 0.08, h: 0.08,
+          fill: { color: classColor },
+          line: { color: classColor, width: 0 },
+        });
+      });
+
+      if (hiddenCount > 0) {
+        slide.addText(`+${hiddenCount} more`, {
+          x: layout.x + 0.08,
+          y: layout.y + layout.h - footerH,
+          w: layout.w - 0.16,
+          h: footerH,
+          fontSize: 7, fontFace: "Arial", italic: true, color: "94a3b8",
+          valign: "middle",
+        });
+      }
+    }
   }
 
   const buffer = (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
