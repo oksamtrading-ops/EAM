@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { auditLog } from "@/server/services/audit";
+import { optionalUrl } from "@/server/lib/zod";
 
 const REF_ARCH_STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"] as const;
 const TECH_LAYERS = [
@@ -30,7 +31,7 @@ const RefArchCreateInput = z.object({
   category: z.string().nullable().optional(),
   status: z.enum(REF_ARCH_STATUSES).default("DRAFT"),
   ownerId: z.string().nullable().optional(),
-  diagramUrl: z.string().url().nullable().optional(),
+  diagramUrl: optionalUrl(),
 });
 
 const RefArchUpdateInput = RefArchCreateInput.partial().extend({

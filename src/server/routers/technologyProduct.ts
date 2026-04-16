@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { auditLog } from "@/server/services/audit";
+import { optionalUrl } from "@/server/lib/zod";
 
 const TECHNOLOGY_TYPES = [
   "SOFTWARE",
@@ -44,7 +45,7 @@ const ProductCreateInput = z.object({
   type: z.enum(TECHNOLOGY_TYPES).default("OTHER"),
   category: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-  website: z.string().url().nullable().optional(),
+  website: optionalUrl(),
   openSource: z.boolean().default(false),
   licenseType: z.enum(LICENSE_TYPES).default("UNKNOWN"),
   techRadarEntryId: z.string().nullable().optional(),
@@ -58,7 +59,7 @@ const ProductUpdateInput = z.object({
   type: z.enum(TECHNOLOGY_TYPES).optional(),
   category: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-  website: z.string().url().nullable().optional(),
+  website: optionalUrl(),
   openSource: z.boolean().optional(),
   licenseType: z.enum(LICENSE_TYPES).optional(),
   techRadarEntryId: z.string().nullable().optional(),

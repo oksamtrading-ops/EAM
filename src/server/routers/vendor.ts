@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { auditLog } from "@/server/services/audit";
+import { optionalUrl } from "@/server/lib/zod";
 
 const VENDOR_CATEGORIES = [
   "HYPERSCALER",
@@ -23,7 +24,7 @@ const VENDOR_STATUSES = [
 
 const VendorCreateInput = z.object({
   name: z.string().min(1).max(200),
-  website: z.string().url().nullable().optional(),
+  website: optionalUrl(),
   category: z.enum(VENDOR_CATEGORIES).default("OTHER"),
   description: z.string().nullable().optional(),
   headquartersCountry: z.string().nullable().optional(),
@@ -37,7 +38,7 @@ const VendorCreateInput = z.object({
 const VendorUpdateInput = z.object({
   id: z.string(),
   name: z.string().min(1).max(200).optional(),
-  website: z.string().url().nullable().optional(),
+  website: optionalUrl(),
   category: z.enum(VENDOR_CATEGORIES).optional(),
   description: z.string().nullable().optional(),
   headquartersCountry: z.string().nullable().optional(),
