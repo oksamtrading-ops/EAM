@@ -20,9 +20,14 @@ import { dataDomainRouter } from "./dataDomain";
 import { dataEntityRouter } from "./dataEntity";
 import { dataAttributeRouter } from "./dataAttribute";
 import { appEntityUsageRouter } from "./appEntityUsage";
-import { diagramRouter } from "./diagram";
-import { diagramAnnotationRouter } from "./diagramAnnotation";
-import { interfaceDataFlowRouter } from "./interfaceDataFlow";
+import { vendorRouter } from "./vendor";
+import { technologyProductRouter } from "./technologyProduct";
+import { technologyVersionRouter } from "./technologyVersion";
+import { technologyComponentRouter } from "./technologyComponent";
+import { technologyDependencyRouter } from "./technologyDependency";
+import { technologyStandardRouter } from "./technologyStandard";
+import { referenceArchitectureRouter } from "./referenceArchitecture";
+import { techArchitectureRouter } from "./techArchitecture";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -46,9 +51,14 @@ export const appRouter = router({
   dataEntity: dataEntityRouter,
   dataAttribute: dataAttributeRouter,
   appEntityUsage: appEntityUsageRouter,
-  diagram: diagramRouter,
-  diagramAnnotation: diagramAnnotationRouter,
-  interfaceDataFlow: interfaceDataFlowRouter,
+  vendor: vendorRouter,
+  technologyProduct: technologyProductRouter,
+  technologyVersion: technologyVersionRouter,
+  technologyComponent: technologyComponentRouter,
+  technologyDependency: technologyDependencyRouter,
+  technologyStandard: technologyStandardRouter,
+  referenceArchitecture: referenceArchitectureRouter,
+  techArchitecture: techArchitectureRouter,
 });
 
 export type AppRouter = typeof appRouter;

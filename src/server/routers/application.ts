@@ -39,9 +39,6 @@ const ApplicationCreateInput = z.object({
   dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).default("DC_UNKNOWN"),
   actualUsers: z.number().int().nonnegative().optional(),
   replacementAppId: z.string().nullable().optional(),
-  systemLandscapeRole: z.string().max(50).optional(),
-  businessCapabilityKeywords: z.string().max(500).optional(),
-  technicalStackKeywords: z.string().max(500).optional(),
   capabilityIds: z.array(z.string()).optional(),
 });
 
@@ -73,9 +70,6 @@ const ApplicationUpdateInput = z.object({
   dataClassification: z.enum(DATA_CLASSIFICATION_VALUES).optional(),
   actualUsers: z.number().int().nonnegative().nullable().optional(),
   replacementAppId: z.string().nullable().optional(),
-  systemLandscapeRole: z.string().max(50).nullable().optional(),
-  businessCapabilityKeywords: z.string().max(500).nullable().optional(),
-  technicalStackKeywords: z.string().max(500).nullable().optional(),
   capabilityIds: z.array(z.string()).optional(),
 });
 

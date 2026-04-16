@@ -1414,6 +1414,7 @@ async function main() {
   const demoWsId = process.env.DEMO_WORKSPACE_ID;
   if (demoWsId) {
     await seedDemoApplications(demoWsId);
+    await seedTechArchitecture(demoWsId);
   }
 }
 
@@ -1761,12 +1762,11 @@ async function seedDemoApplications(workspaceId: string) {
 
     await db.applicationInterface.upsert({
       where: {
-        workspaceId_sourceAppId_targetAppId_name_scenario: {
+        workspaceId_sourceAppId_targetAppId_name: {
           workspaceId,
           sourceAppId: sourceId,
           targetAppId: targetId,
           name: iface.name,
-          scenario: "AS_IS",
         },
       },
       update: {
@@ -1796,6 +1796,623 @@ async function seedDemoApplications(workspaceId: string) {
   }
 
   console.log(`Seeded ${DEMO_APPS.length} apps and ${DEMO_INTERFACES.length} interfaces`);
+}
+
+// ─── Module 7: Technology Architecture Seed ──────────────────────────
+
+function daysFromNow(days: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+const DEMO_VENDORS = [
+  { name: "Amazon Web Services", category: "HYPERSCALER" as const, website: "https://aws.amazon.com", headquartersCountry: "USA", annualSpend: 1250000, status: "STRATEGIC" as const, description: "Primary public-cloud hyperscaler" },
+  { name: "Microsoft", category: "SOFTWARE" as const, website: "https://microsoft.com", headquartersCountry: "USA", annualSpend: 680000, status: "STRATEGIC" as const, description: "Productivity, identity, and Azure services" },
+  { name: "Google", category: "SOFTWARE" as const, website: "https://google.com", headquartersCountry: "USA", annualSpend: 120000, status: "ACTIVE" as const, description: "Workspace and data platform" },
+  { name: "Oracle", category: "SOFTWARE" as const, website: "https://oracle.com", headquartersCountry: "USA", annualSpend: 960000, status: "UNDER_REVIEW" as const, description: "Database and middleware — consolidation candidate" },
+  { name: "PostgreSQL Global Development Group", category: "OPEN_SOURCE_FOUNDATION" as const, website: "https://postgresql.org", headquartersCountry: "USA", annualSpend: 0, status: "ACTIVE" as const, description: "Community-maintained relational database" },
+  { name: "Red Hat", category: "SOFTWARE" as const, website: "https://redhat.com", headquartersCountry: "USA", annualSpend: 145000, status: "ACTIVE" as const, description: "Linux and container platform" },
+  { name: "Meta Open Source", category: "OPEN_SOURCE_FOUNDATION" as const, website: "https://opensource.fb.com", headquartersCountry: "USA", annualSpend: 0, status: "ACTIVE" as const, description: "React and related OSS" },
+  { name: "HashiCorp", category: "SOFTWARE" as const, website: "https://hashicorp.com", headquartersCountry: "USA", annualSpend: 85000, status: "ACTIVE" as const, description: "Infrastructure automation" },
+  { name: "Elastic", category: "SOFTWARE" as const, website: "https://elastic.co", headquartersCountry: "USA", annualSpend: 210000, status: "ACTIVE" as const, description: "Search and observability" },
+  { name: "Internal Platform Team", category: "INTERNAL" as const, headquartersCountry: "Global", status: "ACTIVE" as const, description: "Internal shared services org" },
+];
+
+const DEMO_PRODUCTS = [
+  // AWS
+  { slug: "aws-ec2", vendor: "Amazon Web Services", name: "Amazon EC2", type: "CLOUD_SERVICE" as const, category: "IaaS Compute", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "aws-rds", vendor: "Amazon Web Services", name: "Amazon RDS", type: "DATABASE" as const, category: "Managed DB", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "aws-s3", vendor: "Amazon Web Services", name: "Amazon S3", type: "CLOUD_SERVICE" as const, category: "Object Storage", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "aws-lambda", vendor: "Amazon Web Services", name: "AWS Lambda", type: "PLATFORM" as const, category: "Serverless", licenseType: "COMMERCIAL" as const, openSource: false },
+  // Microsoft
+  { slug: "azure-aks", vendor: "Microsoft", name: "Azure Kubernetes Service", type: "PLATFORM" as const, category: "Container Orchestration", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "dotnet", vendor: "Microsoft", name: ".NET", type: "FRAMEWORK" as const, category: "Application Runtime", licenseType: "OSS_PERMISSIVE" as const, openSource: true },
+  { slug: "sqlserver", vendor: "Microsoft", name: "SQL Server", type: "DATABASE" as const, category: "Relational DB", licenseType: "COMMERCIAL" as const, openSource: false },
+  // Google
+  { slug: "bigquery", vendor: "Google", name: "BigQuery", type: "DATABASE" as const, category: "Analytical DB", licenseType: "COMMERCIAL" as const, openSource: false },
+  // Oracle
+  { slug: "oracle-db", vendor: "Oracle", name: "Oracle Database", type: "DATABASE" as const, category: "Relational DB", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "oracle-weblogic", vendor: "Oracle", name: "Oracle WebLogic", type: "MIDDLEWARE" as const, category: "Application Server", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "java", vendor: "Oracle", name: "Java", type: "LANGUAGE" as const, category: "JVM Language", licenseType: "OSS_PERMISSIVE" as const, openSource: true },
+  // PostgreSQL
+  { slug: "postgres", vendor: "PostgreSQL Global Development Group", name: "PostgreSQL", type: "DATABASE" as const, category: "Relational DB", licenseType: "OSS_PERMISSIVE" as const, openSource: true },
+  // Red Hat
+  { slug: "rhel", vendor: "Red Hat", name: "Red Hat Enterprise Linux", type: "OPERATING_SYSTEM" as const, category: "Linux", licenseType: "COMMERCIAL" as const, openSource: false },
+  { slug: "openshift", vendor: "Red Hat", name: "OpenShift", type: "PLATFORM" as const, category: "Container Platform", licenseType: "COMMERCIAL" as const, openSource: false },
+  // Meta
+  { slug: "react", vendor: "Meta Open Source", name: "React", type: "LIBRARY" as const, category: "UI Library", licenseType: "OSS_PERMISSIVE" as const, openSource: true },
+  // HashiCorp
+  { slug: "terraform", vendor: "HashiCorp", name: "Terraform", type: "PLATFORM" as const, category: "IaC", licenseType: "OSS_COPYLEFT" as const, openSource: true },
+  { slug: "vault", vendor: "HashiCorp", name: "HashiCorp Vault", type: "PLATFORM" as const, category: "Secrets Management", licenseType: "OSS_COPYLEFT" as const, openSource: true },
+  // Elastic
+  { slug: "elasticsearch", vendor: "Elastic", name: "Elasticsearch", type: "DATABASE" as const, category: "Search Engine", licenseType: "OSS_COPYLEFT" as const, openSource: true },
+  { slug: "kibana", vendor: "Elastic", name: "Kibana", type: "SOFTWARE" as const, category: "Observability", licenseType: "OSS_COPYLEFT" as const, openSource: true },
+  // Internal
+  { slug: "internal-api-gateway", vendor: "Internal Platform Team", name: "Internal API Gateway", type: "MIDDLEWARE" as const, category: "API Management", licenseType: "PROPRIETARY_INTERNAL" as const, openSource: false },
+  { slug: "internal-kafka", vendor: "Internal Platform Team", name: "Internal Kafka Cluster", type: "MIDDLEWARE" as const, category: "Event Streaming", licenseType: "PROPRIETARY_INTERNAL" as const, openSource: false },
+  // Container runtime (assign to Internal)
+  { slug: "docker", vendor: "Internal Platform Team", name: "Docker Engine", type: "CONTAINER" as const, category: "Runtime", licenseType: "OSS_PERMISSIVE" as const, openSource: true },
+];
+
+type DemoVersionSeed = {
+  productSlug: string;
+  version: string;
+  releaseDate?: Date | null;
+  endOfSupportDate?: Date | null;
+  endOfLifeDate?: Date | null;
+  lifecycleStatus: "PREVIEW" | "CURRENT" | "MAINSTREAM" | "EXTENDED_SUPPORT" | "DEPRECATED" | "END_OF_LIFE";
+  notes?: string | null;
+};
+
+const DEMO_VERSIONS: DemoVersionSeed[] = [
+  // past-EOL (3 required)
+  { productSlug: "oracle-db", version: "11g", releaseDate: new Date("2007-07-11"), endOfSupportDate: new Date("2015-01-31"), endOfLifeDate: new Date("2022-12-31"), lifecycleStatus: "END_OF_LIFE", notes: "Past EOL — consolidation target" },
+  { productSlug: "java", version: "8", releaseDate: new Date("2014-03-18"), endOfSupportDate: new Date("2022-03-31"), endOfLifeDate: new Date("2025-03-31"), lifecycleStatus: "END_OF_LIFE", notes: "Past EOL — migrate to Java 17/21" },
+  { productSlug: "dotnet", version: "Framework 4.8", releaseDate: new Date("2019-04-18"), endOfSupportDate: new Date("2025-01-09"), endOfLifeDate: new Date("2025-10-14"), lifecycleStatus: "END_OF_LIFE", notes: "Past EOL — migrate to .NET 8 LTS" },
+
+  // EOL in next 90 days (3 required)
+  { productSlug: "postgres", version: "13", releaseDate: new Date("2020-09-24"), endOfSupportDate: daysFromNow(30), endOfLifeDate: daysFromNow(45), lifecycleStatus: "DEPRECATED", notes: "Imminent EOL — upgrade to 15/16" },
+  { productSlug: "rhel", version: "7", releaseDate: new Date("2014-06-09"), endOfSupportDate: daysFromNow(60), endOfLifeDate: daysFromNow(80), lifecycleStatus: "DEPRECATED", notes: "Extended maintenance ends soon" },
+  { productSlug: "elasticsearch", version: "7.17", releaseDate: new Date("2022-02-08"), endOfSupportDate: daysFromNow(20), endOfLifeDate: daysFromNow(70), lifecycleStatus: "DEPRECATED", notes: "Upgrade to 8.x" },
+
+  // current / mainstream
+  { productSlug: "postgres", version: "15", releaseDate: new Date("2022-10-13"), endOfSupportDate: new Date("2027-11-11"), endOfLifeDate: new Date("2027-11-11"), lifecycleStatus: "CURRENT" },
+  { productSlug: "postgres", version: "16", releaseDate: new Date("2023-09-14"), endOfSupportDate: new Date("2028-11-09"), endOfLifeDate: new Date("2028-11-09"), lifecycleStatus: "CURRENT" },
+  { productSlug: "java", version: "17", releaseDate: new Date("2021-09-14"), endOfSupportDate: new Date("2029-09-30"), endOfLifeDate: new Date("2029-09-30"), lifecycleStatus: "CURRENT", notes: "LTS" },
+  { productSlug: "java", version: "21", releaseDate: new Date("2023-09-19"), endOfSupportDate: new Date("2031-09-30"), endOfLifeDate: new Date("2031-09-30"), lifecycleStatus: "CURRENT", notes: "LTS" },
+  { productSlug: "dotnet", version: "8", releaseDate: new Date("2023-11-14"), endOfSupportDate: new Date("2026-11-10"), endOfLifeDate: new Date("2026-11-10"), lifecycleStatus: "CURRENT", notes: "LTS" },
+  { productSlug: "sqlserver", version: "2022", releaseDate: new Date("2022-11-16"), endOfSupportDate: new Date("2033-01-11"), endOfLifeDate: new Date("2033-01-11"), lifecycleStatus: "CURRENT" },
+  { productSlug: "oracle-db", version: "19c", releaseDate: new Date("2019-02-13"), endOfSupportDate: new Date("2027-04-30"), endOfLifeDate: new Date("2027-04-30"), lifecycleStatus: "MAINSTREAM" },
+  { productSlug: "oracle-db", version: "23c", releaseDate: new Date("2023-09-01"), endOfSupportDate: new Date("2033-04-30"), endOfLifeDate: new Date("2033-04-30"), lifecycleStatus: "CURRENT" },
+  { productSlug: "oracle-weblogic", version: "14.1.1", releaseDate: new Date("2020-03-01"), endOfSupportDate: new Date("2030-12-31"), endOfLifeDate: new Date("2030-12-31"), lifecycleStatus: "MAINSTREAM" },
+  { productSlug: "rhel", version: "9", releaseDate: new Date("2022-05-18"), endOfSupportDate: new Date("2032-05-31"), endOfLifeDate: new Date("2032-05-31"), lifecycleStatus: "CURRENT" },
+  { productSlug: "openshift", version: "4.14", releaseDate: new Date("2023-10-31"), endOfSupportDate: new Date("2025-10-31"), endOfLifeDate: new Date("2025-10-31"), lifecycleStatus: "MAINSTREAM" },
+  { productSlug: "react", version: "18", releaseDate: new Date("2022-03-29"), lifecycleStatus: "MAINSTREAM" },
+  { productSlug: "react", version: "19", releaseDate: new Date("2024-12-05"), lifecycleStatus: "CURRENT" },
+  { productSlug: "terraform", version: "1.8", releaseDate: new Date("2024-04-10"), lifecycleStatus: "CURRENT" },
+  { productSlug: "vault", version: "1.15", releaseDate: new Date("2023-09-27"), lifecycleStatus: "CURRENT" },
+  { productSlug: "elasticsearch", version: "8.13", releaseDate: new Date("2024-03-26"), lifecycleStatus: "CURRENT" },
+  { productSlug: "kibana", version: "8.13", releaseDate: new Date("2024-03-26"), lifecycleStatus: "CURRENT" },
+  { productSlug: "aws-ec2", version: "current", lifecycleStatus: "CURRENT" },
+  { productSlug: "aws-rds", version: "current", lifecycleStatus: "CURRENT" },
+  { productSlug: "aws-s3", version: "current", lifecycleStatus: "CURRENT" },
+  { productSlug: "aws-lambda", version: "current", lifecycleStatus: "CURRENT" },
+  { productSlug: "azure-aks", version: "1.29", lifecycleStatus: "CURRENT" },
+  { productSlug: "bigquery", version: "current", lifecycleStatus: "CURRENT" },
+  { productSlug: "docker", version: "25.0", releaseDate: new Date("2024-01-19"), lifecycleStatus: "CURRENT" },
+  { productSlug: "internal-api-gateway", version: "2.4", lifecycleStatus: "CURRENT" },
+  { productSlug: "internal-kafka", version: "3.7", lifecycleStatus: "CURRENT" },
+];
+
+type DemoComponentSeed = {
+  productSlug: string;
+  versionKey?: string | null;
+  name: string;
+  environment: "PRODUCTION" | "STAGING" | "TEST" | "DEVELOPMENT" | "DR" | "SHARED";
+  hostingModel: "ON_PREMISES" | "PRIVATE_CLOUD" | "PUBLIC_IAAS" | "PUBLIC_PAAS" | "SAAS" | "HYBRID";
+  region?: string | null;
+  notes?: string | null;
+  apps?: { appName: string; layer: "PRESENTATION" | "APPLICATION" | "DATA" | "INTEGRATION" | "INFRASTRUCTURE" | "SECURITY"; role: "PRIMARY" | "SECONDARY" | "FALLBACK" | "DEPRECATED"; criticality: "CRITICAL" | "IMPORTANT" | "STANDARD" | "OPTIONAL" }[];
+};
+
+const DEMO_COMPONENTS: DemoComponentSeed[] = [
+  { productSlug: "postgres", versionKey: "15", name: "Prod Postgres — us-east-1", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1",
+    apps: [{ appName: "Salesforce CRM", layer: "DATA", role: "PRIMARY", criticality: "CRITICAL" }] },
+  { productSlug: "postgres", versionKey: "13", name: "Legacy Postgres — us-east-1", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1", notes: "On deprecated version — imminent EOL",
+    apps: [{ appName: "Custom Reporting Tool", layer: "DATA", role: "PRIMARY", criticality: "IMPORTANT" }] },
+  { productSlug: "oracle-db", versionKey: "11g", name: "Oracle GL DB", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1", notes: "Past-EOL Oracle 11g",
+    apps: [{ appName: "SAP S/4HANA", layer: "DATA", role: "PRIMARY", criticality: "CRITICAL" }] },
+  { productSlug: "oracle-db", versionKey: "19c", name: "Oracle Data Warehouse", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1" },
+  { productSlug: "sqlserver", versionKey: "2022", name: "SQL Server Prod", environment: "PRODUCTION", hostingModel: "PRIVATE_CLOUD", region: "dc-2",
+    apps: [{ appName: "ServiceNow ITSM", layer: "DATA", role: "PRIMARY", criticality: "IMPORTANT" }] },
+  { productSlug: "aws-ec2", versionKey: "current", name: "App Fleet — us-east-1", environment: "PRODUCTION", hostingModel: "PUBLIC_IAAS", region: "us-east-1",
+    apps: [{ appName: "MuleSoft Anypoint", layer: "INFRASTRUCTURE", role: "PRIMARY", criticality: "CRITICAL" }] },
+  { productSlug: "aws-s3", versionKey: "current", name: "Data Lake Bucket", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1",
+    apps: [{ appName: "Microsoft Power BI", layer: "DATA", role: "SECONDARY", criticality: "STANDARD" }] },
+  { productSlug: "aws-lambda", versionKey: "current", name: "Integration Functions", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1",
+    apps: [{ appName: "MuleSoft Anypoint", layer: "INTEGRATION", role: "SECONDARY", criticality: "IMPORTANT" }] },
+  { productSlug: "aws-rds", versionKey: "current", name: "Prod RDS Postgres", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1" },
+  { productSlug: "azure-aks", versionKey: "1.29", name: "AKS Shared Cluster", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "east-us" },
+  { productSlug: "bigquery", versionKey: "current", name: "Analytics Warehouse", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-central1",
+    apps: [{ appName: "Microsoft Power BI", layer: "DATA", role: "PRIMARY", criticality: "IMPORTANT" }] },
+  { productSlug: "dotnet", versionKey: "Framework 4.8", name: ".NET Framework Runtime", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1", notes: "Past-EOL runtime",
+    apps: [{ appName: "Legacy HR System", layer: "APPLICATION", role: "PRIMARY", criticality: "IMPORTANT" }] },
+  { productSlug: "dotnet", versionKey: "8", name: ".NET 8 Runtime", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1",
+    apps: [{ appName: "Workday HCM", layer: "APPLICATION", role: "PRIMARY", criticality: "STANDARD" }] },
+  { productSlug: "java", versionKey: "8", name: "Legacy Java 8 Runtime", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1", notes: "Past-EOL Java 8",
+    apps: [{ appName: "Custom Reporting Tool", layer: "APPLICATION", role: "PRIMARY", criticality: "IMPORTANT" }] },
+  { productSlug: "java", versionKey: "17", name: "Java 17 LTS Runtime", environment: "PRODUCTION", hostingModel: "PUBLIC_IAAS", region: "us-east-1",
+    apps: [{ appName: "MuleSoft Anypoint", layer: "APPLICATION", role: "PRIMARY", criticality: "CRITICAL" }] },
+  { productSlug: "oracle-weblogic", versionKey: "14.1.1", name: "WebLogic Cluster", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1" },
+  { productSlug: "rhel", versionKey: "7", name: "Legacy RHEL 7 Hosts", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1", notes: "RHEL 7 — imminent EOL" },
+  { productSlug: "rhel", versionKey: "9", name: "RHEL 9 Hosts", environment: "PRODUCTION", hostingModel: "ON_PREMISES", region: "dc-1" },
+  { productSlug: "openshift", versionKey: "4.14", name: "OpenShift Shared Cluster", environment: "SHARED", hostingModel: "ON_PREMISES", region: "dc-1" },
+  { productSlug: "react", versionKey: "19", name: "React 19 (Frontend)", environment: "PRODUCTION", hostingModel: "PUBLIC_PAAS", region: "us-east-1",
+    apps: [{ appName: "Salesforce CRM", layer: "PRESENTATION", role: "PRIMARY", criticality: "STANDARD" }] },
+  { productSlug: "terraform", versionKey: "1.8", name: "IaC Control Plane", environment: "SHARED", hostingModel: "PRIVATE_CLOUD", region: "us-east-1" },
+  { productSlug: "vault", versionKey: "1.15", name: "Vault Cluster", environment: "PRODUCTION", hostingModel: "PRIVATE_CLOUD", region: "us-east-1",
+    apps: [{ appName: "ServiceNow ITSM", layer: "SECURITY", role: "PRIMARY", criticality: "CRITICAL" }] },
+  { productSlug: "elasticsearch", versionKey: "7.17", name: "Legacy ES 7 Cluster", environment: "PRODUCTION", hostingModel: "PRIVATE_CLOUD", region: "us-east-1", notes: "On EOL track" },
+  { productSlug: "elasticsearch", versionKey: "8.13", name: "ES 8 Cluster", environment: "PRODUCTION", hostingModel: "PRIVATE_CLOUD", region: "us-east-1" },
+  { productSlug: "kibana", versionKey: "8.13", name: "Kibana 8", environment: "PRODUCTION", hostingModel: "PRIVATE_CLOUD", region: "us-east-1" },
+  { productSlug: "internal-api-gateway", versionKey: "2.4", name: "Internal API Gateway — Prod", environment: "PRODUCTION", hostingModel: "PRIVATE_CLOUD", region: "us-east-1",
+    apps: [{ appName: "MuleSoft Anypoint", layer: "INTEGRATION", role: "PRIMARY", criticality: "CRITICAL" }] },
+  { productSlug: "internal-kafka", versionKey: "3.7", name: "Kafka Shared Cluster", environment: "SHARED", hostingModel: "PRIVATE_CLOUD", region: "us-east-1" },
+  { productSlug: "docker", versionKey: "25.0", name: "Docker Hosts — Shared", environment: "SHARED", hostingModel: "PRIVATE_CLOUD", region: "us-east-1" },
+  { productSlug: "postgres", versionKey: "15", name: "Staging Postgres", environment: "STAGING", hostingModel: "PUBLIC_PAAS", region: "us-east-1" },
+  { productSlug: "aws-ec2", versionKey: "current", name: "DR Fleet — us-west-2", environment: "DR", hostingModel: "PUBLIC_IAAS", region: "us-west-2" },
+];
+
+async function seedTechArchitecture(workspaceId: string) {
+  console.log(`Seeding Module 7 (Tech Architecture) into workspace ${workspaceId}...`);
+
+  const ws = await db.workspace.findUnique({ where: { id: workspaceId } });
+  if (!ws) {
+    console.error(`Workspace ${workspaceId} not found — skipping tech architecture`);
+    return;
+  }
+
+  // ── Vendors (idempotent upsert by workspace+name unique) ──
+  const vendorIdByName: Record<string, string> = {};
+  for (const v of DEMO_VENDORS) {
+    const vendor = await db.vendor.upsert({
+      where: { workspaceId_name: { workspaceId, name: v.name } },
+      update: {
+        category: v.category,
+        website: v.website ?? null,
+        headquartersCountry: v.headquartersCountry ?? null,
+        annualSpend: v.annualSpend ?? null,
+        status: v.status,
+        description: v.description ?? null,
+      },
+      create: {
+        workspaceId,
+        name: v.name,
+        category: v.category,
+        website: v.website ?? null,
+        headquartersCountry: v.headquartersCountry ?? null,
+        annualSpend: v.annualSpend ?? null,
+        status: v.status,
+        description: v.description ?? null,
+      },
+    });
+    vendorIdByName[v.name] = vendor.id;
+  }
+  console.log(`  ✓ ${DEMO_VENDORS.length} vendors`);
+
+  // ── Products (idempotent upsert by workspace+slug) ──
+  const productIdBySlug: Record<string, string> = {};
+  for (const p of DEMO_PRODUCTS) {
+    const vendorId = vendorIdByName[p.vendor];
+    if (!vendorId) {
+      console.log(`  ⚠ Skipping product ${p.name} — vendor ${p.vendor} not found`);
+      continue;
+    }
+    const product = await db.technologyProduct.upsert({
+      where: { workspaceId_slug: { workspaceId, slug: p.slug } },
+      update: {
+        name: p.name,
+        type: p.type,
+        category: p.category ?? null,
+        licenseType: p.licenseType,
+        openSource: p.openSource,
+        vendorId,
+      },
+      create: {
+        workspaceId,
+        vendorId,
+        slug: p.slug,
+        name: p.name,
+        type: p.type,
+        category: p.category ?? null,
+        licenseType: p.licenseType,
+        openSource: p.openSource,
+      },
+    });
+    productIdBySlug[p.slug] = product.id;
+  }
+  console.log(`  ✓ ${DEMO_PRODUCTS.length} products`);
+
+  // ── Versions (idempotent upsert by productId+version) ──
+  const versionIdByKey: Record<string, string> = {};
+  for (const v of DEMO_VERSIONS) {
+    const productId = productIdBySlug[v.productSlug];
+    if (!productId) {
+      console.log(`  ⚠ Skipping version ${v.version} — product ${v.productSlug} not found`);
+      continue;
+    }
+    const version = await db.technologyVersion.upsert({
+      where: { productId_version: { productId, version: v.version } },
+      update: {
+        releaseDate: v.releaseDate ?? null,
+        endOfSupportDate: v.endOfSupportDate ?? null,
+        endOfLifeDate: v.endOfLifeDate ?? null,
+        lifecycleStatus: v.lifecycleStatus,
+        notes: v.notes ?? null,
+      },
+      create: {
+        workspaceId,
+        productId,
+        version: v.version,
+        releaseDate: v.releaseDate ?? null,
+        endOfSupportDate: v.endOfSupportDate ?? null,
+        endOfLifeDate: v.endOfLifeDate ?? null,
+        lifecycleStatus: v.lifecycleStatus,
+        notes: v.notes ?? null,
+      },
+    });
+    versionIdByKey[`${v.productSlug}::${v.version}`] = version.id;
+  }
+  console.log(`  ✓ ${DEMO_VERSIONS.length} versions`);
+
+  // ── Components (idempotent via findFirst by workspace+name+product) ──
+  let componentCount = 0;
+  for (const c of DEMO_COMPONENTS) {
+    const productId = productIdBySlug[c.productSlug];
+    if (!productId) continue;
+    const versionId = c.versionKey ? versionIdByKey[`${c.productSlug}::${c.versionKey}`] ?? null : null;
+
+    const existing = await db.technologyComponent.findFirst({
+      where: { workspaceId, productId, name: c.name },
+    });
+
+    let component;
+    if (existing) {
+      component = await db.technologyComponent.update({
+        where: { id: existing.id },
+        data: {
+          versionId,
+          environment: c.environment,
+          hostingModel: c.hostingModel,
+          region: c.region ?? null,
+          notes: c.notes ?? null,
+        },
+      });
+    } else {
+      component = await db.technologyComponent.create({
+        data: {
+          workspaceId,
+          productId,
+          versionId,
+          name: c.name,
+          environment: c.environment,
+          hostingModel: c.hostingModel,
+          region: c.region ?? null,
+          notes: c.notes ?? null,
+        },
+      });
+    }
+    componentCount += 1;
+
+    // Link to apps
+    if (c.apps) {
+      for (const link of c.apps) {
+        const app = await db.application.findFirst({
+          where: { workspaceId, name: link.appName },
+        });
+        if (!app) continue;
+        await db.applicationTechnology.upsert({
+          where: {
+            applicationId_componentId: { applicationId: app.id, componentId: component.id },
+          },
+          update: {
+            layer: link.layer,
+            role: link.role,
+            criticality: link.criticality,
+          },
+          create: {
+            applicationId: app.id,
+            componentId: component.id,
+            layer: link.layer,
+            role: link.role,
+            criticality: link.criticality,
+          },
+        });
+      }
+    }
+  }
+  console.log(`  ✓ ${componentCount} components (with app links)`);
+
+  // ── Dependencies (idempotent: unique on [source, target, type]) ──
+  const deps: { source: string; target: string; type: "REQUIRES" | "RUNS_ON" | "COMPATIBLE_WITH" | "CONFLICTS_WITH" | "REPLACES"; constraint?: string }[] = [
+    { source: "react", target: "dotnet", type: "RUNS_ON" },
+    { source: "java", target: "rhel", type: "RUNS_ON" },
+    { source: "openshift", target: "rhel", type: "REQUIRES", constraint: ">= 8" },
+    { source: "kibana", target: "elasticsearch", type: "REQUIRES", constraint: ">= 7" },
+    { source: "docker", target: "rhel", type: "RUNS_ON" },
+    { source: "postgres", target: "rhel", type: "RUNS_ON" },
+  ];
+  let depCount = 0;
+  for (const d of deps) {
+    const src = productIdBySlug[d.source];
+    const tgt = productIdBySlug[d.target];
+    if (!src || !tgt) continue;
+    const existing = await db.technologyDependency.findFirst({
+      where: { sourceProductId: src, targetProductId: tgt, dependencyType: d.type },
+    });
+    if (existing) {
+      await db.technologyDependency.update({
+        where: { id: existing.id },
+        data: { versionConstraint: d.constraint ?? null },
+      });
+    } else {
+      await db.technologyDependency.create({
+        data: {
+          workspaceId,
+          sourceProductId: src,
+          targetProductId: tgt,
+          dependencyType: d.type,
+          versionConstraint: d.constraint ?? null,
+        },
+      });
+    }
+    depCount += 1;
+  }
+  console.log(`  ✓ ${depCount} dependencies`);
+
+  // ── Standards (idempotent via findFirst on workspace+name) ──
+  const standards: {
+    name: string;
+    description: string;
+    category:
+      | "PRODUCT_CHOICE"
+      | "VERSION_CHOICE"
+      | "PROTOCOL"
+      | "SECURITY"
+      | "ARCHITECTURE_PATTERN"
+      | "HOSTING"
+      | "INTEGRATION"
+      | "DATA"
+      | "OTHER";
+    level: "MANDATORY" | "RECOMMENDED" | "DEPRECATED" | "PROHIBITED";
+    status: "DRAFT" | "ACTIVE" | "RETIRED";
+    productSlug?: string;
+    versionKey?: string;
+    rationale?: string;
+    reviewInDays?: number;
+  }[] = [
+    {
+      name: "PostgreSQL as primary RDBMS",
+      description: "Use PostgreSQL for all new OLTP workloads.",
+      category: "PRODUCT_CHOICE",
+      level: "MANDATORY",
+      status: "ACTIVE",
+      productSlug: "postgres",
+      rationale: "Strategic open-source standard; replaces Oracle 11g legacy footprint.",
+      reviewInDays: 365,
+    },
+    {
+      name: "Oracle 11g prohibited",
+      description: "Oracle 11g is past EOL; no new usage permitted.",
+      category: "VERSION_CHOICE",
+      level: "PROHIBITED",
+      status: "ACTIVE",
+      productSlug: "oracle-db",
+      versionKey: "11g",
+      rationale: "Past end-of-support; security patches unavailable.",
+    },
+    {
+      name: "React for web UIs",
+      description: "New customer-facing web apps should use React.",
+      category: "PRODUCT_CHOICE",
+      level: "RECOMMENDED",
+      status: "ACTIVE",
+      productSlug: "react",
+    },
+    {
+      name: ".NET Framework 4.8 deprecated",
+      description: "Migrate .NET Framework 4.8 workloads to .NET 8+",
+      category: "VERSION_CHOICE",
+      level: "DEPRECATED",
+      status: "ACTIVE",
+      productSlug: "dotnet",
+      versionKey: "Framework 4.8",
+      rationale: "End of innovation; .NET Core line is the forward path.",
+    },
+    {
+      name: "RHEL 7 prohibited",
+      description: "RHEL 7 reaches EOL; all new deployments must use RHEL 9+.",
+      category: "VERSION_CHOICE",
+      level: "PROHIBITED",
+      status: "ACTIVE",
+      productSlug: "rhel",
+      versionKey: "7",
+    },
+    {
+      name: "Containerize on OpenShift",
+      description: "New services should deploy on OpenShift where possible.",
+      category: "HOSTING",
+      level: "RECOMMENDED",
+      status: "ACTIVE",
+      productSlug: "openshift",
+    },
+    {
+      name: "TLS 1.3 for external traffic",
+      description: "All public-facing interfaces must enforce TLS 1.3.",
+      category: "SECURITY",
+      level: "MANDATORY",
+      status: "ACTIVE",
+      rationale: "Security & compliance baseline.",
+      reviewInDays: 180,
+    },
+  ];
+
+  let standardCount = 0;
+  for (const s of standards) {
+    const productId = s.productSlug ? productIdBySlug[s.productSlug] ?? null : null;
+    const versionId =
+      s.productSlug && s.versionKey
+        ? versionIdByKey[`${s.productSlug}::${s.versionKey}`] ?? null
+        : null;
+    const reviewDate = s.reviewInDays
+      ? new Date(Date.now() + s.reviewInDays * 86_400_000)
+      : null;
+
+    const existing = await db.technologyStandard.findFirst({
+      where: { workspaceId, name: s.name },
+    });
+    if (existing) {
+      await db.technologyStandard.update({
+        where: { id: existing.id },
+        data: {
+          description: s.description,
+          category: s.category,
+          level: s.level,
+          status: s.status,
+          productId,
+          versionId,
+          rationale: s.rationale ?? null,
+          reviewDate,
+        },
+      });
+    } else {
+      await db.technologyStandard.create({
+        data: {
+          workspaceId,
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          level: s.level,
+          status: s.status,
+          productId,
+          versionId,
+          rationale: s.rationale ?? null,
+          reviewDate,
+        },
+      });
+    }
+    standardCount += 1;
+  }
+  console.log(`  ✓ ${standardCount} standards`);
+
+  // ── Reference Architectures (idempotent via unique [workspaceId, slug]) ──
+  const refArchs: {
+    name: string;
+    slug: string;
+    description: string;
+    category: string;
+    status: "DRAFT" | "ACTIVE" | "DEPRECATED";
+    components: {
+      productSlug: string;
+      layer:
+        | "PRESENTATION"
+        | "APPLICATION"
+        | "DATA"
+        | "INTEGRATION"
+        | "INFRASTRUCTURE"
+        | "SECURITY";
+      role: "PRIMARY" | "SECONDARY" | "FALLBACK" | "DEPRECATED";
+      notes?: string;
+    }[];
+  }[] = [
+    {
+      name: "Modern Web Application",
+      slug: "modern-web-app",
+      description:
+        "Reference pattern for a customer-facing web application: React SPA, Java backend, Postgres, on OpenShift.",
+      category: "Web Application",
+      status: "ACTIVE",
+      components: [
+        { productSlug: "react", layer: "PRESENTATION", role: "PRIMARY" },
+        { productSlug: "java", layer: "APPLICATION", role: "PRIMARY" },
+        { productSlug: "postgres", layer: "DATA", role: "PRIMARY" },
+        { productSlug: "openshift", layer: "INFRASTRUCTURE", role: "PRIMARY" },
+        { productSlug: "elasticsearch", layer: "DATA", role: "SECONDARY", notes: "Search index" },
+      ],
+    },
+    {
+      name: "Data Pipeline (Streaming)",
+      slug: "data-pipeline-streaming",
+      description:
+        "Reference pattern for streaming ingestion pipelines: Kafka → Java processors → Postgres warehouse, with Elasticsearch for operational dashboards.",
+      category: "Data Pipeline",
+      status: "ACTIVE",
+      components: [
+        { productSlug: "internal-kafka", layer: "INTEGRATION", role: "PRIMARY" },
+        { productSlug: "java", layer: "APPLICATION", role: "PRIMARY" },
+        { productSlug: "postgres", layer: "DATA", role: "PRIMARY" },
+        { productSlug: "elasticsearch", layer: "DATA", role: "SECONDARY" },
+        { productSlug: "rhel", layer: "INFRASTRUCTURE", role: "PRIMARY" },
+      ],
+    },
+  ];
+
+  let archCount = 0;
+  for (const arch of refArchs) {
+    const existing = await db.referenceArchitecture.findFirst({
+      where: { workspaceId, slug: arch.slug },
+    });
+    const archRecord = existing
+      ? await db.referenceArchitecture.update({
+          where: { id: existing.id },
+          data: {
+            name: arch.name,
+            description: arch.description,
+            category: arch.category,
+            status: arch.status,
+          },
+        })
+      : await db.referenceArchitecture.create({
+          data: {
+            workspaceId,
+            name: arch.name,
+            slug: arch.slug,
+            description: arch.description,
+            category: arch.category,
+            status: arch.status,
+          },
+        });
+
+    for (const c of arch.components) {
+      const productId = productIdBySlug[c.productSlug];
+      if (!productId) continue;
+      await db.referenceArchitectureComponent.upsert({
+        where: {
+          architectureId_productId: {
+            architectureId: archRecord.id,
+            productId,
+          },
+        },
+        create: {
+          architectureId: archRecord.id,
+          productId,
+          layer: c.layer,
+          role: c.role,
+          notes: c.notes ?? null,
+        },
+        update: {
+          layer: c.layer,
+          role: c.role,
+          notes: c.notes ?? null,
+        },
+      });
+    }
+    archCount += 1;
+  }
+  console.log(`  ✓ ${archCount} reference architectures`);
+
+  console.log(`Seeded Module 7 tech architecture data`);
 }
 
 main()

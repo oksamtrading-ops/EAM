@@ -215,14 +215,6 @@ enum InterfaceCriticality {
   INT_LOW
 }
 
-// Review lifecycle for integrations in the architecture diagram.
-// AI-suggested interfaces start as PENDING. Manual/imported start as ACCEPTED.
-// REJECTED rows are retained so AI regeneration won't re-propose them.
-enum InterfaceReviewStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-}
 
 // Direction a data entity flows across an interface.
 enum DataFlowDirection {
@@ -299,6 +291,10 @@ model User {
   stewardedDataEntities       DataEntity[]           @relation("DataEntitySteward")
   dataEntitiesAsBusinessOwner DataEntity[]           @relation("DataEntityBusinessOwner")
   dataEntitiesAsCustodian     DataEntity[]           @relation("DataEntityCustodian")
+  ownedVendors                Vendor[]               @relation("VendorRelationshipOwner")
+  ownedTechnologyComponents   TechnologyComponent[]  @relation("TechnologyComponentOwner")
+  ownedTechnologyStandards    TechnologyStandard[]   @relation("TechnologyStandardOwner")
+  ownedReferenceArchitectures ReferenceArchitecture[] @relation("ReferenceArchitectureOwner")
 
   @@map("users")
 }
@@ -355,9 +351,13 @@ model Workspace {
   dataAttributes         DataAttribute[]
   appEntityUsages        AppEntityUsage[]
   interfaceDataFlows     InterfaceDataFlow[]
-  diagramLayouts         DiagramLayout[]
-  diagramAnnotations     DiagramAnnotation[]
-  aiArchitectureRuns     AIArchitectureRun[]
+  vendors                Vendor[]
+  technologyProducts     TechnologyProduct[]
+  technologyVersions     TechnologyVersion[]
+  technologyComponents   TechnologyComponent[]
+  technologyDependencies TechnologyDependency[]
+  technologyStandards    TechnologyStandard[]
+  referenceArchitectures ReferenceArchitecture[]
 
   @@map("workspaces")
 }
@@ -607,13 +607,6 @@ model Application {
   dataClassification         DataClassification    @default(DC_UNKNOWN)
   actualUsers                Int?
   replacementAppId           String?
-  // --- AI-critical fields for architecture diagram inference ---
-  // e.g. "CRM", "ERP", "DW", "ETL", "API Gateway", "Identity"
-  systemLandscapeRole        String?
-  // comma-separated: "customer-data, order-mgmt, billing"
-  businessCapabilityKeywords String?
-  // comma-separated: "Java, PostgreSQL, REST, Kafka"
-  technicalStackKeywords     String?
   sortOrder                  Int                   @default(0)
   isActive                   Boolean               @default(true)
   createdAt                  DateTime              @default(now())
@@ -632,6 +625,7 @@ model Application {
   interfacesTo         ApplicationInterface[]     @relation("InterfaceTarget")
   entityUsages         AppEntityUsage[]
   goldenSourceEntities DataEntity[]               @relation("DataEntityGoldenSource")
+  technologyComponents ApplicationTechnology[]
 
   @@index([workspaceId])
   @@index([workspaceId, lifecycle])
@@ -768,24 +762,13 @@ model ApplicationInterface {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
-  // --- Architecture diagram fields ---
-  scenario        ArchStateType         @default(AS_IS)
-  source          MappingSource         @default(MANUAL)
-  reviewStatus    InterfaceReviewStatus @default(ACCEPTED)
-  aiConfidence    Int?
-  aiRationale     String?
-  aiModel         String?
-  aiPromptVersion String?
-  createdById     String?
-
   workspace Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   sourceApp Application         @relation("InterfaceSource", fields: [sourceAppId], references: [id], onDelete: Cascade)
   targetApp Application         @relation("InterfaceTarget", fields: [targetAppId], references: [id], onDelete: Cascade)
   dataFlows InterfaceDataFlow[]
 
-  @@unique([workspaceId, sourceAppId, targetAppId, name, scenario], map: "application_interfaces_ws_src_tgt_name_scenario_key")
+  @@unique([workspaceId, sourceAppId, targetAppId, name], map: "application_interfaces_ws_src_tgt_name_key")
   @@index([workspaceId])
-  @@index([workspaceId, scenario, reviewStatus])
   @@index([sourceAppId])
   @@index([targetAppId])
   @@map("application_interfaces")
@@ -1637,11 +1620,10 @@ model DataAttribute {
 }
 
 // ============================================================
-// MODULE 7 — AS-IS / TO-BE ARCHITECTURE DIAGRAM
+// INTERFACE DATA FLOWS (shared M2/M6)
 // ============================================================
 
 // Join table: which DataEntities flow across which ApplicationInterface.
-// Only populated when the "+ Data flows" toggle is used on the diagram.
 model InterfaceDataFlow {
   id           String            @id @default(cuid())
   workspaceId  String
@@ -1664,112 +1646,403 @@ model InterfaceDataFlow {
   @@map("interface_data_flows")
 }
 
-// One layout per (workspace, scenario). Stores user-arranged node positions
-// and canvas viewport. Regeneration preserves positions for existing nodes.
-model DiagramLayout {
-  id            String        @id @default(cuid())
-  workspaceId   String
-  scenario      ArchStateType @default(AS_IS)
-  // { [applicationId]: { x: number, y: number } }
-  nodePositions Json          @default("{}")
-  // { [nodeId]: { w: number, h: number } } — per-node size overrides
-  nodeSizes     Json          @default("{}")
-  // Global default node size for this scenario (overrides built-in default)
-  defaultNodeW  Int?
-  defaultNodeH  Int?
-  // { x: number, y: number, zoom: number }
-  viewport      Json?
-  updatedById   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+// ============================================================
+// MODULE 7 ENUMS (Technology Architecture — TOGAF Phase D)
+// ============================================================
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@unique([workspaceId, scenario])
-  @@map("diagram_layouts")
+enum VendorCategory {
+  HYPERSCALER
+  SOFTWARE
+  HARDWARE
+  SERVICES
+  OPEN_SOURCE_FOUNDATION
+  INTERNAL
+  OTHER
 }
 
-// Free-form annotations on the architecture canvas (Visio/LeanIX-style).
-// Containers, shapes, notes, and lines/arrows — all live here.
-model DiagramAnnotation {
-  id          String         @id @default(cuid())
-  workspaceId String
-  scenario    ArchStateType  @default(AS_IS)
-  type        AnnotationType
-
-  // Geometry
-  x        Float  @default(0)
-  y        Float  @default(0)
-  width    Float?
-  height   Float?
-  z        Int    @default(0)
-  rotation Float  @default(0)
-
-  // Content / styling
-  text        String?
-  strokeColor String?
-  fillColor   String?
-  strokeWidth Int?
-  strokeStyle String? // 'solid' | 'dashed' | 'dotted'
-
-  // Line / arrow endpoints
-  // { kind: 'APP'|'ANNOTATION'|'FREE', refId?: string, x?: number, y?: number, handle?: 't'|'l'|'r'|'b' }
-  sourceAnchor Json?
-  targetAnchor Json?
-  // [{ x, y }, ...] — manual bend points
-  waypoints    Json    @default("[]")
-  // 'orthogonal' | 'straight'
-  routing      String  @default("orthogonal")
-  headSource   Boolean @default(false)
-  headTarget   Boolean @default(true)
-
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId, scenario])
-  @@index([workspaceId, scenario, type])
-  @@map("diagram_annotations")
+enum VendorStatus {
+  ACTIVE
+  STRATEGIC
+  UNDER_REVIEW
+  EXITING
+  DEPRECATED
 }
 
-enum AnnotationType {
+enum TechnologyType {
+  SOFTWARE
+  CLOUD_SERVICE
+  DATABASE
+  MIDDLEWARE
+  SERVER
+  NETWORK
+  OPERATING_SYSTEM
+  LANGUAGE
+  FRAMEWORK
+  PLATFORM
+  LIBRARY
   CONTAINER
-  NOTE
-  RECTANGLE
-  CIRCLE
-  CYLINDER
-  CLOUD
-  LINE
-  ARROW
+  OTHER
 }
 
-enum AnchorKind {
-  APP
-  ANNOTATION
-  FREE
+enum LicenseType {
+  COMMERCIAL
+  OSS_PERMISSIVE
+  OSS_COPYLEFT
+  PROPRIETARY_INTERNAL
+  FREEMIUM
+  UNKNOWN
 }
 
-// Telemetry for the architecture-discovery AI endpoint (mirrors AIMappingRun).
-model AIArchitectureRun {
-  id                   String   @id @default(cuid())
-  workspaceId          String
-  mode                 String // "global" | "per-app"
-  scopeAppId           String? // set when mode = per-app
-  appsProcessed        Int      @default(0)
-  suggestionsGenerated Int      @default(0)
-  tokensUsed           Int      @default(0)
-  durationMs           Int      @default(0)
-  model                String
-  promptVersion        String
-  status               String   @default("completed")
-  errorMessage         String?
-  createdAt            DateTime @default(now())
-  createdById          String?
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId, createdAt])
-  @@map("ai_architecture_runs")
+enum LifecycleStatus {
+  PREVIEW
+  CURRENT
+  MAINSTREAM
+  EXTENDED_SUPPORT
+  DEPRECATED
+  END_OF_LIFE
 }
+
+enum ComponentEnvironment {
+  PRODUCTION
+  STAGING
+  TEST
+  DEVELOPMENT
+  DR
+  SHARED
+}
+
+enum HostingModel {
+  ON_PREMISES
+  PRIVATE_CLOUD
+  PUBLIC_IAAS
+  PUBLIC_PAAS
+  SAAS
+  HYBRID
+}
+
+enum TechLayer {
+  PRESENTATION
+  APPLICATION
+  DATA
+  INTEGRATION
+  INFRASTRUCTURE
+  SECURITY
+}
+
+enum TechnologyRole {
+  PRIMARY
+  SECONDARY
+  FALLBACK
+  DEPRECATED
+}
+
+enum TechnologyCriticality {
+  CRITICAL
+  IMPORTANT
+  STANDARD
+  OPTIONAL
+}
+
+enum TechnologyDependencyType {
+  REQUIRES
+  RUNS_ON
+  COMPATIBLE_WITH
+  CONFLICTS_WITH
+  REPLACES
+}
+
+// ============================================================
+// MODULE 7: VENDOR
+// ============================================================
+
+model Vendor {
+  id                    String         @id @default(cuid())
+  workspaceId           String
+  name                  String
+  website               String?
+  category              VendorCategory @default(OTHER)
+  description           String?
+  headquartersCountry   String?
+  annualSpend           Decimal?       @db.Decimal(14, 2)
+  currency              String         @default("USD")
+  contractNotes         String?
+  relationshipOwnerId   String?
+  status                VendorStatus   @default(ACTIVE)
+  isActive              Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  relationshipOwner User?               @relation("VendorRelationshipOwner", fields: [relationshipOwnerId], references: [id])
+  products          TechnologyProduct[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, category])
+  @@map("vendors")
+}
+
+// ============================================================
+// MODULE 7: TECHNOLOGY PRODUCT (catalog level)
+// ============================================================
+
+model TechnologyProduct {
+  id               String         @id @default(cuid())
+  workspaceId      String
+  vendorId         String
+  name             String
+  slug             String
+  type             TechnologyType @default(OTHER)
+  category         String?
+  description      String?
+  website          String?
+  openSource       Boolean        @default(false)
+  licenseType      LicenseType    @default(UNKNOWN)
+  techRadarEntryId String?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  workspace       Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  vendor          Vendor                 @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  versions        TechnologyVersion[]
+  components      TechnologyComponent[]
+  dependenciesOut TechnologyDependency[] @relation("DependencySource")
+  dependenciesIn  TechnologyDependency[] @relation("DependencyTarget")
+  standards       TechnologyStandard[]
+  referenceArchs  ReferenceArchitectureComponent[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([workspaceId, type])
+  @@index([workspaceId, vendorId])
+  @@index([workspaceId, techRadarEntryId])
+  @@map("technology_products")
+}
+
+// ============================================================
+// MODULE 7: TECHNOLOGY VERSION
+// ============================================================
+
+model TechnologyVersion {
+  id               String          @id @default(cuid())
+  workspaceId      String
+  productId        String
+  version          String
+  releaseDate      DateTime?
+  endOfSupportDate DateTime?
+  endOfLifeDate    DateTime?
+  lifecycleStatus  LifecycleStatus @default(CURRENT)
+  notes            String?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  workspace       Workspace                        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product         TechnologyProduct                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  components      TechnologyComponent[]
+  standards       TechnologyStandard[]
+  referenceArchs  ReferenceArchitectureComponent[]
+
+  @@unique([productId, version])
+  @@index([workspaceId])
+  @@index([workspaceId, productId])
+  @@index([workspaceId, lifecycleStatus])
+  @@index([workspaceId, endOfLifeDate])
+  @@map("technology_versions")
+}
+
+// ============================================================
+// MODULE 7: TECHNOLOGY COMPONENT (deployment level — ArchiMate Node)
+// ============================================================
+
+model TechnologyComponent {
+  id           String               @id @default(cuid())
+  workspaceId  String
+  productId    String
+  versionId    String?
+  name         String
+  environment  ComponentEnvironment @default(PRODUCTION)
+  hostingModel HostingModel         @default(ON_PREMISES)
+  region       String?
+  ownerId      String?
+  notes        String?
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  workspace    Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product      TechnologyProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  version      TechnologyVersion?      @relation(fields: [versionId], references: [id])
+  owner        User?                   @relation("TechnologyComponentOwner", fields: [ownerId], references: [id])
+  applications ApplicationTechnology[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, productId])
+  @@index([workspaceId, environment])
+  @@index([workspaceId, hostingModel])
+  @@map("technology_components")
+}
+
+// ============================================================
+// MODULE 7: APPLICATION ↔ TECHNOLOGY COMPONENT LINK
+// ============================================================
+// NOTE: This is distinct from the M4 ApplicationTechLink (TechRadar link),
+// which remains intact for backward compatibility.
+
+model ApplicationTechnology {
+  applicationId String
+  componentId   String
+  layer         TechLayer             @default(APPLICATION)
+  role          TechnologyRole        @default(PRIMARY)
+  criticality   TechnologyCriticality @default(STANDARD)
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  application Application         @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  component   TechnologyComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, componentId])
+  @@index([componentId])
+  @@map("application_technologies")
+}
+
+// ============================================================
+// MODULE 7: TECHNOLOGY DEPENDENCY (tech → tech)
+// ============================================================
+
+model TechnologyDependency {
+  id                String                   @id @default(cuid())
+  workspaceId       String
+  sourceProductId   String
+  targetProductId   String
+  dependencyType    TechnologyDependencyType @default(REQUIRES)
+  versionConstraint String?
+  notes             String?
+  isActive          Boolean                  @default(true)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceProduct TechnologyProduct @relation("DependencySource", fields: [sourceProductId], references: [id], onDelete: Cascade)
+  targetProduct TechnologyProduct @relation("DependencyTarget", fields: [targetProductId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceProductId, targetProductId, dependencyType])
+  @@index([workspaceId])
+  @@index([workspaceId, sourceProductId])
+  @@index([workspaceId, targetProductId])
+  @@map("technology_dependencies")
+}
+
+// ============================================================
+// MODULE 7 PHASE 2: TECHNOLOGY STANDARDS + REFERENCE ARCHITECTURES
+// ============================================================
+
+enum StandardCategory {
+  PRODUCT_CHOICE
+  VERSION_CHOICE
+  PROTOCOL
+  SECURITY
+  ARCHITECTURE_PATTERN
+  HOSTING
+  INTEGRATION
+  DATA
+  OTHER
+}
+
+enum StandardLevel {
+  MANDATORY
+  RECOMMENDED
+  DEPRECATED
+  PROHIBITED
+}
+
+enum StandardStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+enum ReferenceArchStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+model TechnologyStandard {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  name           String
+  description    String?
+  category       StandardCategory @default(OTHER)
+  level          StandardLevel    @default(RECOMMENDED)
+  status         StandardStatus   @default(ACTIVE)
+  productId      String?
+  versionId      String?
+  ownerId        String?
+  effectiveDate  DateTime?
+  reviewDate     DateTime?
+  rationale      String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   TechnologyProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  version   TechnologyVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  owner     User?              @relation("TechnologyStandardOwner", fields: [ownerId], references: [id])
+
+  @@index([workspaceId])
+  @@index([workspaceId, category])
+  @@index([workspaceId, level])
+  @@index([workspaceId, status])
+  @@index([workspaceId, productId])
+  @@index([workspaceId, versionId])
+  @@map("technology_standards")
+}
+
+model ReferenceArchitecture {
+  id          String              @id @default(cuid())
+  workspaceId String
+  name        String
+  slug        String
+  description String?
+  category    String?
+  status      ReferenceArchStatus @default(DRAFT)
+  ownerId     String?
+  diagramUrl  String?
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  workspace  Workspace                       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner      User?                           @relation("ReferenceArchitectureOwner", fields: [ownerId], references: [id])
+  components ReferenceArchitectureComponent[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@map("reference_architectures")
+}
+
+model ReferenceArchitectureComponent {
+  architectureId String
+  productId      String
+  layer          TechLayer      @default(APPLICATION)
+  role           TechnologyRole @default(PRIMARY)
+  versionId      String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  architecture ReferenceArchitecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  product      TechnologyProduct     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version      TechnologyVersion?    @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@id([architectureId, productId])
+  @@index([productId])
+  @@map("reference_architecture_components")
+}
+

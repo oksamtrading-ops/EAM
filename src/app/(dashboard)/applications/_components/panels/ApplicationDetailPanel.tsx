@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, Crown, Database } from "lucide-react";
+import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, Crown, Database, Wand2, Check } from "lucide-react";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import Link from "next/link";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
@@ -688,6 +689,11 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
 
           <Separator />
 
+          {/* Technology Components (Module 7) */}
+          <ApplicationTechnologySection applicationId={app.id} />
+
+          <Separator />
+
           {/* Ownership */}
           <CollapsibleSection title="Ownership">
             <div className="grid grid-cols-2 gap-3">
@@ -744,3 +750,306 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
   );
 }
 
+const TECH_LAYERS = ["PRESENTATION", "APPLICATION", "DATA", "INTEGRATION", "INFRASTRUCTURE", "SECURITY"] as const;
+const TECH_ROLES = ["PRIMARY", "SECONDARY", "FALLBACK", "DEPRECATED"] as const;
+const TECH_CRITICALITIES = ["CRITICAL", "IMPORTANT", "STANDARD", "OPTIONAL"] as const;
+
+type LinkLayer = (typeof TECH_LAYERS)[number];
+type LinkRole = (typeof TECH_ROLES)[number];
+type LinkCriticality = (typeof TECH_CRITICALITIES)[number];
+
+type DetectSuggestion = {
+  componentId: string;
+  componentName: string;
+  productName: string;
+  vendorName: string;
+  layer: LinkLayer;
+  role: LinkRole;
+  criticality: LinkCriticality;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  rationale: string;
+};
+
+function ApplicationTechnologySection({ applicationId }: { applicationId: string }) {
+  const utils = trpc.useUtils();
+  const { workspaceId } = useWorkspace();
+  const { data: links = [] } = trpc.technologyComponent.listForApplication.useQuery({ applicationId });
+  const { data: components = [] } = trpc.technologyComponent.list.useQuery();
+  const { data: score } = trpc.techArchitecture.applicationScore.useQuery({ applicationId });
+  const [linkComponentId, setLinkComponentId] = useState("");
+  const [linkLayer, setLinkLayer] = useState<LinkLayer>("APPLICATION");
+  const [linkRole, setLinkRole] = useState<LinkRole>("PRIMARY");
+  const [linkCriticality, setLinkCriticality] = useState<LinkCriticality>("STANDARD");
+
+  const [detectLoading, setDetectLoading] = useState(false);
+  const [detectRationale, setDetectRationale] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<DetectSuggestion[] | null>(null);
+  const [linkedFromAI, setLinkedFromAI] = useState<Set<string>>(new Set());
+
+  async function handleDetectStack() {
+    setDetectLoading(true);
+    setSuggestions(null);
+    setDetectRationale("");
+    setLinkedFromAI(new Set());
+    try {
+      const res = await fetch("/api/ai/tech-architecture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "detect-stack",
+          workspaceId,
+          payload: { applicationId },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Detection failed");
+        return;
+      }
+      setDetectRationale(json.rationale || "");
+      setSuggestions(Array.isArray(json.suggestions) ? json.suggestions : []);
+      if ((json.suggestions ?? []).length === 0) {
+        toast.info("No confident suggestions found");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Detection failed");
+    } finally {
+      setDetectLoading(false);
+    }
+  }
+
+  async function handleLinkSuggestion(s: DetectSuggestion) {
+    try {
+      await linkMutation.mutateAsync({
+        applicationId,
+        componentId: s.componentId,
+        layer: s.layer,
+        role: s.role,
+        criticality: s.criticality,
+      });
+      setLinkedFromAI((prev) => {
+        const next = new Set(prev);
+        next.add(s.componentId);
+        return next;
+      });
+    } catch {
+      // toast handled by mutation
+    }
+  }
+
+  const linkMutation = trpc.technologyComponent.linkApplication.useMutation({
+    onSuccess: () => {
+      toast.success("Component linked");
+      utils.technologyComponent.listForApplication.invalidate({ applicationId });
+      utils.techArchitecture.kpis.invalidate();
+      setLinkComponentId("");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const unlinkMutation = trpc.technologyComponent.unlinkApplication.useMutation({
+    onSuccess: () => {
+      toast.success("Component unlinked");
+      utils.technologyComponent.listForApplication.invalidate({ applicationId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const linkedIds = new Set(links.map((l) => l.componentId));
+  const grouped = links.reduce<Record<string, typeof links>>((acc, link) => {
+    (acc[link.layer] ||= []).push(link);
+    return acc;
+  }, {});
+
+  const bandColor = score
+    ? score.band === "GREEN"
+      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+      : score.band === "AMBER"
+        ? "bg-amber-100 text-amber-700 border-amber-200"
+        : "bg-rose-100 text-rose-700 border-rose-200"
+    : "bg-muted text-muted-foreground";
+
+  return (
+    <CollapsibleSection title="Technology Components" count={links.length}>
+      <div className="space-y-2">
+        {score && (
+          <div className="flex items-center gap-2 flex-wrap text-xs pb-1">
+            <Badge variant="outline" className={`text-[10px] ${bandColor}`}>
+              Standards {score.band} · score {score.score}
+            </Badge>
+            {score.prohibitedCount > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-rose-100 text-rose-700 border-rose-200">
+                {score.prohibitedCount} prohibited
+              </Badge>
+            )}
+            {score.deprecatedCount > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
+                {score.deprecatedCount} deprecated
+              </Badge>
+            )}
+            {score.eolRiskCount > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-orange-100 text-orange-700 border-orange-200">
+                {score.eolRiskCount} EOL risk
+              </Badge>
+            )}
+          </div>
+        )}
+        {links.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No technology components linked. Use the link control below.
+          </p>
+        ) : (
+          Object.entries(grouped).map(([layer, items]) => (
+            <div key={layer}>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">{layer}</p>
+              <ul className="space-y-1">
+                {items.map((link) => (
+                  <li
+                    key={link.componentId}
+                    className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group"
+                  >
+                    <span className="flex-1 truncate">
+                      {link.component.name}
+                      <span className="text-muted-foreground ml-1">
+                        ({link.component.product.name}
+                        {link.component.version ? ` ${link.component.version.version}` : ""})
+                      </span>
+                    </span>
+                    <Badge variant="outline" className="text-[9px]">{link.role}</Badge>
+                    <Badge variant="outline" className="text-[9px]">{link.criticality}</Badge>
+                    <button
+                      onClick={() => unlinkMutation.mutate({ applicationId, componentId: link.componentId })}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition-opacity"
+                      aria-label="Unlink"
+                    >
+                      <Unlink className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+
+        <div className="mt-2 rounded-lg border border-dashed border-indigo-300 bg-indigo-50/40 p-2 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] uppercase tracking-wide text-indigo-700 font-medium">AI stack detection</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px]"
+              onClick={handleDetectStack}
+              disabled={detectLoading}
+            >
+              <Wand2 className="h-3 w-3 mr-1" />
+              {detectLoading ? "Detecting…" : suggestions ? "Re-run" : "Detect stack"}
+            </Button>
+          </div>
+          {detectRationale && (
+            <p className="text-[11px] text-muted-foreground leading-snug">{detectRationale}</p>
+          )}
+          {suggestions && suggestions.length === 0 && !detectLoading && (
+            <p className="text-[11px] text-muted-foreground">No confident suggestions.</p>
+          )}
+          {suggestions && suggestions.length > 0 && (
+            <ul className="space-y-1">
+              {suggestions.map((s) => {
+                const isLinked = linkedFromAI.has(s.componentId);
+                return (
+                  <li key={s.componentId} className="text-[11px] p-2 bg-card rounded border border-border space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{s.componentName}</p>
+                        <p className="text-muted-foreground truncate">
+                          {s.productName} · {s.vendorName}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] shrink-0 ${
+                          s.confidence === "HIGH"
+                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                            : s.confidence === "MEDIUM"
+                              ? "bg-amber-100 text-amber-700 border-amber-200"
+                              : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {s.confidence}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Badge variant="outline" className="text-[9px]">{s.layer}</Badge>
+                      <Badge variant="outline" className="text-[9px]">{s.role}</Badge>
+                      <Badge variant="outline" className="text-[9px]">{s.criticality}</Badge>
+                    </div>
+                    {s.rationale && <p className="text-muted-foreground leading-snug">{s.rationale}</p>}
+                    <Button
+                      size="sm"
+                      variant={isLinked ? "outline" : "default"}
+                      className="h-6 w-full text-[10px]"
+                      disabled={isLinked || linkMutation.isPending}
+                      onClick={() => handleLinkSuggestion(s)}
+                    >
+                      {isLinked ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" /> Linked
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3 w-3 mr-1" /> Link
+                        </>
+                      )}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="mt-2 rounded-lg border border-dashed border-border p-2 space-y-2">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Link a component</p>
+          <Select value={linkComponentId || "__none__"} onValueChange={(v) => setLinkComponentId(!v || v === "__none__" ? "" : v)}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select a component" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select a component</SelectItem>
+              {components.filter((c) => !linkedIds.has(c.id)).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name} — {c.product.name} ({c.environment})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="grid grid-cols-3 gap-1.5">
+            <Select value={linkLayer} onValueChange={(v) => setLinkLayer((v || "APPLICATION") as LinkLayer)}>
+              <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{TECH_LAYERS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={linkRole} onValueChange={(v) => setLinkRole((v || "PRIMARY") as LinkRole)}>
+              <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{TECH_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={linkCriticality} onValueChange={(v) => setLinkCriticality((v || "STANDARD") as LinkCriticality)}>
+              <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{TECH_CRITICALITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <Button
+            size="sm"
+            className="w-full h-7 text-xs"
+            disabled={!linkComponentId || linkMutation.isPending}
+            onClick={() => linkMutation.mutate({
+              applicationId,
+              componentId: linkComponentId,
+              layer: linkLayer,
+              role: linkRole,
+              criticality: linkCriticality,
+            })}
+          >
+            <Plus className="h-3 w-3 mr-1" /> Link Component
+          </Button>
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+}
