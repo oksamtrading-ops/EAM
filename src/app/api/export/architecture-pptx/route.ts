@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const [apps, interfaces] = await Promise.all([
+  const [apps, interfaces, layout, annotations] = await Promise.all([
     db.application.findMany({
       where: { workspaceId, isActive: true },
       orderBy: { name: "asc" },
@@ -61,6 +61,13 @@ export async function POST(req: Request) {
         targetApp: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
+    }),
+    db.diagramLayout.findUnique({
+      where: { workspaceId_scenario: { workspaceId, scenario } },
+    }),
+    db.diagramAnnotation.findMany({
+      where: { workspaceId, scenario },
+      orderBy: [{ z: "asc" }, { createdAt: "asc" }],
     }),
   ]);
 
@@ -109,6 +116,18 @@ export async function POST(req: Request) {
       });
     }
   }
+
+  // ── Slide 2b: Editable shapes (native PPTX) ────────
+  addEditableShapesSlide(pptx, {
+    apps,
+    interfaces,
+    annotations,
+    nodePositions: (layout?.nodePositions as Record<string, { x: number; y: number }>) ?? {},
+    nodeSizes: (layout?.nodeSizes as Record<string, { w: number; h: number }>) ?? {},
+    defaultNodeW: layout?.defaultNodeW ?? 160,
+    defaultNodeH: layout?.defaultNodeH ?? 56,
+    title: "Architecture — Editable Shapes",
+  });
 
   // ── Slide 3: Integrations table ────────────────────
   const s3 = pptx.addSlide();
@@ -187,4 +206,274 @@ function hdr(text: string) {
     text,
     options: { bold: true, fontSize: 9, color: "FFFFFF", fill: { color: "1a1f2e" } },
   };
+}
+
+// ──────────────────────────────────────────────────────────
+// Editable shapes slide — renders apps, annotations, and
+// interfaces as native PowerPoint shapes.
+// ──────────────────────────────────────────────────────────
+function addEditableShapesSlide(
+  pptx: PptxGenJS,
+  args: {
+    apps: Array<{ id: string; name: string; lifecycle: string; vendor: string | null }>;
+    interfaces: Array<{
+      id: string;
+      sourceAppId: string;
+      targetAppId: string;
+      criticality: string;
+      reviewStatus: string;
+    }>;
+    annotations: Array<{
+      id: string;
+      type: string;
+      x: number;
+      y: number;
+      width: number | null;
+      height: number | null;
+      text: string | null;
+      strokeColor: string | null;
+      fillColor: string | null;
+      strokeWidth: number | null;
+      strokeStyle: string | null;
+      sourceAnchor: any;
+      targetAnchor: any;
+      waypoints: any;
+      headTarget: boolean;
+    }>;
+    nodePositions: Record<string, { x: number; y: number }>;
+    nodeSizes: Record<string, { w: number; h: number }>;
+    defaultNodeW: number;
+    defaultNodeH: number;
+    title: string;
+  }
+) {
+  const { apps, interfaces, annotations, nodePositions, nodeSizes, defaultNodeW, defaultNodeH, title } = args;
+
+  // Bounding box of all content in flow coords
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  // auto-layout fallback — match canvas: GRID_COLS=6, H_GAP=220, V_GAP=120
+  const autoPos: Record<string, { x: number; y: number }> = {};
+  apps.forEach((a, i) => {
+    autoPos[a.id] = { x: (i % 6) * 220, y: Math.floor(i / 6) * 120 };
+  });
+
+  const appBounds = new Map<string, { x: number; y: number; w: number; h: number }>();
+  for (const a of apps) {
+    const p = nodePositions[a.id] ?? autoPos[a.id] ?? { x: 0, y: 0 };
+    const s = nodeSizes[a.id] ?? { w: defaultNodeW, h: defaultNodeH };
+    appBounds.set(a.id, { x: p.x, y: p.y, w: s.w, h: s.h });
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x + s.w);
+    maxY = Math.max(maxY, p.y + s.h);
+  }
+  const annBounds = new Map<string, { x: number; y: number; w: number; h: number }>();
+  for (const ann of annotations) {
+    if (ann.type === "LINE" || ann.type === "ARROW") continue;
+    const w = ann.width ?? 160;
+    const h = ann.height ?? 80;
+    annBounds.set(ann.id, { x: ann.x, y: ann.y, w, h });
+    minX = Math.min(minX, ann.x);
+    minY = Math.min(minY, ann.y);
+    maxX = Math.max(maxX, ann.x + w);
+    maxY = Math.max(maxY, ann.y + h);
+  }
+  if (!isFinite(minX)) {
+    minX = 0;
+    minY = 0;
+    maxX = 100;
+    maxY = 100;
+  }
+
+  // Slide content area: 12.3 x 6.3 inches with 0.5 inch left margin, 0.9 top
+  const slideX = 0.5;
+  const slideY = 0.9;
+  const slideW = 12.3;
+  const slideH = 6.3;
+  const contentW = Math.max(1, maxX - minX);
+  const contentH = Math.max(1, maxY - minY);
+  const scale = Math.min(slideW / contentW, slideH / contentH);
+
+  // Center within slide area
+  const offsetX = slideX + (slideW - contentW * scale) / 2;
+  const offsetY = slideY + (slideH - contentH * scale) / 2;
+
+  function fx(x: number): number {
+    return offsetX + (x - minX) * scale;
+  }
+  function fy(y: number): number {
+    return offsetY + (y - minY) * scale;
+  }
+  function fw(w: number): number {
+    return Math.max(0.1, w * scale);
+  }
+
+  function resolveAnchor(
+    anchor: any
+  ): { x: number; y: number } | null {
+    if (!anchor) return null;
+    if (anchor.kind === "FREE") {
+      return { x: typeof anchor.x === "number" ? anchor.x : 0, y: typeof anchor.y === "number" ? anchor.y : 0 };
+    }
+    const bounds =
+      anchor.kind === "APP" ? appBounds.get(anchor.refId) : annBounds.get(anchor.refId);
+    if (!bounds) return null;
+    switch (anchor.handle) {
+      case "t":
+        return { x: bounds.x + bounds.w / 2, y: bounds.y };
+      case "b":
+        return { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h };
+      case "l":
+        return { x: bounds.x, y: bounds.y + bounds.h / 2 };
+      case "r":
+        return { x: bounds.x + bounds.w, y: bounds.y + bounds.h / 2 };
+      default:
+        return { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 };
+    }
+  }
+
+  function sideCenter(b: { x: number; y: number; w: number; h: number }, side: "t" | "l" | "r" | "b") {
+    switch (side) {
+      case "t":
+        return { x: b.x + b.w / 2, y: b.y };
+      case "b":
+        return { x: b.x + b.w / 2, y: b.y + b.h };
+      case "l":
+        return { x: b.x, y: b.y + b.h / 2 };
+      case "r":
+        return { x: b.x + b.w, y: b.y + b.h / 2 };
+    }
+  }
+
+  const s = pptx.addSlide();
+  s.addText(title, {
+    x: 0.5, y: 0.2, w: 12.5, h: 0.5,
+    fontSize: 20, fontFace: "Arial", color: "1a1f2e", bold: true,
+  });
+
+  // Draw annotation shapes first (below apps)
+  for (const ann of annotations) {
+    if (ann.type === "LINE" || ann.type === "ARROW") continue;
+    const b = annBounds.get(ann.id);
+    if (!b) continue;
+    const x = fx(b.x);
+    const y = fy(b.y);
+    const w = fw(b.w);
+    const h = fw(b.h);
+    const stroke = stripHash(ann.strokeColor) ?? "334155";
+    const fill = ann.fillColor ? stripHash(ann.fillColor) : undefined;
+    const strokeW = Math.max(0.25, (ann.strokeWidth ?? 2) * 0.5);
+    const dash = ann.strokeStyle === "dashed" ? "dash" : ann.strokeStyle === "dotted" ? "dot" : undefined;
+    let shape: any = pptx.ShapeType.rect;
+    if (ann.type === "CIRCLE") shape = pptx.ShapeType.ellipse;
+    if (ann.type === "CYLINDER") shape = pptx.ShapeType.can;
+    if (ann.type === "CLOUD") shape = pptx.ShapeType.cloud;
+    if (ann.type === "NOTE") shape = pptx.ShapeType.rect;
+    if (ann.type === "CONTAINER") shape = pptx.ShapeType.rect;
+
+    s.addShape(shape, {
+      x, y, w, h,
+      fill: fill ? { color: fill } : { type: "none" } as any,
+      line: { color: stroke, width: strokeW, dashType: dash as any },
+    });
+    if (ann.text && ann.text.trim()) {
+      s.addText(ann.text, {
+        x, y, w, h,
+        fontSize: 10, fontFace: "Arial",
+        color: ann.type === "NOTE" ? "78350f" : stroke,
+        align: ann.type === "CONTAINER" ? "left" : "center",
+        valign: ann.type === "CONTAINER" ? "top" : "middle",
+        margin: 0.08,
+      });
+    }
+  }
+
+  // Apps (rectangles with lifecycle-coloured border)
+  for (const a of apps) {
+    const b = appBounds.get(a.id);
+    if (!b) continue;
+    const x = fx(b.x);
+    const y = fy(b.y);
+    const w = fw(b.w);
+    const h = fw(b.h);
+    const stroke = LIFECYCLE_FILL[a.lifecycle] ?? "9ca3af";
+    s.addShape(pptx.ShapeType.rect, {
+      x, y, w, h,
+      fill: { color: "FFFFFF" },
+      line: { color: stroke, width: 1.25 },
+    });
+    s.addText(
+      [
+        { text: a.name, options: { bold: true, fontSize: 10 } },
+        ...(a.vendor ? [{ text: `\n${a.vendor}`, options: { fontSize: 8, color: "64748b" } }] : []),
+      ] as any,
+      {
+        x, y, w, h, fontFace: "Arial",
+        align: "center", valign: "middle", margin: 0.05,
+      }
+    );
+  }
+
+  // Interface edges — straight line between nearest sides
+  for (const iface of interfaces) {
+    const src = appBounds.get(iface.sourceAppId);
+    const tgt = appBounds.get(iface.targetAppId);
+    if (!src || !tgt) continue;
+    const side: "r" | "l" | "b" | "t" =
+      Math.abs(tgt.x - src.x) >= Math.abs(tgt.y - src.y) ? "r" : "b";
+    const srcPt = sideCenter(src, side);
+    const tgtSide = side === "r" ? "l" : "t";
+    const tgtPt = sideCenter(tgt, tgtSide);
+    const color = iface.reviewStatus === "PENDING"
+      ? "a855f7"
+      : (CRITICALITY_COLOR_HEX[iface.criticality] ?? "2563eb");
+    s.addShape(pptx.ShapeType.line, {
+      x: Math.min(fx(srcPt.x), fx(tgtPt.x)),
+      y: Math.min(fy(srcPt.y), fy(tgtPt.y)),
+      w: Math.abs(fx(tgtPt.x) - fx(srcPt.x)),
+      h: Math.abs(fy(tgtPt.y) - fy(srcPt.y)),
+      flipH: tgtPt.x < srcPt.x,
+      flipV: tgtPt.y < srcPt.y,
+      line: {
+        color,
+        width: 1,
+        endArrowType: "triangle",
+        dashType: iface.reviewStatus === "PENDING" ? "dash" : undefined,
+      },
+    } as any);
+  }
+
+  // Line / Arrow annotations — native line shapes
+  for (const ann of annotations) {
+    if (ann.type !== "LINE" && ann.type !== "ARROW") continue;
+    const src = resolveAnchor(ann.sourceAnchor);
+    const tgt = resolveAnchor(ann.targetAnchor);
+    if (!src || !tgt) continue;
+    const color = stripHash(ann.strokeColor) ?? "334155";
+    const strokeW = Math.max(0.25, (ann.strokeWidth ?? 2) * 0.5);
+    const dash = ann.strokeStyle === "dashed" ? "dash" : ann.strokeStyle === "dotted" ? "dot" : undefined;
+    s.addShape(pptx.ShapeType.line, {
+      x: Math.min(fx(src.x), fx(tgt.x)),
+      y: Math.min(fy(src.y), fy(tgt.y)),
+      w: Math.abs(fx(tgt.x) - fx(src.x)),
+      h: Math.abs(fy(tgt.y) - fy(src.y)),
+      flipH: tgt.x < src.x,
+      flipV: tgt.y < src.y,
+      line: {
+        color,
+        width: strokeW,
+        dashType: dash as any,
+        endArrowType: ann.type === "ARROW" && ann.headTarget !== false ? "triangle" : undefined,
+      },
+    } as any);
+  }
+}
+
+function stripHash(c: string | null | undefined): string | undefined {
+  if (!c) return undefined;
+  return c.startsWith("#") ? c.slice(1) : c;
 }

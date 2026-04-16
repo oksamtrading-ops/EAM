@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
   Workflow,
@@ -16,6 +18,7 @@ import {
   Inbox,
   Download,
   Network,
+  Maximize2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -24,7 +27,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
-import { ArchitectureCanvas, type DiagramApplication, type DiagramInterface } from "./ArchitectureCanvas";
+import {
+  ArchitectureCanvas,
+  type DiagramApplication,
+  type DiagramInterface,
+  type DiagramAnnotation,
+  type NodeSize,
+} from "./ArchitectureCanvas";
+import {
+  APP_NODE_DEFAULT_H,
+  APP_NODE_DEFAULT_W,
+} from "./ApplicationNode";
+import { DiagramToolRail, type DiagramTool } from "./DiagramToolRail";
+import type { Anchor, Waypoint } from "./AnnotationEdgesLayer";
+import { useDiagramKeyboard } from "./useDiagramKeyboard";
+import { Grid3x3 } from "lucide-react";
+import {
+  AnnotationPropertiesPanel,
+  type AnnotationPatch,
+  type SelectedAnnotation,
+} from "./AnnotationPropertiesPanel";
 import { InterfaceDetailPanel } from "./InterfaceDetailPanel";
 import { ReviewQueuePanel } from "./ReviewQueuePanel";
 import { exportDiagram } from "./export";
@@ -33,13 +55,32 @@ type Scenario = "AS_IS" | "TO_BE";
 
 type Props = { scenario: Scenario };
 
+// Default sizes for newly created annotations, keyed by tool.
+const ANNOTATION_DEFAULTS: Record<
+  string,
+  { type: "CONTAINER" | "NOTE" | "RECTANGLE" | "CIRCLE" | "CYLINDER" | "CLOUD"; w: number; h: number; text: string }
+> = {
+  container: { type: "CONTAINER", w: 320, h: 200, text: "" },
+  note: { type: "NOTE", w: 180, h: 100, text: "" },
+  "shape:rectangle": { type: "RECTANGLE", w: 160, h: 80, text: "" },
+  "shape:circle": { type: "CIRCLE", w: 120, h: 120, text: "" },
+  "shape:cylinder": { type: "CYLINDER", w: 140, h: 100, text: "" },
+  "shape:cloud": { type: "CLOUD", w: 160, h: 110, text: "" },
+};
+
 export function ArchitectureDiagramClient({ scenario }: Props) {
   const [showDataFlows, setShowDataFlows] = useState(false);
   const [showPending, setShowPending] = useState(true);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<DiagramTool>("select");
   const [reviewOpen, setReviewOpen] = useState(false);
   const [aiRunning, setAiRunning] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(false);
+  // In-session undo/redo for annotation mutations only
+  const undoStack = useRef<Array<() => void>>([]);
+  const redoStack = useRef<Array<() => void>>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { workspaceId } = useWorkspace();
 
@@ -48,8 +89,21 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
     scenario,
     includeDataFlows: showDataFlows,
   });
+  const { data: annotationData } = trpc.diagramAnnotation.list.useQuery({ scenario });
 
   const saveLayout = trpc.diagram.saveLayout.useMutation();
+  const createAnnotation = trpc.diagramAnnotation.create.useMutation({
+    onSuccess: () => utils.diagramAnnotation.list.invalidate({ scenario }),
+    onError: (e) => toast.error(`Create annotation failed: ${e.message}`),
+  });
+  const updateAnnotation = trpc.diagramAnnotation.update.useMutation({
+    onSuccess: () => utils.diagramAnnotation.list.invalidate({ scenario }),
+    onError: (e) => toast.error(`Update annotation failed: ${e.message}`),
+  });
+  const deleteAnnotation = trpc.diagramAnnotation.delete.useMutation({
+    onSuccess: () => utils.diagramAnnotation.list.invalidate({ scenario }),
+    onError: (e) => toast.error(`Delete annotation failed: ${e.message}`),
+  });
 
   const apps: DiagramApplication[] = useMemo(
     () =>
@@ -84,16 +138,63 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
     [data]
   );
 
+  const annotations: DiagramAnnotation[] = useMemo(
+    () =>
+      (annotationData ?? []).map((a: any) => ({
+        id: a.id,
+        type: a.type,
+        x: a.x,
+        y: a.y,
+        width: a.width,
+        height: a.height,
+        z: a.z,
+        text: a.text,
+        strokeColor: a.strokeColor,
+        fillColor: a.fillColor,
+        strokeWidth: a.strokeWidth,
+        strokeStyle: a.strokeStyle,
+        headSource: a.headSource,
+        headTarget: a.headTarget,
+        routing: a.routing,
+        sourceAnchor: a.sourceAnchor,
+        targetAnchor: a.targetAnchor,
+        waypoints: a.waypoints,
+      })),
+    [annotationData]
+  );
+
   const pendingCount = interfaces.filter((i) => i.reviewStatus === "PENDING").length;
 
   const nodePositions =
     (data?.layout?.nodePositions as Record<string, { x: number; y: number }>) ?? {};
+  const nodeSizes = (data?.layout?.nodeSizes as Record<string, NodeSize>) ?? {};
+  const savedDefaultW = data?.layout?.defaultNodeW ?? null;
+  const savedDefaultH = data?.layout?.defaultNodeH ?? null;
+  const defaultNodeW = savedDefaultW ?? APP_NODE_DEFAULT_W;
+  const defaultNodeH = savedDefaultH ?? APP_NODE_DEFAULT_H;
 
   const selectedInterface = useMemo(
     () => interfaces.find((i) => i.id === selectedEdgeId) ?? null,
     [interfaces, selectedEdgeId]
   );
 
+  const selectedAnnotation: SelectedAnnotation | null = useMemo(() => {
+    if (!selectedAnnotationId) return null;
+    const a = annotations.find((x) => x.id === selectedAnnotationId);
+    if (!a) return null;
+    return {
+      id: a.id,
+      type: a.type,
+      text: a.text,
+      strokeColor: a.strokeColor,
+      fillColor: a.fillColor,
+      strokeWidth: a.strokeWidth,
+      strokeStyle: a.strokeStyle,
+      z: a.z,
+    };
+  }, [annotations, selectedAnnotationId]);
+
+  // ─── Handlers ──────────────────────────────────────────────
   async function handleDiscover() {
     setAiRunning(true);
     try {
@@ -139,14 +240,235 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
     }
   }
 
-  function handlePositionsChange(positions: Record<string, { x: number; y: number }>) {
+  const handlePositionsChange = useCallback(
+    (positions: Record<string, { x: number; y: number }>) => {
+      saveLayout.mutate(
+        { scenario, nodePositions: positions },
+        { onError: (e) => toast.error(`Save layout failed: ${e.message}`) }
+      );
+    },
+    [saveLayout, scenario]
+  );
+
+  const handleSizesChange = useCallback(
+    (sizes: Record<string, NodeSize>) => {
+      saveLayout.mutate(
+        { scenario, nodeSizes: sizes },
+        { onError: (e) => toast.error(`Save sizes failed: ${e.message}`) }
+      );
+    },
+    [saveLayout, scenario]
+  );
+
+  function handleDefaultSizeChange(w: number, h: number) {
     saveLayout.mutate(
-      { scenario, nodePositions: positions },
+      { scenario, defaultNodeW: w, defaultNodeH: h },
       {
-        onError: (e) => toast.error(`Save layout failed: ${e.message}`),
+        onSuccess: () => utils.diagram.getDiagramData.invalidate(),
+        onError: (e) => toast.error(`Save default size failed: ${e.message}`),
       }
     );
   }
+
+  const handleCreateAnnotationAt = useCallback(
+    (tool: DiagramTool, x: number, y: number) => {
+      if (tool === "select" || tool === "line" || tool === "arrow") return;
+      const def = ANNOTATION_DEFAULTS[tool];
+      if (!def) return;
+      const highestZ = annotations.reduce((m, a) => Math.max(m, a.z), 0);
+      createAnnotation.mutate(
+        {
+          scenario,
+          type: def.type,
+          x: x - def.w / 2,
+          y: y - def.h / 2,
+          width: def.w,
+          height: def.h,
+          z: highestZ + 1,
+          text: def.text,
+        },
+        {
+          onSuccess: (created) => setSelectedAnnotationId(created.id),
+        }
+      );
+    },
+    [annotations, createAnnotation, scenario]
+  );
+
+  const handleCreateLine = useCallback(
+    (tool: "line" | "arrow", sourceAnchor: Anchor, targetAnchor: Anchor) => {
+      const highestZ = annotations.reduce((m, a) => Math.max(m, a.z), 0);
+      createAnnotation.mutate(
+        {
+          scenario,
+          type: tool === "arrow" ? "ARROW" : "LINE",
+          x: 0,
+          y: 0,
+          z: highestZ + 1,
+          sourceAnchor: sourceAnchor as any,
+          targetAnchor: targetAnchor as any,
+          waypoints: [],
+          routing: "orthogonal",
+          headTarget: tool === "arrow",
+          headSource: false,
+        },
+        {
+          onSuccess: (created) => setSelectedAnnotationId(created.id),
+        }
+      );
+    },
+    [annotations, createAnnotation, scenario]
+  );
+
+  const handleUpdateWaypoints = useCallback(
+    (id: string, waypoints: Waypoint[]) => {
+      updateAnnotation.mutate({ id, patch: { waypoints } as any });
+    },
+    [updateAnnotation]
+  );
+
+  const handleAnnotationMove = useCallback(
+    (id: string, x: number, y: number) => {
+      updateAnnotation.mutate({ id, patch: { x, y } as any });
+    },
+    [updateAnnotation]
+  );
+
+  const handleAnnotationResize = useCallback(
+    (id: string, w: number, h: number) => {
+      updateAnnotation.mutate({ id, patch: { width: w, height: h } as any });
+    },
+    [updateAnnotation]
+  );
+
+  const handleAnnotationText = useCallback(
+    (id: string, text: string) => {
+      updateAnnotation.mutate({ id, patch: { text: text || null } });
+    },
+    [updateAnnotation]
+  );
+
+  const handleAnnotationPatch = useCallback(
+    (patch: AnnotationPatch) => {
+      if (!selectedAnnotationId) return;
+      updateAnnotation.mutate({ id: selectedAnnotationId, patch });
+    },
+    [selectedAnnotationId, updateAnnotation]
+  );
+
+  const handleAnnotationDelete = useCallback(() => {
+    if (!selectedAnnotationId) return;
+    const existing = annotations.find((a) => a.id === selectedAnnotationId);
+    deleteAnnotation.mutate({ id: selectedAnnotationId });
+    setSelectedAnnotationId(null);
+    // Push undo: recreate
+    if (existing) {
+      const recreate = () => {
+        createAnnotation.mutate({
+          scenario,
+          type: existing.type as any,
+          x: existing.x,
+          y: existing.y,
+          width: existing.width,
+          height: existing.height,
+          z: existing.z,
+          text: existing.text,
+          strokeColor: existing.strokeColor,
+          fillColor: existing.fillColor,
+          strokeWidth: existing.strokeWidth,
+          strokeStyle: existing.strokeStyle as any,
+          sourceAnchor: existing.sourceAnchor as any,
+          targetAnchor: existing.targetAnchor as any,
+          waypoints: (existing.waypoints as any) ?? [],
+          routing: existing.routing as any,
+          headSource: existing.headSource,
+          headTarget: existing.headTarget,
+        });
+      };
+      undoStack.current.push(recreate);
+      redoStack.current = [];
+    }
+  }, [annotations, createAnnotation, deleteAnnotation, scenario, selectedAnnotationId]);
+
+  const handleAnnotationDuplicate = useCallback(() => {
+    if (!selectedAnnotationId) return;
+    const existing = annotations.find((a) => a.id === selectedAnnotationId);
+    if (!existing) return;
+    createAnnotation.mutate(
+      {
+        scenario,
+        type: existing.type as any,
+        x: existing.x + 16,
+        y: existing.y + 16,
+        width: existing.width,
+        height: existing.height,
+        z: existing.z + 1,
+        text: existing.text,
+        strokeColor: existing.strokeColor,
+        fillColor: existing.fillColor,
+        strokeWidth: existing.strokeWidth,
+        strokeStyle: existing.strokeStyle as any,
+        sourceAnchor: existing.sourceAnchor as any,
+        targetAnchor: existing.targetAnchor as any,
+        waypoints: (existing.waypoints as any) ?? [],
+        routing: existing.routing as any,
+        headSource: existing.headSource,
+        headTarget: existing.headTarget,
+      },
+      {
+        onSuccess: (created) => {
+          setSelectedAnnotationId(created.id);
+          // Undo: delete the duplicate
+          undoStack.current.push(() => deleteAnnotation.mutate({ id: created.id }));
+          redoStack.current = [];
+        },
+      }
+    );
+  }, [annotations, createAnnotation, deleteAnnotation, scenario, selectedAnnotationId]);
+
+  const handleUndo = useCallback(() => {
+    const op = undoStack.current.pop();
+    if (!op) {
+      toast.info("Nothing to undo");
+      return;
+    }
+    op();
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    const op = redoStack.current.pop();
+    if (!op) {
+      toast.info("Nothing to redo");
+      return;
+    }
+    op();
+  }, []);
+
+  useDiagramKeyboard({
+    selectedAnnotationId,
+    onToolChange: setActiveTool,
+    onDeleteAnnotation: handleAnnotationDelete,
+    onDuplicateAnnotation: handleAnnotationDuplicate,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onDeselect: () => {
+      setSelectedAnnotationId(null);
+      setSelectedEdgeId(null);
+    },
+    onToggleSnap: () => setSnapToGrid((v) => !v),
+  });
+
+  const handleBringForward = useCallback(() => {
+    if (!selectedAnnotationId || !selectedAnnotation) return;
+    const maxZ = annotations.reduce((m, a) => Math.max(m, a.z), 0);
+    updateAnnotation.mutate({ id: selectedAnnotationId, patch: { z: maxZ + 1 } });
+  }, [annotations, selectedAnnotation, selectedAnnotationId, updateAnnotation]);
+
+  const handleSendBackward = useCallback(() => {
+    if (!selectedAnnotationId || !selectedAnnotation) return;
+    const minZ = annotations.reduce((m, a) => Math.min(m, a.z), 0);
+    updateAnnotation.mutate({ id: selectedAnnotationId, patch: { z: minZ - 1 } });
+  }, [annotations, selectedAnnotation, selectedAnnotationId, updateAnnotation]);
 
   const overflowActions: OverflowAction[] = [
     {
@@ -257,6 +579,26 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
               </button>
 
               <button
+                onClick={() => setSnapToGrid((v) => !v)}
+                title={snapToGrid ? "Snap to grid: on" : "Snap to grid: off"}
+                className={cn(
+                  "relative group flex items-center justify-center w-8 h-8 rounded-lg border transition-all",
+                  snapToGrid
+                    ? "bg-primary/10 text-primary border-primary/40"
+                    : "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <Grid3x3 className="h-[15px] w-[15px]" />
+                <Tip>{snapToGrid ? "Snap: on" : "Snap to grid"}</Tip>
+              </button>
+
+              <NodeSizePopover
+                width={defaultNodeW}
+                height={defaultNodeH}
+                onChange={handleDefaultSizeChange}
+              />
+
+              <button
                 onClick={() => setReviewOpen(true)}
                 title="Review queue"
                 className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
@@ -306,14 +648,17 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
               </button>
             </div>
 
-            {/* Overflow menu — visible below lg */}
             <OverflowMenu actions={overflowActions} className="lg:hidden" />
           </div>
         </div>
       </div>
 
-      {/* Body: canvas + optional detail panel */}
+      {/* Body: tool rail + canvas + optional detail panel */}
       <div className="flex-1 flex min-h-0">
+        {apps.length > 0 && (
+          <DiagramToolRail activeTool={activeTool} onSelectTool={setActiveTool} />
+        )}
+
         <div ref={canvasRef} className="flex-1 min-w-0 bg-muted/20">
           {isLoading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -325,12 +670,28 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
             <ArchitectureCanvas
               apps={apps}
               interfaces={interfaces}
+              annotations={annotations}
               nodePositions={nodePositions}
+              nodeSizes={nodeSizes}
+              defaultNodeW={defaultNodeW}
+              defaultNodeH={defaultNodeH}
               showDataFlows={showDataFlows}
               showPending={showPending}
               selectedEdgeId={selectedEdgeId}
+              selectedAnnotationId={selectedAnnotationId}
+              activeTool={activeTool}
               onSelectEdge={setSelectedEdgeId}
+              onSelectAnnotation={setSelectedAnnotationId}
               onPositionsChange={handlePositionsChange}
+              onSizesChange={handleSizesChange}
+              onCreateAnnotationAt={handleCreateAnnotationAt}
+              onAnnotationMove={handleAnnotationMove}
+              onAnnotationResize={handleAnnotationResize}
+              onAnnotationText={handleAnnotationText}
+              onCreateLine={handleCreateLine}
+              onUpdateWaypoints={handleUpdateWaypoints}
+              onResetTool={() => setActiveTool("select")}
+              snapToGrid={snapToGrid}
             />
           )}
         </div>
@@ -341,6 +702,17 @@ export function ArchitectureDiagramClient({ scenario }: Props) {
             apps={apps}
             onClose={() => setSelectedEdgeId(null)}
             scenario={scenario}
+          />
+        )}
+
+        {selectedAnnotation && !selectedInterface && (
+          <AnnotationPropertiesPanel
+            annotation={selectedAnnotation}
+            onClose={() => setSelectedAnnotationId(null)}
+            onPatch={handleAnnotationPatch}
+            onDelete={handleAnnotationDelete}
+            onBringForward={handleBringForward}
+            onSendBackward={handleSendBackward}
           />
         )}
       </div>
@@ -360,6 +732,86 @@ function Tip({ children }: { children: React.ReactNode }) {
     <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block bg-foreground text-background text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-[100] pointer-events-none shadow-lg">
       {children}
     </span>
+  );
+}
+
+function NodeSizePopover({
+  width,
+  height,
+  onChange,
+}: {
+  width: number;
+  height: number;
+  onChange: (w: number, h: number) => void;
+}) {
+  const [localW, setLocalW] = useState(width);
+  const [localH, setLocalH] = useState(height);
+  const [open, setOpen] = useState(false);
+
+  function handleOpenChange(o: boolean) {
+    if (o) {
+      setLocalW(width);
+      setLocalH(height);
+    }
+    setOpen(o);
+  }
+
+  function commit(w: number, h: number) {
+    if (w !== width || h !== height) onChange(w, h);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger
+        title="Default node size"
+        className="relative group flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+      >
+        <Maximize2 className="h-[15px] w-[15px]" />
+        <Tip>Default node size</Tip>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64">
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium">Width</span>
+              <span className="text-xs text-muted-foreground tabular-nums">{localW}px</span>
+            </div>
+            <Slider
+              min={100}
+              max={360}
+              step={10}
+              value={localW}
+              onValueChange={(v) => setLocalW(Array.isArray(v) ? v[0]! : (v as number))}
+              onValueCommitted={(v) => {
+                const next = Array.isArray(v) ? v[0]! : (v as number);
+                commit(next, localH);
+              }}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium">Height</span>
+              <span className="text-xs text-muted-foreground tabular-nums">{localH}px</span>
+            </div>
+            <Slider
+              min={40}
+              max={200}
+              step={4}
+              value={localH}
+              onValueChange={(v) => setLocalH(Array.isArray(v) ? v[0]! : (v as number))}
+              onValueCommitted={(v) => {
+                const next = Array.isArray(v) ? v[0]! : (v as number);
+                commit(localW, next);
+              }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Applies to nodes without custom size. Resize individual nodes by selecting and
+            dragging their handles.
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -356,6 +356,7 @@ model Workspace {
   appEntityUsages        AppEntityUsage[]
   interfaceDataFlows     InterfaceDataFlow[]
   diagramLayouts         DiagramLayout[]
+  diagramAnnotations     DiagramAnnotation[]
   aiArchitectureRuns     AIArchitectureRun[]
 
   @@map("workspaces")
@@ -1671,6 +1672,11 @@ model DiagramLayout {
   scenario      ArchStateType @default(AS_IS)
   // { [applicationId]: { x: number, y: number } }
   nodePositions Json          @default("{}")
+  // { [nodeId]: { w: number, h: number } } — per-node size overrides
+  nodeSizes     Json          @default("{}")
+  // Global default node size for this scenario (overrides built-in default)
+  defaultNodeW  Int?
+  defaultNodeH  Int?
   // { x: number, y: number, zoom: number }
   viewport      Json?
   updatedById   String?
@@ -1681,6 +1687,68 @@ model DiagramLayout {
 
   @@unique([workspaceId, scenario])
   @@map("diagram_layouts")
+}
+
+// Free-form annotations on the architecture canvas (Visio/LeanIX-style).
+// Containers, shapes, notes, and lines/arrows — all live here.
+model DiagramAnnotation {
+  id          String         @id @default(cuid())
+  workspaceId String
+  scenario    ArchStateType  @default(AS_IS)
+  type        AnnotationType
+
+  // Geometry
+  x        Float  @default(0)
+  y        Float  @default(0)
+  width    Float?
+  height   Float?
+  z        Int    @default(0)
+  rotation Float  @default(0)
+
+  // Content / styling
+  text        String?
+  strokeColor String?
+  fillColor   String?
+  strokeWidth Int?
+  strokeStyle String? // 'solid' | 'dashed' | 'dotted'
+
+  // Line / arrow endpoints
+  // { kind: 'APP'|'ANNOTATION'|'FREE', refId?: string, x?: number, y?: number, handle?: 't'|'l'|'r'|'b' }
+  sourceAnchor Json?
+  targetAnchor Json?
+  // [{ x, y }, ...] — manual bend points
+  waypoints    Json    @default("[]")
+  // 'orthogonal' | 'straight'
+  routing      String  @default("orthogonal")
+  headSource   Boolean @default(false)
+  headTarget   Boolean @default(true)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, scenario])
+  @@index([workspaceId, scenario, type])
+  @@map("diagram_annotations")
+}
+
+enum AnnotationType {
+  CONTAINER
+  NOTE
+  RECTANGLE
+  CIRCLE
+  CYLINDER
+  CLOUD
+  LINE
+  ARROW
+}
+
+enum AnchorKind {
+  APP
+  ANNOTATION
+  FREE
 }
 
 // Telemetry for the architecture-discovery AI endpoint (mirrors AIMappingRun).

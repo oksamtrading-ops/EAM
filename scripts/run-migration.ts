@@ -4,39 +4,77 @@
 import { neon } from "@neondatabase/serverless";
 
 const STATEMENTS: { label: string; sql: string }[] = [
-  { label: "enum IndustryType += INSURANCE",
-    sql: `ALTER TYPE "IndustryType" ADD VALUE IF NOT EXISTS 'INSURANCE';` },
-  { label: "enum IndustryType += TELECOM",
-    sql: `ALTER TYPE "IndustryType" ADD VALUE IF NOT EXISTS 'TELECOM';` },
-  { label: "enum IndustryType += ENERGY_UTILITIES",
-    sql: `ALTER TYPE "IndustryType" ADD VALUE IF NOT EXISTS 'ENERGY_UTILITIES';` },
-  { label: "enum IndustryType += PUBLIC_SECTOR",
-    sql: `ALTER TYPE "IndustryType" ADD VALUE IF NOT EXISTS 'PUBLIC_SECTOR';` },
-  { label: "enum IndustryType += PHARMA_LIFESCIENCES",
-    sql: `ALTER TYPE "IndustryType" ADD VALUE IF NOT EXISTS 'PHARMA_LIFESCIENCES';` },
-  { label: "enum ComplianceFramework += DORA",
-    sql: `ALTER TYPE "ComplianceFramework" ADD VALUE IF NOT EXISTS 'DORA';` },
-  { label: "enum ComplianceFramework += NIS2",
-    sql: `ALTER TYPE "ComplianceFramework" ADD VALUE IF NOT EXISTS 'NIS2';` },
-  { label: "enum ComplianceFramework += ISO_27701",
-    sql: `ALTER TYPE "ComplianceFramework" ADD VALUE IF NOT EXISTS 'ISO_27701';` },
-  { label: "enum ComplianceFramework += FEDRAMP_MODERATE",
-    sql: `ALTER TYPE "ComplianceFramework" ADD VALUE IF NOT EXISTS 'FEDRAMP_MODERATE';` },
-  { label: "table saved_palette_queries",
-    sql: `CREATE TABLE IF NOT EXISTS "saved_palette_queries" (
-      "id"          TEXT PRIMARY KEY,
-      "workspaceId" TEXT NOT NULL,
-      "userId"      TEXT NOT NULL,
-      "label"       TEXT NOT NULL,
-      "queryText"   TEXT NOT NULL,
-      "useCount"    INTEGER NOT NULL DEFAULT 0,
-      "lastUsedAt"  TIMESTAMP(3),
-      "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "saved_palette_queries_workspace_fk"
-        FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE
-    );` },
-  { label: "index saved_palette_queries",
-    sql: `CREATE INDEX IF NOT EXISTS "saved_palette_queries_ws_user_idx" ON "saved_palette_queries"("workspaceId","userId");` },
+  // ── Module 7 — Diagram annotations ─────────────────────────
+  {
+    label: "enum AnnotationType",
+    sql: `DO $$ BEGIN
+      CREATE TYPE "AnnotationType" AS ENUM (
+        'CONTAINER','NOTE','RECTANGLE','CIRCLE','CYLINDER','CLOUD','LINE','ARROW'
+      );
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  },
+  {
+    label: "enum AnchorKind",
+    sql: `DO $$ BEGIN
+      CREATE TYPE "AnchorKind" AS ENUM ('APP','ANNOTATION','FREE');
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  },
+  {
+    label: "diagram_layouts: add nodeSizes + defaults",
+    sql: `ALTER TABLE "diagram_layouts"
+      ADD COLUMN IF NOT EXISTS "nodeSizes"    JSONB NOT NULL DEFAULT '{}',
+      ADD COLUMN IF NOT EXISTS "defaultNodeW" INTEGER,
+      ADD COLUMN IF NOT EXISTS "defaultNodeH" INTEGER;`,
+  },
+  {
+    label: "table diagram_annotations",
+    sql: `CREATE TABLE IF NOT EXISTS "diagram_annotations" (
+        "id"           TEXT NOT NULL,
+        "workspaceId"  TEXT NOT NULL,
+        "scenario"     "ArchStateType"  NOT NULL DEFAULT 'AS_IS',
+        "type"         "AnnotationType" NOT NULL,
+        "x"            DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "y"            DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "width"        DOUBLE PRECISION,
+        "height"       DOUBLE PRECISION,
+        "z"            INTEGER NOT NULL DEFAULT 0,
+        "rotation"     DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "text"         TEXT,
+        "strokeColor"  TEXT,
+        "fillColor"    TEXT,
+        "strokeWidth"  INTEGER,
+        "strokeStyle"  TEXT,
+        "sourceAnchor" JSONB,
+        "targetAnchor" JSONB,
+        "waypoints"    JSONB NOT NULL DEFAULT '[]',
+        "routing"      TEXT NOT NULL DEFAULT 'orthogonal',
+        "headSource"   BOOLEAN NOT NULL DEFAULT false,
+        "headTarget"   BOOLEAN NOT NULL DEFAULT true,
+        "createdById"  TEXT,
+        "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt"    TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "diagram_annotations_pkey" PRIMARY KEY ("id")
+      );`,
+  },
+  {
+    label: "index diagram_annotations ws+scenario",
+    sql: `CREATE INDEX IF NOT EXISTS "diagram_annotations_ws_scenario_idx"
+      ON "diagram_annotations"("workspaceId","scenario");`,
+  },
+  {
+    label: "index diagram_annotations ws+scenario+type",
+    sql: `CREATE INDEX IF NOT EXISTS "diagram_annotations_ws_scenario_type_idx"
+      ON "diagram_annotations"("workspaceId","scenario","type");`,
+  },
+  {
+    label: "fk diagram_annotations → workspaces",
+    sql: `DO $$ BEGIN
+      ALTER TABLE "diagram_annotations"
+        ADD CONSTRAINT "diagram_annotations_workspaceId_fkey"
+        FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id")
+        ON DELETE CASCADE ON UPDATE CASCADE;
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  },
 ];
 
 async function main() {

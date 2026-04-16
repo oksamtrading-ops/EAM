@@ -21,6 +21,7 @@ import { dataEntityRouter } from "./dataEntity";
 import { dataAttributeRouter } from "./dataAttribute";
 import { appEntityUsageRouter } from "./appEntityUsage";
 import { diagramRouter } from "./diagram";
+import { diagramAnnotationRouter } from "./diagramAnnotation";
 import { interfaceDataFlowRouter } from "./interfaceDataFlow";
 
 export const appRouter = router({
@@ -46,6 +47,7 @@ export const appRouter = router({
   dataAttribute: dataAttributeRouter,
   appEntityUsage: appEntityUsageRouter,
   diagram: diagramRouter,
+  diagramAnnotation: diagramAnnotationRouter,
   interfaceDataFlow: interfaceDataFlowRouter,
 });
 

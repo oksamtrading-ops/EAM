@@ -11,6 +11,11 @@ const NodePositionSchema = z.object({
   y: z.number(),
 });
 
+const NodeSizeSchema = z.object({
+  w: z.number().min(60).max(1200),
+  h: z.number().min(40).max(800),
+});
+
 const ViewportSchema = z.object({
   x: z.number(),
   y: z.number(),
@@ -37,11 +42,23 @@ export const diagramRouter = router({
     .input(
       z.object({
         scenario: z.enum(SCENARIO_VALUES).default("AS_IS"),
-        nodePositions: z.record(z.string(), NodePositionSchema),
+        nodePositions: z.record(z.string(), NodePositionSchema).optional(),
+        nodeSizes: z.record(z.string(), NodeSizeSchema).optional(),
+        defaultNodeW: z.number().min(60).max(1200).nullable().optional(),
+        defaultNodeH: z.number().min(40).max(800).nullable().optional(),
         viewport: ViewportSchema.optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const updateData: Record<string, unknown> = {
+        updatedById: ctx.dbUserId,
+      };
+      if (input.nodePositions !== undefined) updateData.nodePositions = input.nodePositions;
+      if (input.nodeSizes !== undefined) updateData.nodeSizes = input.nodeSizes;
+      if (input.defaultNodeW !== undefined) updateData.defaultNodeW = input.defaultNodeW;
+      if (input.defaultNodeH !== undefined) updateData.defaultNodeH = input.defaultNodeH;
+      if (input.viewport !== undefined) updateData.viewport = input.viewport;
+
       return ctx.db.diagramLayout.upsert({
         where: {
           workspaceId_scenario: {
@@ -52,15 +69,14 @@ export const diagramRouter = router({
         create: {
           workspaceId: ctx.workspaceId,
           scenario: input.scenario,
-          nodePositions: input.nodePositions as object,
+          nodePositions: (input.nodePositions ?? {}) as object,
+          nodeSizes: (input.nodeSizes ?? {}) as object,
+          defaultNodeW: input.defaultNodeW ?? null,
+          defaultNodeH: input.defaultNodeH ?? null,
           viewport: input.viewport as object | undefined,
           updatedById: ctx.dbUserId,
         },
-        update: {
-          nodePositions: input.nodePositions as object,
-          viewport: input.viewport as object | undefined,
-          updatedById: ctx.dbUserId,
-        },
+        update: updateData,
       });
     }),
 
