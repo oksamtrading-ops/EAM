@@ -931,13 +931,20 @@ function ApplicationTechnologySection({ applicationId }: { applicationId: string
           ))
         )}
 
-        <div className="mt-2 rounded-lg border border-dashed border-indigo-300 bg-indigo-50/40 p-2 space-y-2">
+        <div className="mt-2 rounded-lg border border-[var(--ai)]/20 bg-[var(--ai-subtle)] p-2 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] uppercase tracking-wide text-indigo-700 font-medium">AI stack detection</p>
+            <div className="flex items-center gap-1.5">
+              <Wand2 className="h-3 w-3 text-[var(--ai)]" />
+              <p className="text-[10px] uppercase tracking-wide text-[var(--ai)] font-medium">AI stack detection</p>
+            </div>
             <Button
               size="sm"
               variant="outline"
-              className="h-6 text-[11px]"
+              className={
+                detectLoading
+                  ? "h-6 text-[11px] bg-[var(--ai)] text-white border-[var(--ai)] hover:bg-[var(--ai-hover)]"
+                  : "h-6 text-[11px] border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] hover:text-[var(--ai)]"
+              }
               onClick={handleDetectStack}
               disabled={detectLoading}
             >
@@ -946,7 +953,7 @@ function ApplicationTechnologySection({ applicationId }: { applicationId: string
             </Button>
           </div>
           {detectRationale && (
-            <p className="text-[11px] text-muted-foreground leading-snug">{detectRationale}</p>
+            <p className="text-[11px] text-[var(--ai)]/80 leading-snug">{detectRationale}</p>
           )}
           {suggestions && suggestions.length === 0 && !detectLoading && (
             <p className="text-[11px] text-muted-foreground">No confident suggestions.</p>

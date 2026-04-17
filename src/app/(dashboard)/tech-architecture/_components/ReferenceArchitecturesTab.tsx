@@ -299,14 +299,23 @@ function GenerateRefArchDialog({ open, onClose }: { open: boolean; onClose: () =
             />
           </div>
           <div className="flex justify-end">
-            <Button size="sm" onClick={runGenerate} disabled={loading || saving || !category.trim()}>
+            <Button
+              size="sm"
+              onClick={runGenerate}
+              disabled={loading || saving || !category.trim()}
+              className={
+                loading
+                  ? "bg-[var(--ai)] text-white border-[var(--ai)] hover:bg-[var(--ai-hover)]"
+                  : "bg-[var(--ai)] text-white hover:bg-[var(--ai-hover)]"
+              }
+            >
               <Wand2 className="h-3.5 w-3.5 mr-1" />
               {loading ? "Generating…" : result ? "Re-generate" : "Generate"}
             </Button>
           </div>
 
           {result && (
-            <div className="space-y-3 border-t pt-3">
+            <div className="space-y-3 rounded-lg bg-[var(--ai-subtle)] border border-[var(--ai)]/20 p-3">
               <div>
                 <p className="text-sm font-medium">{result.name}</p>
                 {result.description && (

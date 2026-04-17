@@ -132,15 +132,28 @@ export function FindingsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
+      <div className="rounded-lg border border-[var(--ai)]/20 bg-[var(--ai-subtle)] p-3 space-y-2">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">EOL risk narrative</p>
-            <p className="text-xs text-muted-foreground">
-              AI summary of end-of-life exposure across the component catalog, with per-component recommendations.
-            </p>
+          <div className="min-w-0 flex items-start gap-2">
+            <Wand2 className="h-3.5 w-3.5 mt-0.5 text-[var(--ai)] shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">EOL risk narrative</p>
+              <p className="text-xs text-muted-foreground">
+                AI summary of end-of-life exposure across the component catalog, with per-component recommendations.
+              </p>
+            </div>
           </div>
-          <Button size="sm" variant="outline" onClick={runEolAnalysis} disabled={eolLoading}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={runEolAnalysis}
+            disabled={eolLoading}
+            className={
+              eolLoading
+                ? "bg-[var(--ai)] text-white border-[var(--ai)] hover:bg-[var(--ai-hover)]"
+                : "border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] hover:text-[var(--ai)]"
+            }
+          >
             <Wand2 className="h-3.5 w-3.5 mr-1" />
             {eolLoading ? "Analyzing…" : eol ? "Re-run" : "Generate analysis"}
           </Button>
