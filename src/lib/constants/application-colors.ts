@@ -18,7 +18,7 @@ export const BV_COLORS: Record<string, string> = {
   CRITICAL: "#dc2626",
   HIGH: "#f97316",
   MEDIUM: "#eab308",
-  LOW: "#94a3b8",
+  LOW: "#0891b2",
   BV_UNKNOWN: "#64748b",
 };
 
