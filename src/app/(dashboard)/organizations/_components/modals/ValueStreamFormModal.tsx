@@ -4,17 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
-
-const PRESET_COLORS = [
-  "#0B5CD6",
-  "#059669",
-  "#D97706",
-  "#DC2626",
-  "#7c3aed",
-  "#EC4899",
-  "#0891B2",
-  "#4B5563",
-];
+import { VALUE_STREAM_PRESET_COLORS as PRESET_COLORS } from "@/app/(dashboard)/capabilities/_components/valueStreamColors";
 
 type ValueStreamData = {
   id: string;

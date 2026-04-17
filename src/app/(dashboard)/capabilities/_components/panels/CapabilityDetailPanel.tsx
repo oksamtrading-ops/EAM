@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
+import { VALUE_STREAM_PRESET_COLORS } from "@/app/(dashboard)/capabilities/_components/valueStreamColors";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,8 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
   const [showCreateObjective, setShowCreateObjective] = useState(false);
   const [showCreateVS, setShowCreateVS] = useState(false);
   const [newVSName, setNewVSName] = useState("");
+  const [newVSDescription, setNewVSDescription] = useState("");
+  const [newVSColor, setNewVSColor] = useState<string>(VALUE_STREAM_PRESET_COLORS[0]);
 
   const updateMutation = trpc.capability.update.useMutation({
     onSuccess: () => {
@@ -115,10 +118,29 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
       updateMutation.mutate({ id: capabilityId, valueStreamId: vs.id });
       setShowCreateVS(false);
       setNewVSName("");
+      setNewVSDescription("");
+      setNewVSColor(VALUE_STREAM_PRESET_COLORS[0]);
       toast.success("Value stream created & assigned");
     },
     onError: (err) => toast.error(err.message),
   });
+
+  function submitNewVS() {
+    const name = newVSName.trim();
+    if (!name) return;
+    createVSMutation.mutate({
+      name,
+      description: newVSDescription.trim() || undefined,
+      color: newVSColor,
+    });
+  }
+
+  function cancelNewVS() {
+    setShowCreateVS(false);
+    setNewVSName("");
+    setNewVSDescription("");
+    setNewVSColor(VALUE_STREAM_PRESET_COLORS[0]);
+  }
 
   const linkObjectiveMutation = trpc.capability.linkObjective.useMutation({
     onSuccess: () => {
@@ -283,33 +305,62 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
               </div>
             )}
             {showCreateVS ? (
-              <div className="mt-2 flex items-center gap-1.5">
+              <div className="mt-2 rounded-md border border-dashed border-border p-2 space-y-2">
                 <input
                   value={newVSName}
                   onChange={(e) => setNewVSName(e.target.value)}
                   placeholder="Stream name..."
-                  className="flex-1 h-7 text-xs border rounded px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full h-7 text-xs border rounded px-2 focus:outline-none focus:ring-1 focus:ring-primary"
                   autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && newVSName.trim()) {
-                      createVSMutation.mutate({ name: newVSName.trim() });
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitNewVS();
                     }
-                    if (e.key === "Escape") { setShowCreateVS(false); setNewVSName(""); }
+                    if (e.key === "Escape") cancelNewVS();
                   }}
                 />
-                <button
-                  onClick={() => newVSName.trim() && createVSMutation.mutate({ name: newVSName.trim() })}
-                  disabled={!newVSName.trim() || createVSMutation.isPending}
-                  className="h-7 px-2 text-xs bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => { setShowCreateVS(false); setNewVSName(""); }}
-                  className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                <textarea
+                  value={newVSDescription}
+                  onChange={(e) => setNewVSDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                  rows={2}
+                  className="w-full text-xs border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Color</p>
+                  <div className="flex items-center gap-1.5">
+                    {VALUE_STREAM_PRESET_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewVSColor(c)}
+                        aria-label={`Pick color ${c}`}
+                        className="h-6 w-6 rounded-full border-2 transition-all"
+                        style={{
+                          backgroundColor: c,
+                          borderColor: newVSColor === c ? "#1a1f2e" : "transparent",
+                          transform: newVSColor === c ? "scale(1.15)" : "scale(1)",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-1.5 pt-1">
+                  <button
+                    onClick={cancelNewVS}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitNewVS}
+                    disabled={!newVSName.trim() || createVSMutation.isPending}
+                    className="h-7 px-2 text-xs bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             ) : (
               <button
