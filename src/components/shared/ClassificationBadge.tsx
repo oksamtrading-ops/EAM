@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function ClassificationBadge({ classification, size = "sm", className }: Props) {
-  const color = CLASSIFICATION_COLORS[classification] ?? "#cbd5e1";
+  const color = CLASSIFICATION_COLORS[classification] ?? "#64748b";
   const label = CLASSIFICATION_LABELS[classification] ?? classification;
 
   return (

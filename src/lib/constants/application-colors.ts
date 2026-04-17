@@ -19,7 +19,7 @@ export const BV_COLORS: Record<string, string> = {
   HIGH: "#f97316",
   MEDIUM: "#eab308",
   LOW: "#94a3b8",
-  BV_UNKNOWN: "#cbd5e1",
+  BV_UNKNOWN: "#64748b",
 };
 
 export const BV_LABELS: Record<string, string> = {
@@ -36,7 +36,7 @@ export const TH_COLORS: Record<string, string> = {
   FAIR: "#eab308",
   POOR: "#f97316",
   TH_CRITICAL: "#dc2626",
-  TH_UNKNOWN: "#cbd5e1",
+  TH_UNKNOWN: "#64748b",
 };
 
 export const TH_LABELS: Record<string, string> = {
@@ -53,7 +53,7 @@ export const RAT_COLORS: Record<string, string> = {
   INVEST: "#3b82f6",
   MIGRATE: "#f97316",
   ELIMINATE: "#dc2626",
-  RAT_NOT_ASSESSED: "#cbd5e1",
+  RAT_NOT_ASSESSED: "#64748b",
 };
 
 export const RAT_LABELS: Record<string, string> = {
@@ -88,7 +88,7 @@ export const FF_COLORS: Record<string, string> = {
   ADEQUATE: "#eab308",
   POOR: "#f97316",
   UNFIT: "#dc2626",
-  FF_UNKNOWN: "#cbd5e1",
+  FF_UNKNOWN: "#64748b",
 };
 
 export const FF_LABELS: Record<string, string> = {
@@ -105,7 +105,7 @@ export const DC_COLORS: Record<string, string> = {
   INTERNAL: "#3b82f6",
   CONFIDENTIAL: "#f97316",
   RESTRICTED: "#dc2626",
-  DC_UNKNOWN: "#cbd5e1",
+  DC_UNKNOWN: "#64748b",
 };
 
 export const DC_LABELS: Record<string, string> = {

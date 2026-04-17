@@ -83,7 +83,7 @@ export function RationalizationMatrix({ apps, onSelect, selectedId }: Props) {
 
             {/* App dots with name labels */}
             {assessed.map((app) => {
-              const color = RAT_COLORS[app.rationalizationStatus] ?? "#cbd5e1";
+              const color = RAT_COLORS[app.rationalizationStatus] ?? "#64748b";
               const ifaceCount = (app._count?.interfacesFrom ?? 0) + (app._count?.interfacesTo ?? 0);
               // Base 20px, +3px per interface, max 36px
               const dotSize = Math.min(36, 20 + ifaceCount * 3);

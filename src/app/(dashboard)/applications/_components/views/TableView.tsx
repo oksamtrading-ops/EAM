@@ -52,7 +52,7 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
             <th className="text-left px-4 py-3 font-medium text-xs text-muted-foreground">Data Class.</th>
             <th className="text-right px-4 py-3 font-medium text-xs text-muted-foreground">Cost/yr</th>
             <th className="text-center px-4 py-3 font-medium text-xs text-muted-foreground">Caps</th>
-            <th className="text-center px-4 py-3 font-medium text-xs text-muted-foreground">Ifaces</th>
+            <th className="text-center px-4 py-3 font-medium text-xs text-muted-foreground">Integrations</th>
             <th className="w-8 px-2 py-3" />
           </tr>
         </thead>
@@ -189,9 +189,9 @@ function StatusPill({ color, label }: { color?: string; label?: string }) {
   return (
     <span
       className="text-[11px] font-medium px-2 py-0.5 rounded-full border inline-flex items-center gap-1"
-      style={{ borderColor: (color ?? "#cbd5e1") + "60", color: color ?? "#cbd5e1" }}
+      style={{ borderColor: (color ?? "#64748b") + "60", color: color ?? "#64748b" }}
     >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color ?? "#cbd5e1" }} />
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color ?? "#64748b" }} />
       {label ?? "N/A"}
     </span>
   );

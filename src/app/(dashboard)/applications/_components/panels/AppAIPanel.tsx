@@ -216,7 +216,7 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
             {Object.entries(stats.byRationalization).map(([status, count]) => (
               <div key={status} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RAT_COLORS[status] ?? "#cbd5e1" }} />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RAT_COLORS[status] ?? "#64748b" }} />
                   <span className="text-foreground">{RAT_LABELS[status] ?? status}</span>
                 </div>
                 <span className="font-medium text-foreground tabular-nums">{count as number}</span>
