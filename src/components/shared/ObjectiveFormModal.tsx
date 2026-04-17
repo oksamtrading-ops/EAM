@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Loader2, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
@@ -37,6 +37,23 @@ export function ObjectiveFormModal({
     kpiTarget: objective?.kpiTarget ?? "",
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Re-sync form whenever the modal opens or the target objective changes.
+  // The modal stays mounted across opens, so the useState initializer alone
+  // would leave stale fields from a prior create/edit session.
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      name: objective?.name ?? "",
+      description: objective?.description ?? "",
+      targetDate: objective?.targetDate
+        ? new Date(objective.targetDate).toISOString().split("T")[0]
+        : "",
+      kpiDescription: objective?.kpiDescription ?? "",
+      kpiTarget: objective?.kpiTarget ?? "",
+    });
+    setConfirmDelete(false);
+  }, [open, objective]);
 
   const utils = trpc.useUtils();
 
