@@ -80,7 +80,7 @@ export function TabFilters({
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 glass-overlay rounded-xl p-3 min-w-[260px] z-[100]">
+        <div className="absolute top-[calc(100%+6px)] right-0 sm:right-auto sm:left-0 bg-background text-foreground border border-border shadow-xl rounded-xl p-3 min-w-[260px] z-[100]">
           {searchEnabled && (
             <div className="mb-3">
               <div className="flex items-center gap-1.5 border rounded-lg px-2.5 h-8 bg-muted/20">
