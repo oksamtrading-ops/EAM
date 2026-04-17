@@ -9,41 +9,32 @@ import {
   ShieldCheck,
   BookOpen,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc/client";
 
 function KpiCard({
   label,
   value,
   icon: Icon,
-  accent,
+  valueClass,
   suffix,
 }: {
   label: string;
   value: number | string;
   icon: React.ElementType;
-  accent?: boolean;
+  valueClass?: string;
   suffix?: string;
 }) {
   return (
-    <Card
-      className={`p-4 flex flex-col gap-1.5 transition-colors ${
-        accent ? "border-l-4 border-l-amber-400" : ""
-      }`}
-    >
+    <div className="bg-card rounded-lg border border-border px-4 py-2.5 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-          {label}
-        </p>
-        <div className="rounded-md bg-muted p-1">
-          <Icon className="h-3 w-3 text-muted-foreground" />
-        </div>
+        <p className="text-[11px] text-muted-foreground">{label}</p>
+        <Icon className="h-3 w-3 text-muted-foreground" />
       </div>
-      <p className="text-2xl font-bold tracking-tight leading-none">
+      <p className={`text-xl font-bold tabular-nums ${valueClass ?? ""}`}>
         {typeof value === "number" ? value.toLocaleString() : value}
-        {suffix && <span className="text-sm text-muted-foreground ml-1">{suffix}</span>}
+        {suffix && <span className="text-xs text-muted-foreground ml-1 font-normal">{suffix}</span>}
       </p>
-    </Card>
+    </div>
   );
 }
 
@@ -52,16 +43,19 @@ export function TechArchKpiBar() {
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8 gap-3">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Card key={i} className="p-4 h-20 animate-pulse bg-muted/50" />
+          <div key={i} className="h-[68px] rounded-lg bg-muted/40 animate-pulse" />
         ))}
       </div>
     );
   }
 
+  const eolClass = data.atRiskComponents > 0 ? "text-rose-600" : "";
+  const findingsClass = data.findingsBySeverity.high > 0 ? "text-rose-600" : data.findingsTotal > 0 ? "text-amber-600" : "";
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8 gap-3">
       <KpiCard label="Vendors" value={data.vendorCount} icon={Building2} />
       <KpiCard label="Products" value={data.productCount} icon={Package} />
       <KpiCard label="Components" value={data.componentCount} icon={Boxes} />
@@ -69,7 +63,7 @@ export function TechArchKpiBar() {
         label="EOL Risk"
         value={data.atRiskComponents}
         icon={AlertTriangle}
-        accent={data.atRiskComponents > 0}
+        valueClass={eolClass}
       />
       <KpiCard label="App Coverage" value={`${data.coveragePct}`} suffix="%" icon={Link2} />
       <KpiCard label="Standards" value={data.activeStandardCount} icon={ShieldCheck} />
@@ -82,7 +76,7 @@ export function TechArchKpiBar() {
         label="Findings"
         value={data.findingsTotal}
         icon={AlertTriangle}
-        accent={data.findingsBySeverity.high > 0}
+        valueClass={findingsClass}
       />
     </div>
   );
