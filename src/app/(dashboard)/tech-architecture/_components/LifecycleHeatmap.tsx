@@ -5,16 +5,76 @@ import { Flame, ChevronDown, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 
 const BUCKETS = [
-  { key: "past", label: "Past EOL", shortLabel: "Past", hue: 0 },
-  { key: "lt30", label: "< 30 days", shortLabel: "<30d", hue: 20 },
-  { key: "lt90", label: "30-90 days", shortLabel: "30-90d", hue: 35 },
-  { key: "lt180", label: "90-180 days", shortLabel: "90-180d", hue: 45 },
-  { key: "lt365", label: "180-365 days", shortLabel: "180-365d", hue: 80 },
-  { key: "gte365", label: "1 year+", shortLabel: "1y+", hue: 140 },
-  { key: "unknown", label: "Unknown EOL", shortLabel: "Unknown", hue: null },
+  { key: "past", label: "Past EOL", shortLabel: "Past" },
+  { key: "lt30", label: "< 30 days", shortLabel: "<30d" },
+  { key: "lt90", label: "30-90 days", shortLabel: "30-90d" },
+  { key: "lt180", label: "90-180 days", shortLabel: "90-180d" },
+  { key: "lt365", label: "180-365 days", shortLabel: "180-365d" },
+  { key: "gte365", label: "1 year+", shortLabel: "1y+" },
+  { key: "unknown", label: "Unknown EOL", shortLabel: "Unknown" },
 ] as const;
 
 type BucketKey = (typeof BUCKETS)[number]["key"];
+
+const TONE_SCALES: Record<BucketKey, readonly string[]> = {
+  past: [
+    "bg-rose-100 text-rose-900",
+    "bg-rose-200 text-rose-900",
+    "bg-rose-300 text-rose-900",
+    "bg-rose-400 text-white",
+    "bg-rose-500 text-white",
+  ],
+  lt30: [
+    "bg-amber-100 text-amber-900",
+    "bg-amber-200 text-amber-900",
+    "bg-amber-300 text-amber-900",
+    "bg-amber-400 text-amber-950",
+    "bg-amber-500 text-white",
+  ],
+  lt90: [
+    "bg-amber-100 text-amber-900",
+    "bg-amber-200 text-amber-900",
+    "bg-amber-300 text-amber-900",
+    "bg-amber-400 text-amber-950",
+    "bg-amber-500 text-white",
+  ],
+  lt180: [
+    "bg-yellow-100 text-yellow-900",
+    "bg-yellow-200 text-yellow-900",
+    "bg-yellow-300 text-yellow-900",
+    "bg-yellow-400 text-yellow-950",
+    "bg-yellow-500 text-yellow-950",
+  ],
+  lt365: [
+    "bg-lime-100 text-lime-900",
+    "bg-lime-200 text-lime-900",
+    "bg-lime-300 text-lime-900",
+    "bg-lime-400 text-lime-950",
+    "bg-lime-500 text-white",
+  ],
+  gte365: [
+    "bg-emerald-100 text-emerald-900",
+    "bg-emerald-200 text-emerald-900",
+    "bg-emerald-300 text-emerald-900",
+    "bg-emerald-400 text-white",
+    "bg-emerald-500 text-white",
+  ],
+  unknown: [
+    "bg-slate-100 text-slate-700",
+    "bg-slate-200 text-slate-700",
+    "bg-slate-300 text-slate-800",
+  ],
+};
+
+const LEGEND_TONE: Record<BucketKey, string> = {
+  past: "bg-rose-400",
+  lt30: "bg-amber-400",
+  lt90: "bg-amber-300",
+  lt180: "bg-yellow-400",
+  lt365: "bg-lime-400",
+  gte365: "bg-emerald-400",
+  unknown: "bg-slate-300",
+};
 
 function bucketFor(eol: Date | string | null | undefined): BucketKey {
   if (!eol) return "unknown";
@@ -28,18 +88,14 @@ function bucketFor(eol: Date | string | null | undefined): BucketKey {
   return "gte365";
 }
 
-function cellStyle(bucket: BucketKey, count: number, max: number): React.CSSProperties {
-  if (count === 0) return {};
-  const def = BUCKETS.find((b) => b.key === bucket)!;
-  if (def.hue === null) {
-    return { backgroundColor: "#e2e8f0", color: "#1e293b" };
-  }
-  const intensity = Math.min(1, 0.45 + (count / Math.max(max, 1)) * 0.55);
-  const lightness = Math.round(85 - intensity * 40);
-  return {
-    backgroundColor: `hsl(${def.hue}, 75%, ${lightness}%)`,
-    color: lightness < 55 ? "#fff" : "#111827",
-  };
+function bucketTone(bucket: BucketKey, count: number, max: number): string {
+  if (count === 0) return "bg-muted/20";
+  const scale = TONE_SCALES[bucket];
+  if (max <= 0) return scale[0];
+  const ratio = count / max;
+  const maxStep = scale.length - 1;
+  const step = Math.min(maxStep, Math.floor(ratio * scale.length));
+  return scale[step];
 }
 
 export function LifecycleHeatmap() {
@@ -141,9 +197,8 @@ export function LifecycleHeatmap() {
                   return (
                     <td
                       key={b.key}
-                      className="px-1 py-1 text-center tabular-nums"
-                      style={count > 0 ? cellStyle(b.key, count, maxCell) : undefined}
-                      title={`${b.label}: ${count}`}
+                      className={`px-1 py-1 text-center tabular-nums ${bucketTone(b.key, count, maxCell)}`}
+                      title={`${r.productName} — ${b.label}: ${count}`}
                     >
                       {count > 0 ? count : ""}
                     </td>
@@ -164,14 +219,7 @@ export function LifecycleHeatmap() {
         <span>Legend:</span>
         {BUCKETS.map((b) => (
           <span key={b.key} className="flex items-center gap-1">
-            <span
-              className="inline-block h-2.5 w-4 rounded-sm"
-              style={
-                b.hue === null
-                  ? { backgroundColor: "#e2e8f0" }
-                  : { backgroundColor: `hsl(${b.hue}, 75%, 60%)` }
-              }
-            />
+            <span className={`inline-block h-2.5 w-4 rounded-sm ${LEGEND_TONE[b.key]}`} />
             {b.label}
           </span>
         ))}
