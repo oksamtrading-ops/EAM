@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Plus, Package, Trash2, ExternalLink, X } from "lucide-react";
 import { TabFilters } from "./TabFilters";
+import { ToolbarActions } from "./ToolbarActions";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,7 @@ export function ProductsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <ToolbarActions>
         <TabFilters
           search={search}
           onSearchChange={setSearch}
@@ -90,12 +91,10 @@ export function ProductsTab() {
             setVendorFilter(next.vendor);
           }}
         />
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Product
-          </Button>
-        </div>
-      </div>
+        <Button size="sm" onClick={() => setShowForm(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> New Product
+        </Button>
+      </ToolbarActions>
 
       {isLoading ? (
         <div className="space-y-1">

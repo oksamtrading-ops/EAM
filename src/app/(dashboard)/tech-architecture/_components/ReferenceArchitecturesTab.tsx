@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabFilters } from "./TabFilters";
+import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"] as const;
@@ -72,7 +73,7 @@ export function ReferenceArchitecturesTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <ToolbarActions>
         <TabFilters
           search={search}
           onSearchChange={setSearch}
@@ -83,20 +84,18 @@ export function ReferenceArchitecturesTab() {
           values={{ status: statusFilter }}
           onValuesChange={(next) => setStatusFilter(next.status)}
         />
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowAiDialog(true)}
-            className="border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] hover:text-[var(--ai)]"
-          >
-            <Wand2 className="h-3.5 w-3.5 mr-1" /> Generate with AI
-          </Button>
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Reference Architecture
-          </Button>
-        </div>
-      </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowAiDialog(true)}
+          className="border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] hover:text-[var(--ai)]"
+        >
+          <Wand2 className="h-3.5 w-3.5 mr-1" /> Generate with AI
+        </Button>
+        <Button size="sm" onClick={() => setShowForm(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> New
+        </Button>
+      </ToolbarActions>
 
       {isLoading ? (
         <div className="space-y-1">

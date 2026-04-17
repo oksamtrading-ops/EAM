@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabFilters } from "./TabFilters";
+import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const CATEGORIES = [
@@ -109,7 +110,7 @@ export function StandardsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <ToolbarActions>
         <TabFilters
           search={search}
           onSearchChange={setSearch}
@@ -126,12 +127,10 @@ export function StandardsTab() {
             setStatusFilter(next.status);
           }}
         />
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Standard
-          </Button>
-        </div>
-      </div>
+        <Button size="sm" onClick={() => setShowForm(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> New Standard
+        </Button>
+      </ToolbarActions>
 
       {isLoading ? (
         <div className="space-y-1">

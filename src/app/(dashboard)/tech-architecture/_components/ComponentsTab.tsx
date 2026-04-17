@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabFilters } from "./TabFilters";
+import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const ENVIRONMENTS = ["PRODUCTION", "STAGING", "TEST", "DEVELOPMENT", "DR", "SHARED"] as const;
@@ -70,7 +71,7 @@ export function ComponentsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <ToolbarActions>
         <TabFilters
           search={search}
           onSearchChange={setSearch}
@@ -87,12 +88,10 @@ export function ComponentsTab() {
             setHostingFilter(next.hosting);
           }}
         />
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Component
-          </Button>
-        </div>
-      </div>
+        <Button size="sm" onClick={() => setShowForm(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> New Component
+        </Button>
+      </ToolbarActions>
 
       {isLoading ? (
         <div className="space-y-1">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 rounded bg-muted/40 animate-pulse" />)}</div>

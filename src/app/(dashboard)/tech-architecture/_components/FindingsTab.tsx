@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { TabFilters } from "./TabFilters";
+import { ToolbarActions } from "./ToolbarActions";
 
 type EolAnalysis = {
   executiveSummary: string;
@@ -226,7 +227,7 @@ export function FindingsTab() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <ToolbarActions>
         <TabFilters
           search={search}
           onSearchChange={setSearch}
@@ -241,7 +242,7 @@ export function FindingsTab() {
             setKindFilter(next.kind);
           }}
         />
-      </div>
+      </ToolbarActions>
 
       {isLoading ? (
         <div className="space-y-1">

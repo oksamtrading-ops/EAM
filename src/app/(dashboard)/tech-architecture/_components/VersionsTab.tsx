@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Plus, History, Trash2 } from "lucide-react";
 import { TabFilters } from "./TabFilters";
+import { ToolbarActions } from "./ToolbarActions";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -75,7 +76,7 @@ export function VersionsTab() {
   return (
     <div className="space-y-3">
       <LifecycleHeatmap />
-      <div className="flex flex-wrap items-center gap-2">
+      <ToolbarActions>
         <TabFilters
           groups={[
             {
@@ -95,12 +96,10 @@ export function VersionsTab() {
             setProductFilter(next.product);
           }}
         />
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Version
-          </Button>
-        </div>
-      </div>
+        <Button size="sm" onClick={() => setShowForm(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> New Version
+        </Button>
+      </ToolbarActions>
 
       {isLoading ? (
         <div className="space-y-1">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 rounded bg-muted/40 animate-pulse" />)}</div>
