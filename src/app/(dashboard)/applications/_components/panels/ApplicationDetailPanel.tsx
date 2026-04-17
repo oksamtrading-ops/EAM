@@ -5,6 +5,7 @@ import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlin
 import { useWorkspace } from "@/hooks/useWorkspace";
 import Link from "next/link";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -141,6 +142,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-5">
+          <CollapsibleGroup defaultOpenId="assessment">
           {/* Description */}
           <section>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
@@ -205,7 +207,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Cost & Users */}
-          <CollapsibleSection title="Cost & Users">
+          <CollapsibleSection id="cost" title="Cost & Users">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Cost Model</label>
@@ -335,7 +337,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Assessment */}
-          <CollapsibleSection title="Assessment" defaultOpen>
+          <CollapsibleSection id="assessment" title="Assessment" defaultOpen>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Biz Value</label>
@@ -443,7 +445,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Capability mappings */}
-          <CollapsibleSection title="Linked Capabilities" count={app.capabilities?.length ?? 0}>
+          <CollapsibleSection id="capabilities" title="Linked Capabilities" count={app.capabilities?.length ?? 0}>
             {app.capabilities && app.capabilities.length > 0 ? (
               <div className="space-y-1">
                 {app.capabilities.map((m: any) => (
@@ -463,7 +465,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Interfaces */}
-          <CollapsibleSection title="Interfaces" count={(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0)}>
+          <CollapsibleSection id="interfaces" title="Interfaces" count={(app.interfacesFrom?.length ?? 0) + (app.interfacesTo?.length ?? 0)}>
               <div className="space-y-1.5">
                 {app.interfacesFrom?.map((iface: any) => (
                   <div key={iface.id} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group">
@@ -573,7 +575,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Data Entities */}
-          <CollapsibleSection title="Data Entities" count={dataUsages.length}>
+          <CollapsibleSection id="data" title="Data Entities" count={dataUsages.length}>
             {dataUsages.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">
                 No data entities yet. Use the{" "}
@@ -645,7 +647,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Tech Stack */}
-          <CollapsibleSection title="Tech Stack" count={app.techStackLinks?.length ?? 0}>
+          <CollapsibleSection id="techStack" title="Tech Stack" count={app.techStackLinks?.length ?? 0}>
               <div className="space-y-1.5">
                 {app.techStackLinks?.map((link: any) => (
                   <div key={`${link.applicationId}-${link.techRadarEntryId}`} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group">
@@ -695,7 +697,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           <Separator />
 
           {/* Ownership */}
-          <CollapsibleSection title="Ownership">
+          <CollapsibleSection id="ownership" title="Ownership">
             <div className="grid grid-cols-2 gap-3">
               <OwnerField
                 label="Business Owner"
@@ -711,6 +713,7 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
               />
             </div>
           </CollapsibleSection>
+          </CollapsibleGroup>
         </div>
       </ScrollArea>
 
@@ -870,7 +873,7 @@ function ApplicationTechnologySection({ applicationId }: { applicationId: string
     : "bg-muted text-muted-foreground";
 
   return (
-    <CollapsibleSection title="Technology Components" count={links.length}>
+    <CollapsibleSection id="techComponents" title="Technology Components" count={links.length}>
       <div className="space-y-2">
         {score && (
           <div className="flex items-center gap-2 flex-wrap text-xs pb-1">

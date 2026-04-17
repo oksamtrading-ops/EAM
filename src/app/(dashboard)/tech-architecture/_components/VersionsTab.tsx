@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { LifecycleHeatmap } from "./LifecycleHeatmap";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 
 const LIFECYCLES = [
   "PREVIEW",
@@ -205,7 +206,8 @@ function VersionDetail({ versionId, onDeleted }: { versionId: string; onDeleted:
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <CollapsibleSection title="Identity" defaultOpen>
+        <CollapsibleGroup defaultOpenId="identity">
+        <CollapsibleSection id="identity" title="Identity" defaultOpen>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Version</label>
@@ -240,7 +242,7 @@ function VersionDetail({ versionId, onDeleted }: { versionId: string; onDeleted:
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Lifecycle" defaultOpen>
+        <CollapsibleSection id="lifecycle" title="Lifecycle">
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Release</label>
@@ -272,7 +274,7 @@ function VersionDetail({ versionId, onDeleted }: { versionId: string; onDeleted:
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Deployed Components" count={version.components.length}>
+        <CollapsibleSection id="components" title="Deployed Components" count={version.components.length}>
           {version.components.length === 0 ? (
             <p className="text-xs text-muted-foreground">None.</p>
           ) : (
@@ -286,6 +288,7 @@ function VersionDetail({ versionId, onDeleted }: { versionId: string; onDeleted:
             </ul>
           )}
         </CollapsibleSection>
+        </CollapsibleGroup>
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => {

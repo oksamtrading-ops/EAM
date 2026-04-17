@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useCollapsibleGroup } from "./CollapsibleGroup";
 
 type Props = {
+  /** Optional stable id used when this section lives inside a <CollapsibleGroup>. */
+  id?: string;
   title: string;
   count?: number;
   icon?: React.ReactNode;
@@ -14,6 +17,7 @@ type Props = {
 };
 
 export function CollapsibleSection({
+  id,
   title,
   count,
   icon,
@@ -21,13 +25,21 @@ export function CollapsibleSection({
   children,
   actions,
 }: Props) {
-  const [open, setOpen] = useState(defaultOpen);
+  const group = useCollapsibleGroup();
+  const [localOpen, setLocalOpen] = useState(defaultOpen);
+
+  const inGroup = group !== null && id !== undefined;
+  const open = inGroup ? group!.openId === id : localOpen;
+  const toggle = () => {
+    if (inGroup) group!.toggle(id!);
+    else setLocalOpen((v) => !v);
+  };
 
   return (
     <section>
       <div className="flex items-center gap-1.5 mb-2">
         <button
-          onClick={() => setOpen(!open)}
+          onClick={toggle}
           className="flex items-center gap-1.5 text-sm font-medium text-left flex-1 min-w-0"
         >
           {open ? (

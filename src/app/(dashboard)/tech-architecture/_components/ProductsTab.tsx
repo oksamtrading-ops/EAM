@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 
 const TYPES = [
   "SOFTWARE",
@@ -198,7 +199,8 @@ function ProductDetail({ productId, onDeleted }: { productId: string; onDeleted:
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <CollapsibleSection title="Identity" defaultOpen>
+        <CollapsibleGroup defaultOpenId="identity">
+        <CollapsibleSection id="identity" title="Identity" defaultOpen>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
@@ -268,7 +270,7 @@ function ProductDetail({ productId, onDeleted }: { productId: string; onDeleted:
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Licensing" defaultOpen>
+        <CollapsibleSection id="licensing" title="Licensing">
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">License type</label>
@@ -290,7 +292,7 @@ function ProductDetail({ productId, onDeleted }: { productId: string; onDeleted:
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Versions" count={product.versions.length}>
+        <CollapsibleSection id="versions" title="Versions" count={product.versions.length}>
           {product.versions.length === 0 ? (
             <p className="text-xs text-muted-foreground">No versions tracked.</p>
           ) : (
@@ -308,7 +310,7 @@ function ProductDetail({ productId, onDeleted }: { productId: string; onDeleted:
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Components" count={product.components.length}>
+        <CollapsibleSection id="components" title="Components" count={product.components.length}>
           {product.components.length === 0 ? (
             <p className="text-xs text-muted-foreground">No deployed components.</p>
           ) : (
@@ -325,9 +327,10 @@ function ProductDetail({ productId, onDeleted }: { productId: string; onDeleted:
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Dependencies">
+        <CollapsibleSection id="dependencies" title="Dependencies">
           <ProductDependenciesSection productId={product.id} />
         </CollapsibleSection>
+        </CollapsibleGroup>
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => {

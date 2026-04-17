@@ -31,6 +31,7 @@ import {
 import { TabFilters } from "./TabFilters";
 import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 
 const CATEGORIES = [
   "PRODUCT_CHOICE",
@@ -260,7 +261,8 @@ function StandardDetail({ standardId, onDeleted }: { standardId: string; onDelet
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <CollapsibleSection title="Identity" defaultOpen>
+        <CollapsibleGroup defaultOpenId="identity">
+        <CollapsibleSection id="identity" title="Identity" defaultOpen>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
@@ -286,7 +288,7 @@ function StandardDetail({ standardId, onDeleted }: { standardId: string; onDelet
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Policy" defaultOpen>
+        <CollapsibleSection id="policy" title="Policy">
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Category</label>
@@ -328,7 +330,7 @@ function StandardDetail({ standardId, onDeleted }: { standardId: string; onDelet
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Scope" defaultOpen>
+        <CollapsibleSection id="scope" title="Scope">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Target Product</label>
@@ -376,7 +378,7 @@ function StandardDetail({ standardId, onDeleted }: { standardId: string; onDelet
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Schedule" defaultOpen>
+        <CollapsibleSection id="schedule" title="Schedule">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Effective</label>
@@ -408,6 +410,7 @@ function StandardDetail({ standardId, onDeleted }: { standardId: string; onDelet
             </div>
           </div>
         </CollapsibleSection>
+        </CollapsibleGroup>
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button

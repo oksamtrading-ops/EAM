@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Trash2, Layers } from "lucide-react";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,6 +84,7 @@ export function DomainDetailPanel({ domainId, onClose }: Props) {
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-5">
+          <CollapsibleGroup defaultOpenId="ownership">
           {/* Name */}
           <section>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
@@ -146,7 +148,7 @@ export function DomainDetailPanel({ domainId, onClose }: Props) {
           <Separator />
 
           {/* Ownership */}
-          <CollapsibleSection title="Ownership" defaultOpen>
+          <CollapsibleSection id="ownership" title="Ownership" defaultOpen>
             <div className="grid grid-cols-1 gap-3">
               <OwnerField
                 label="Owner"
@@ -167,9 +169,9 @@ export function DomainDetailPanel({ domainId, onClose }: Props) {
 
           {/* Entities */}
           <CollapsibleSection
+            id="entities"
             title="Entities in this domain"
             count={domain.entities.length}
-            defaultOpen
           >
             {domain.entities.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">No entities yet.</p>
@@ -189,6 +191,7 @@ export function DomainDetailPanel({ domainId, onClose }: Props) {
               </ul>
             )}
           </CollapsibleSection>
+          </CollapsibleGroup>
         </div>
       </ScrollArea>
 

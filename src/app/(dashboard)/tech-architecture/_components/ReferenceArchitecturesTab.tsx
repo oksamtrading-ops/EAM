@@ -32,6 +32,7 @@ import {
 import { TabFilters } from "./TabFilters";
 import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 
 const STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"] as const;
 const LAYERS = ["PRESENTATION", "APPLICATION", "DATA", "INTEGRATION", "INFRASTRUCTURE", "SECURITY"] as const;
@@ -443,7 +444,8 @@ function RefArchDetail({ archId, onDeleted }: { archId: string; onDeleted: () =>
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <CollapsibleSection title="Identity" defaultOpen>
+        <CollapsibleGroup defaultOpenId="identity">
+        <CollapsibleSection id="identity" title="Identity" defaultOpen>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
@@ -481,7 +483,7 @@ function RefArchDetail({ archId, onDeleted }: { archId: string; onDeleted: () =>
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Lifecycle" defaultOpen>
+        <CollapsibleSection id="lifecycle" title="Lifecycle">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Status</label>
@@ -525,7 +527,7 @@ function RefArchDetail({ archId, onDeleted }: { archId: string; onDeleted: () =>
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Components" count={arch.components.length} defaultOpen>
+        <CollapsibleSection id="components" title="Components" count={arch.components.length}>
           {arch.components.length === 0 ? (
             <p className="text-xs text-muted-foreground mb-3">No components yet.</p>
           ) : (
@@ -598,6 +600,7 @@ function RefArchDetail({ archId, onDeleted }: { archId: string; onDeleted: () =>
             </Button>
           </div>
         </CollapsibleSection>
+        </CollapsibleGroup>
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button

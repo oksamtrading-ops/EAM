@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Trash2, Table2, AlertCircle, Crown, Plus } from "lucide-react";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,6 +127,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
 
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4 space-y-5">
+            <CollapsibleGroup defaultOpenId="ownership">
             {/* Name */}
             <section>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
@@ -295,7 +297,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
             <Separator />
 
             {/* Ownership */}
-            <CollapsibleSection title="Ownership" defaultOpen>
+            <CollapsibleSection id="ownership" title="Ownership" defaultOpen>
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">
@@ -354,6 +356,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
 
             {/* Regulatory tags */}
             <CollapsibleSection
+              id="regulatory"
               title="Regulatory Tags"
               count={(entity.regulatoryTags as RegTag[]).length}
             >
@@ -383,7 +386,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
             <Separator />
 
             {/* Attributes (field-level schema) */}
-            <CollapsibleSection title="Attributes" defaultOpen>
+            <CollapsibleSection id="attributes" title="Attributes">
               <AttributeTable entityId={entity.id} allEntities={allEntities} />
             </CollapsibleSection>
 
@@ -391,6 +394,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
 
             {/* Applications using this entity */}
             <CollapsibleSection
+              id="usages"
               title="Applications using this entity"
               count={entity.appUsages.length}
             >
@@ -436,9 +440,9 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
 
             {/* Data Quality */}
             <CollapsibleSection
+              id="dq"
               title="Data Quality"
               count={latestByDimension.size}
-              defaultOpen
               actions={
                 <Button
                   variant="outline"
@@ -482,6 +486,7 @@ export function EntityDetailPanel({ entityId, onClose }: Props) {
                 </div>
               )}
             </CollapsibleSection>
+            </CollapsibleGroup>
           </div>
         </ScrollArea>
 

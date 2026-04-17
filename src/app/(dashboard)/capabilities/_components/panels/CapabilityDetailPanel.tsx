@@ -6,6 +6,7 @@ import {
   Users, Building2, Workflow, Plus, ArrowRight, DollarSign,
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,6 +223,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="p-5 space-y-5">
+          <CollapsibleGroup defaultOpenId="assessment">
           {/* Description */}
           <section>
             <SectionLabel>Description</SectionLabel>
@@ -241,7 +243,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           <Separator />
 
           {/* Value Stream */}
-          <CollapsibleSection title="Value Stream" icon={<Workflow className="h-3.5 w-3.5" />}>
+          <CollapsibleSection id="valueStream" title="Value Stream" icon={<Workflow className="h-3.5 w-3.5" />}>
             <Select
               value={cap.valueStreamId ?? "__none__"}
               onValueChange={(v) =>
@@ -323,7 +325,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           <Separator />
 
           {/* Investment / Cost Rollup */}
-          <CollapsibleSection title="Investment" icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <CollapsibleSection id="investment" title="Investment" icon={<DollarSign className="h-3.5 w-3.5" />}>
             {(() => {
               const capCost = costRollup?.[capabilityId];
               if (!capCost || capCost.totalCost === 0) {
@@ -382,7 +384,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           <Separator />
 
           {/* Ownership */}
-          <CollapsibleSection title="Ownership" icon={<Users className="h-3.5 w-3.5" />}>
+          <CollapsibleSection id="ownership" title="Ownership" icon={<Users className="h-3.5 w-3.5" />}>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Organization</label>
@@ -430,7 +432,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
           <Separator />
 
           {/* Assessment */}
-          <CollapsibleSection title="Assessment" defaultOpen>
+          <CollapsibleSection id="assessment" title="Assessment" defaultOpen>
             <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -532,6 +534,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
 
           {/* Strategic Objectives */}
           <CollapsibleSection
+            id="objectives"
             title="Strategic Objectives"
             icon={<Target className="h-3.5 w-3.5" />}
             count={(cap as any).objectives?.length ?? 0}
@@ -623,6 +626,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
 
           {/* Dependencies */}
           <CollapsibleSection
+            id="dependencies"
             title="Dependencies"
             icon={<Link2 className="h-3.5 w-3.5" />}
             actions={
@@ -723,7 +727,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
 
           {/* Sub-capabilities */}
           {cap.children && cap.children.length > 0 && (
-            <CollapsibleSection title="Sub-capabilities" count={cap.children.length} defaultOpen>
+            <CollapsibleSection id="children" title="Sub-capabilities" count={cap.children.length}>
               <div className="space-y-1">
                 {cap.children.map((child: any) => (
                   <div
@@ -757,6 +761,7 @@ export function CapabilityDetailPanel({ capabilityId, onClose, onSelect, autoOpe
               </div>
             </section>
           )}
+          </CollapsibleGroup>
         </div>
       </div>
 

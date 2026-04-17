@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 
 const CATEGORIES = [
   "HYPERSCALER",
@@ -236,7 +237,8 @@ function VendorDetail({ vendorId, onDeleted }: { vendorId: string; onDeleted: ()
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <CollapsibleSection title="Identity" defaultOpen>
+        <CollapsibleGroup defaultOpenId="identity">
+        <CollapsibleSection id="identity" title="Identity" defaultOpen>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
@@ -294,7 +296,7 @@ function VendorDetail({ vendorId, onDeleted }: { vendorId: string; onDeleted: ()
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Commercial" defaultOpen>
+        <CollapsibleSection id="commercial" title="Commercial">
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">HQ Country</label>
@@ -345,7 +347,7 @@ function VendorDetail({ vendorId, onDeleted }: { vendorId: string; onDeleted: ()
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Ownership" defaultOpen>
+        <CollapsibleSection id="ownership" title="Ownership">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Relationship Owner</label>
             <Select
@@ -361,7 +363,7 @@ function VendorDetail({ vendorId, onDeleted }: { vendorId: string; onDeleted: ()
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Linked Products" count={vendor.products.length}>
+        <CollapsibleSection id="products" title="Linked Products" count={vendor.products.length}>
           {vendor.products.length === 0 ? (
             <p className="text-xs text-muted-foreground">No products yet.</p>
           ) : (
@@ -377,6 +379,7 @@ function VendorDetail({ vendorId, onDeleted }: { vendorId: string; onDeleted: ()
             </ul>
           )}
         </CollapsibleSection>
+        </CollapsibleGroup>
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button

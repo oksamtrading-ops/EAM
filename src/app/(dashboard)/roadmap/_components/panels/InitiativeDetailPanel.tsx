@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Pencil, AlertTriangle, Loader2 } from "lucide-react";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { format } from "date-fns";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
@@ -172,7 +173,8 @@ export function InitiativeDetailPanel({
                     <ProgressBar value={initiative.progressPct} />
                   </div>
 
-                  <CollapsibleSection title="Details" defaultOpen>
+                  <CollapsibleGroup defaultOpenId="details">
+                  <CollapsibleSection id="details" title="Details" defaultOpen>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       {initiative.startDate && (
                         <div>
@@ -207,7 +209,7 @@ export function InitiativeDetailPanel({
                     </div>
                   </CollapsibleSection>
 
-                  <CollapsibleSection title="Linked Capabilities" count={initiative.capabilities.length}>
+                  <CollapsibleSection id="capabilities" title="Linked Capabilities" count={initiative.capabilities.length}>
                     {initiative.capabilities.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {initiative.capabilities.map((c) => (
@@ -223,6 +225,7 @@ export function InitiativeDetailPanel({
                       <p className="text-xs text-muted-foreground">No capabilities linked.</p>
                     )}
                   </CollapsibleSection>
+                  </CollapsibleGroup>
 
                   {/* AI Risk Assessment */}
                   <div className="border-t pt-4">

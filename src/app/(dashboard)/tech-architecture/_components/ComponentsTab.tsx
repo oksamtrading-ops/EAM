@@ -22,6 +22,7 @@ import {
 import { TabFilters } from "./TabFilters";
 import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 
 const ENVIRONMENTS = ["PRODUCTION", "STAGING", "TEST", "DEVELOPMENT", "DR", "SHARED"] as const;
 const HOSTING_MODELS = ["ON_PREMISES", "PRIVATE_CLOUD", "PUBLIC_IAAS", "PUBLIC_PAAS", "SAAS", "HYBRID"] as const;
@@ -238,7 +239,8 @@ function ComponentDetail({ componentId, onDeleted }: { componentId: string; onDe
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <CollapsibleSection title="Identity" defaultOpen>
+        <CollapsibleGroup defaultOpenId="identity">
+        <CollapsibleSection id="identity" title="Identity" defaultOpen>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Name</label>
@@ -277,7 +279,7 @@ function ComponentDetail({ componentId, onDeleted }: { componentId: string; onDe
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Deployment" defaultOpen>
+        <CollapsibleSection id="deployment" title="Deployment">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Environment</label>
@@ -308,7 +310,7 @@ function ComponentDetail({ componentId, onDeleted }: { componentId: string; onDe
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Ownership" defaultOpen>
+        <CollapsibleSection id="ownership" title="Ownership">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Owner</label>
             <Select
@@ -324,7 +326,7 @@ function ComponentDetail({ componentId, onDeleted }: { componentId: string; onDe
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Linked Applications" count={component.applications.length}>
+        <CollapsibleSection id="applications" title="Linked Applications" count={component.applications.length}>
           <ul className="space-y-1">
             {component.applications.map((link) => (
               <li key={link.applicationId} className="text-xs p-2 bg-muted/30 rounded flex items-center gap-2 group">
@@ -382,6 +384,7 @@ function ComponentDetail({ componentId, onDeleted }: { componentId: string; onDe
             </Button>
           </div>
         </CollapsibleSection>
+        </CollapsibleGroup>
 
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => {
