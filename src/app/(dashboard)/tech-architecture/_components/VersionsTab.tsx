@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Plus, History, Trash2, Edit2 } from "lucide-react";
+import { TabFilters } from "./TabFilters";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -75,24 +76,25 @@ export function VersionsTab() {
     <div className="space-y-3">
       <LifecycleHeatmap />
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={lifecycle || "__all__"} onValueChange={(v) => setLifecycle(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[170px] text-xs">
-            <SelectValue placeholder="All lifecycles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All lifecycles</SelectItem>
-            {LIFECYCLES.map((l) => <SelectItem key={l} value={l}>{l.replace(/_/g, " ")}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={productFilter || "__all__"} onValueChange={(v) => setProductFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[200px] text-xs">
-            <SelectValue placeholder="All products" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All products</SelectItem>
-            {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <TabFilters
+          groups={[
+            {
+              key: "lifecycle",
+              label: "Lifecycle",
+              options: LIFECYCLES.map((l) => ({ value: l, label: l.replace(/_/g, " ") })),
+            },
+            {
+              key: "product",
+              label: "Product",
+              options: products.map((p) => ({ value: p.id, label: p.name })),
+            },
+          ]}
+          values={{ lifecycle, product: productFilter }}
+          onValuesChange={(next) => {
+            setLifecycle(next.lifecycle);
+            setProductFilter(next.product);
+          }}
+        />
         <div className="ml-auto">
           <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Version

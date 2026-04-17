@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Plus, Search, ShieldCheck, Trash2, Edit2 } from "lucide-react";
+import { Plus, ShieldCheck, Trash2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TabFilters } from "./TabFilters";
 
 const CATEGORIES = [
   "PRODUCT_CHOICE",
@@ -110,48 +111,22 @@ export function StandardsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search standards…"
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <Select value={categoryFilter || "__all__"} onValueChange={(v) => setCategoryFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All categories</SelectItem>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={levelFilter || "__all__"} onValueChange={(v) => setLevelFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[130px] text-xs">
-            <SelectValue placeholder="All levels" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All levels</SelectItem>
-            {LEVELS.map((l) => (
-              <SelectItem key={l} value={l}>{l}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter || "__all__"} onValueChange={(v) => setStatusFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[120px] text-xs">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All statuses</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <TabFilters
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search standards…"
+          groups={[
+            { key: "category", label: "Category", options: CATEGORIES.map((c) => ({ value: c, label: c.replace(/_/g, " ") })) },
+            { key: "level", label: "Level", options: LEVELS.map((l) => ({ value: l, label: l })) },
+            { key: "status", label: "Status", options: STATUSES.map((s) => ({ value: s, label: s })) },
+          ]}
+          values={{ category: categoryFilter, level: levelFilter, status: statusFilter }}
+          onValuesChange={(next) => {
+            setCategoryFilter(next.category);
+            setLevelFilter(next.level);
+            setStatusFilter(next.status);
+          }}
+        />
         <div className="ml-auto">
           <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Standard

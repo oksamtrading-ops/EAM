@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Package, Trash2, Edit2, ExternalLink, X } from "lucide-react";
+import { Plus, Package, Trash2, Edit2, ExternalLink, X } from "lucide-react";
+import { TabFilters } from "./TabFilters";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -68,33 +69,28 @@ export function ProductsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products…"
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <Select value={typeFilter || "__all__"} onValueChange={(v) => setTypeFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[150px] text-xs">
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All types</SelectItem>
-            {TYPES.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={vendorFilter || "__all__"} onValueChange={(v) => setVendorFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[180px] text-xs">
-            <SelectValue placeholder="All vendors" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All vendors</SelectItem>
-            {vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <TabFilters
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search products…"
+          groups={[
+            {
+              key: "type",
+              label: "Type",
+              options: TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") })),
+            },
+            {
+              key: "vendor",
+              label: "Vendor",
+              options: vendors.map((v) => ({ value: v.id, label: v.name })),
+            },
+          ]}
+          values={{ type: typeFilter, vendor: vendorFilter }}
+          onValuesChange={(next) => {
+            setTypeFilter(next.type);
+            setVendorFilter(next.vendor);
+          }}
+        />
         <div className="ml-auto">
           <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Product

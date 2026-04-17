@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Plus, Search, Building2, Trash2, Edit2 } from "lucide-react";
+import { Plus, Building2, Trash2, Edit2 } from "lucide-react";
+import { TabFilters } from "./TabFilters";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -83,41 +84,28 @@ export function VendorsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search vendors…"
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <Select value={statusFilter || "__all__"} onValueChange={(v) => setStatusFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[130px] text-xs">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All statuses</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s.replace(/_/g, " ")}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={categoryFilter || "__all__"} onValueChange={(v) => setCategoryFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[150px] text-xs">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All categories</SelectItem>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c.replace(/_/g, " ")}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <TabFilters
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search vendors…"
+          groups={[
+            {
+              key: "status",
+              label: "Status",
+              options: STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, " ") })),
+            },
+            {
+              key: "category",
+              label: "Category",
+              options: CATEGORIES.map((c) => ({ value: c, label: c.replace(/_/g, " ") })),
+            },
+          ]}
+          values={{ status: statusFilter, category: categoryFilter }}
+          onValuesChange={(next) => {
+            setStatusFilter(next.status);
+            setCategoryFilter(next.category);
+          }}
+        />
         <div className="ml-auto">
           <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Vendor

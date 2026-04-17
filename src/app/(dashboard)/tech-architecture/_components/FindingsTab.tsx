@@ -6,16 +6,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TabFilters } from "./TabFilters";
 
 type EolAnalysis = {
   executiveSummary: string;
@@ -221,30 +214,20 @@ export function FindingsTab() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search findings…"
-          className="flex-1 min-w-[220px] max-w-sm h-8 text-sm"
+        <TabFilters
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search findings…"
+          groups={[
+            { key: "severity", label: "Severity", options: SEVERITIES.map((s) => ({ value: s, label: s })) },
+            { key: "kind", label: "Type", options: kinds.map((k) => ({ value: k, label: k.replace(/_/g, " ") })) },
+          ]}
+          values={{ severity: severityFilter, kind: kindFilter }}
+          onValuesChange={(next) => {
+            setSeverityFilter(next.severity);
+            setKindFilter(next.kind);
+          }}
         />
-        <Select value={severityFilter || "__all__"} onValueChange={(v) => setSeverityFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[140px] text-xs">
-            <SelectValue placeholder="All severities" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All severities</SelectItem>
-            {SEVERITIES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={kindFilter || "__all__"} onValueChange={(v) => setKindFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[220px] text-xs">
-            <SelectValue placeholder="All finding types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All finding types</SelectItem>
-            {kinds.map((k) => <SelectItem key={k} value={k}>{k.replace(/_/g, " ")}</SelectItem>)}
-          </SelectContent>
-        </Select>
       </div>
 
       {isLoading ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Plus, Search, BookOpen, Trash2, Edit2, X, Wand2, Check } from "lucide-react";
+import { Plus, BookOpen, Trash2, Edit2, X, Wand2, Check } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TabFilters } from "./TabFilters";
 
 const STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"] as const;
 const LAYERS = ["PRESENTATION", "APPLICATION", "DATA", "INTEGRATION", "INFRASTRUCTURE", "SECURITY"] as const;
@@ -73,26 +74,23 @@ export function ReferenceArchitecturesTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search reference architectures…"
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <Select value={statusFilter || "__all__"} onValueChange={(v) => setStatusFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[130px] text-xs">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All statuses</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <TabFilters
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search reference architectures…"
+          groups={[
+            { key: "status", label: "Status", options: STATUSES.map((s) => ({ value: s, label: s })) },
+          ]}
+          values={{ status: statusFilter }}
+          onValuesChange={(next) => setStatusFilter(next.status)}
+        />
         <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowAiDialog(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAiDialog(true)}
+            className="border-[var(--ai)]/30 text-[var(--ai)] hover:bg-[var(--ai-subtle)] hover:text-[var(--ai)]"
+          >
             <Wand2 className="h-3.5 w-3.5 mr-1" /> Generate with AI
           </Button>
           <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>

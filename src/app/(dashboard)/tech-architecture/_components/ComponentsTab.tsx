@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Boxes, Trash2, Edit2, AlertTriangle, Link2, Unlink } from "lucide-react";
+import { Plus, Boxes, Trash2, Edit2, AlertTriangle, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TabFilters } from "./TabFilters";
 
 const ENVIRONMENTS = ["PRODUCTION", "STAGING", "TEST", "DEVELOPMENT", "DR", "SHARED"] as const;
 const HOSTING_MODELS = ["ON_PREMISES", "PRIVATE_CLOUD", "PUBLIC_IAAS", "PUBLIC_PAAS", "SAAS", "HYBRID"] as const;
@@ -70,31 +71,22 @@ export function ComponentsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search components…" className="pl-8 h-8 text-sm" />
-        </div>
-        <Select value={productFilter || "__all__"} onValueChange={(v) => setProductFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="All products" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All products</SelectItem>
-            {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={envFilter || "__all__"} onValueChange={(v) => setEnvFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="All envs" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All envs</SelectItem>
-            {ENVIRONMENTS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={hostingFilter || "__all__"} onValueChange={(v) => setHostingFilter(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="All hosting" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All hosting</SelectItem>
-            {HOSTING_MODELS.map((h) => <SelectItem key={h} value={h}>{h.replace(/_/g, " ")}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <TabFilters
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search components…"
+          groups={[
+            { key: "product", label: "Product", options: products.map((p) => ({ value: p.id, label: p.name })) },
+            { key: "env", label: "Environment", options: ENVIRONMENTS.map((e) => ({ value: e, label: e })) },
+            { key: "hosting", label: "Hosting", options: HOSTING_MODELS.map((h) => ({ value: h, label: h.replace(/_/g, " ") })) },
+          ]}
+          values={{ product: productFilter, env: envFilter, hosting: hostingFilter }}
+          onValuesChange={(next) => {
+            setProductFilter(next.product);
+            setEnvFilter(next.env);
+            setHostingFilter(next.hosting);
+          }}
+        />
         <div className="ml-auto">
           <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Component
