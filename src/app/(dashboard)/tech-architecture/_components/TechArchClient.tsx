@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Layers, Building2, Package, History, Boxes, ShieldCheck, BookOpen, AlertTriangle, FileSpreadsheet, Presentation } from "lucide-react";
+import { Building2, Package, History, Boxes, ShieldCheck, BookOpen, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { TechArchToolbar } from "./TechArchToolbar";
 import { TechArchKpiBar } from "./TechArchKpiBar";
 import { VendorsTab } from "./VendorsTab";
 import { ProductsTab } from "./ProductsTab";
@@ -55,56 +55,26 @@ export function TechArchClient() {
 
   return (
     <div className="h-full flex flex-col min-w-0 overflow-hidden">
-      <div className="shrink-0 border-b glass-toolbar">
-        <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-              <Layers className="h-4 w-4 text-indigo-600" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-md font-semibold text-foreground truncate">Technology Architecture</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={() =>
-                download(
-                  "/api/export/tech-architecture-xlsx",
-                  "Technology_Architecture_Export.xlsx",
-                  setExportingXlsx,
-                  "XLSX export"
-                )
-              }
-              disabled={exportingXlsx}
-              title="Export catalog to XLSX"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />
-              {exportingXlsx ? "Exporting…" : "XLSX"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={() =>
-                download(
-                  "/api/export/tech-architecture-pptx",
-                  "Technology_Architecture.pptx",
-                  setExportingPptx,
-                  "Boardroom deck"
-                )
-              }
-              disabled={exportingPptx}
-              title="Export boardroom deck (PPTX)"
-            >
-              <Presentation className="h-3.5 w-3.5 mr-1" />
-              {exportingPptx ? "Exporting…" : "PPTX"}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <TechArchToolbar
+        onExportXlsx={() =>
+          download(
+            "/api/export/tech-architecture-xlsx",
+            "Technology_Architecture_Export.xlsx",
+            setExportingXlsx,
+            "XLSX export"
+          )
+        }
+        onExportPptx={() =>
+          download(
+            "/api/export/tech-architecture-pptx",
+            "Technology_Architecture.pptx",
+            setExportingPptx,
+            "Boardroom deck"
+          )
+        }
+        exportingXlsx={exportingXlsx}
+        exportingPptx={exportingPptx}
+      />
 
       <div className="flex-1 overflow-auto">
         <div className="px-4 sm:px-5 py-4 space-y-4">
