@@ -63,7 +63,6 @@ export function TechArchClient() {
             </div>
             <div className="min-w-0">
               <h1 className="text-md font-semibold text-foreground truncate">Technology Architecture</h1>
-              <p className="text-xs text-muted-foreground">Module 7 — TOGAF Phase D</p>
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
