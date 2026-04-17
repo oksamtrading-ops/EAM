@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { Plus, BookOpen, Trash2, Edit2, X, Wand2, Check } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, BookOpen, Trash2, X, Wand2, Check } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabFilters } from "./TabFilters";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"] as const;
 const LAYERS = ["PRESENTATION", "APPLICATION", "DATA", "INTEGRATION", "INFRASTRUCTURE", "SECURITY"] as const;
@@ -57,7 +57,6 @@ export function ReferenceArchitecturesTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showAiDialog, setShowAiDialog] = useState(false);
 
@@ -93,7 +92,7 @@ export function ReferenceArchitecturesTab() {
           >
             <Wand2 className="h-3.5 w-3.5 mr-1" /> Generate with AI
           </Button>
-          <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Reference Architecture
           </Button>
         </div>
@@ -139,7 +138,6 @@ export function ReferenceArchitecturesTab() {
           {selected && (
             <RefArchDetail
               archId={selected.id}
-              onEdit={() => { setEditingId(selected.id); setShowForm(true); }}
               onDeleted={() => setSelectedId(null)}
             />
           )}
@@ -148,8 +146,7 @@ export function ReferenceArchitecturesTab() {
 
       <RefArchFormModal
         open={showForm}
-        editingId={editingId}
-        onClose={() => { setShowForm(false); setEditingId(null); }}
+        onClose={() => setShowForm(false)}
       />
 
       <GenerateRefArchDialog
@@ -366,11 +363,20 @@ function GenerateRefArchDialog({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-function RefArchDetail({ archId, onEdit, onDeleted }: { archId: string; onEdit: () => void; onDeleted: () => void }) {
+function RefArchDetail({ archId, onDeleted }: { archId: string; onDeleted: () => void }) {
   const utils = trpc.useUtils();
   const { data: arch } = trpc.referenceArchitecture.getById.useQuery({ id: archId });
+  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
   const { data: products = [] } = trpc.technologyProduct.list.useQuery({});
 
+  const updateMutation = trpc.referenceArchitecture.update.useMutation({
+    onSuccess: () => {
+      utils.referenceArchitecture.list.invalidate();
+      utils.referenceArchitecture.getById.invalidate({ id: archId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteMutation = trpc.referenceArchitecture.delete.useMutation({
     onSuccess: () => {
       toast.success("Reference architecture archived");
@@ -409,6 +415,9 @@ function RefArchDetail({ archId, onEdit, onDeleted }: { archId: string; onEdit: 
     );
   }
 
+  const save = (patch: Omit<Parameters<typeof updateMutation.mutate>[0], "id">) =>
+    updateMutation.mutate({ ...patch, id: arch.id });
+
   const grouped = new Map<string, typeof arch.components>();
   for (const c of arch.components) {
     const key = c.layer;
@@ -426,22 +435,89 @@ function RefArchDetail({ archId, onEdit, onDeleted }: { archId: string; onEdit: 
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        {arch.description && <p className="text-sm text-muted-foreground">{arch.description}</p>}
-        {arch.diagramUrl && (
-          <a href={arch.diagramUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline block">
-            View external diagram ↗
-          </a>
-        )}
-        <div className="text-xs text-muted-foreground">
-          Owner: {arch.owner?.name ?? arch.owner?.email ?? "—"}
-        </div>
+        <CollapsibleSection title="Identity" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input
+                defaultValue={arch.name}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== arch.name) save({ name: v });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+              <Textarea
+                defaultValue={arch.description ?? ""}
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (arch.description ?? "")) save({ description: e.target.value || null });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+              <Input
+                defaultValue={arch.category ?? ""}
+                placeholder="Web App, Data Pipeline…"
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (arch.category ?? "")) save({ category: v || null });
+                }}
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
 
-        <Separator />
+        <CollapsibleSection title="Lifecycle" defaultOpen>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+              <Select value={arch.status} onValueChange={(v) => save({ status: v as RefArchStatus })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Owner</label>
+              <Select
+                value={arch.ownerId ?? "__none__"}
+                onValueChange={(v) => save({ ownerId: v === "__none__" ? null : v })}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Diagram URL</label>
+            <Input
+              defaultValue={arch.diagramUrl ?? ""}
+              placeholder="https://…"
+              className="h-8 text-xs"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v !== (arch.diagramUrl ?? "")) save({ diagramUrl: v || null });
+              }}
+            />
+            {arch.diagramUrl && (
+              <a href={arch.diagramUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline mt-1 block">
+                Open ↗
+              </a>
+            )}
+          </div>
+        </CollapsibleSection>
 
-        <div>
-          <p className="text-xs font-medium text-foreground mb-2">
-            Components <span className="text-muted-foreground">({arch.components.length})</span>
-          </p>
+        <CollapsibleSection title="Components" count={arch.components.length} defaultOpen>
           {arch.components.length === 0 ? (
             <p className="text-xs text-muted-foreground mb-3">No components yet.</p>
           ) : (
@@ -513,14 +589,9 @@ function RefArchDetail({ archId, onEdit, onDeleted }: { archId: string; onEdit: 
               Add
             </Button>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <Separator />
-
-        <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={onEdit}>
-            <Edit2 className="h-3 w-3 mr-1" /> Edit
-          </Button>
+        <div className="flex items-center gap-2 pt-2 border-t">
           <Button
             size="sm"
             variant="outline"
@@ -539,62 +610,21 @@ function RefArchDetail({ archId, onEdit, onDeleted }: { archId: string; onEdit: 
   );
 }
 
-function RefArchFormModal({
-  open,
-  editingId,
-  onClose,
-}: {
-  open: boolean;
-  editingId: string | null;
-  onClose: () => void;
-}) {
+function RefArchFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
-  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
-  const { data: existing } = trpc.referenceArchitecture.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
-  );
 
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState<RefArchStatus>("DRAFT");
-  const [ownerId, setOwnerId] = useState("");
-  const [diagramUrl, setDiagramUrl] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    if (editingId && existing) {
-      setName(existing.name);
-      setDescription(existing.description ?? "");
-      setCategory(existing.category ?? "");
-      setStatus(existing.status as RefArchStatus);
-      setOwnerId(existing.ownerId ?? "");
-      setDiagramUrl(existing.diagramUrl ?? "");
-    } else if (!editingId) {
-      setName("");
-      setDescription("");
-      setCategory("");
-      setStatus("DRAFT");
-      setOwnerId("");
-      setDiagramUrl("");
-    }
-  }, [open, editingId, existing]);
 
   const createMutation = trpc.referenceArchitecture.create.useMutation({
     onSuccess: () => {
       toast.success("Reference architecture created");
       utils.referenceArchitecture.list.invalidate();
       utils.techArchitecture.kpis.invalidate();
-      onClose();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const updateMutation = trpc.referenceArchitecture.update.useMutation({
-    onSuccess: () => {
-      toast.success("Reference architecture updated");
-      utils.referenceArchitecture.list.invalidate();
-      if (editingId) utils.referenceArchitecture.getById.invalidate({ id: editingId });
+      setName("");
+      setCategory("");
+      setStatus("DRAFT");
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -602,34 +632,26 @@ function RefArchFormModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
+    createMutation.mutate({
       name,
-      description: description || null,
+      description: null,
       category: category || null,
       status,
-      ownerId: ownerId || null,
-      diagramUrl: diagramUrl || null,
-    };
-    if (editingId) updateMutation.mutate({ id: editingId, ...payload });
-    else createMutation.mutate(payload);
+      ownerId: null,
+      diagramUrl: null,
+    });
   }
-
-  const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editingId ? "Edit Reference Architecture" : "New Reference Architecture"}</DialogTitle>
+          <DialogTitle>New Reference Architecture</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label htmlFor="ra-name">Name *</Label>
             <Input id="ra-name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
-          </div>
-          <div>
-            <Label htmlFor="ra-desc">Description</Label>
-            <Textarea id="ra-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -646,26 +668,13 @@ function RefArchFormModal({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Owner</Label>
-              <Select value={ownerId || "__none__"} onValueChange={(v) => setOwnerId(!v || v === "__none__" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="ra-url">Diagram URL</Label>
-              <Input id="ra-url" value={diagramUrl} onChange={(e) => setDiagramUrl(e.target.value)} placeholder="https://…" />
-            </div>
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Description, owner, diagram URL, and components can be set on the reference architecture after creation.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editingId ? "Save Changes" : "Create"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving…" : "Create"}
             </Button>
           </div>
         </form>

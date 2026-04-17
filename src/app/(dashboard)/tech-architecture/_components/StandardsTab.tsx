@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { Plus, ShieldCheck, Trash2, Edit2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -30,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabFilters } from "./TabFilters";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const CATEGORIES = [
   "PRODUCT_CHOICE",
@@ -93,7 +93,6 @@ export function StandardsTab() {
   const [levelFilter, setLevelFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const { data: items = [], isLoading } = trpc.technologyStandard.list.useQuery({
@@ -128,7 +127,7 @@ export function StandardsTab() {
           }}
         />
         <div className="ml-auto">
-          <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Standard
           </Button>
         </div>
@@ -196,7 +195,6 @@ export function StandardsTab() {
           {selected && (
             <StandardDetail
               standardId={selected.id}
-              onEdit={() => { setEditingId(selected.id); setShowForm(true); }}
               onDeleted={() => setSelectedId(null)}
             />
           )}
@@ -205,16 +203,31 @@ export function StandardsTab() {
 
       <StandardFormModal
         open={showForm}
-        editingId={editingId}
-        onClose={() => { setShowForm(false); setEditingId(null); }}
+        onClose={() => setShowForm(false)}
       />
     </div>
   );
 }
 
-function StandardDetail({ standardId, onEdit, onDeleted }: { standardId: string; onEdit: () => void; onDeleted: () => void }) {
+function StandardDetail({ standardId, onDeleted }: { standardId: string; onDeleted: () => void }) {
   const utils = trpc.useUtils();
   const { data: s } = trpc.technologyStandard.getById.useQuery({ id: standardId });
+  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
+  const { data: products = [] } = trpc.technologyProduct.list.useQuery({});
+  const { data: selectedProduct } = trpc.technologyProduct.getById.useQuery(
+    { id: s?.productId ?? "" },
+    { enabled: !!s?.productId }
+  );
+  const versions = selectedProduct?.versions ?? [];
+
+  const updateMutation = trpc.technologyStandard.update.useMutation({
+    onSuccess: () => {
+      utils.technologyStandard.list.invalidate();
+      utils.technologyStandard.getById.invalidate({ id: standardId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteMutation = trpc.technologyStandard.delete.useMutation({
     onSuccess: () => {
       toast.success("Standard archived");
@@ -234,6 +247,9 @@ function StandardDetail({ standardId, onEdit, onDeleted }: { standardId: string;
     );
   }
 
+  const save = (patch: Omit<Parameters<typeof updateMutation.mutate>[0], "id">) =>
+    updateMutation.mutate({ ...patch, id: s.id });
+
   return (
     <>
       <SheetHeader>
@@ -245,40 +261,156 @@ function StandardDetail({ standardId, onEdit, onDeleted }: { standardId: string;
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="text-muted-foreground">Target product</p>
-            <p>{s.product?.name ?? "—"}</p>
+        <CollapsibleSection title="Identity" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input
+                defaultValue={s.name}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== s.name) save({ name: v });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+              <Textarea
+                defaultValue={s.description ?? ""}
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (s.description ?? "")) save({ description: e.target.value || null });
+                }}
+              />
+            </div>
           </div>
-          <div>
-            <p className="text-muted-foreground">Target version</p>
-            <p>{s.version?.version ?? "—"}</p>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Policy" defaultOpen>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+              <Select value={s.category} onValueChange={(v) => save({ category: v as StandardCategory })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Level</label>
+              <Select value={s.level} onValueChange={(v) => save({ level: v as StandardLevel })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LEVELS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+              <Select value={s.status} onValueChange={(v) => save({ status: v as StandardStatus })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((st) => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <p className="text-muted-foreground">Effective</p>
-            <p>{s.effectiveDate ? new Date(s.effectiveDate).toLocaleDateString() : "—"}</p>
+          <div className="mt-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Rationale</label>
+            <Textarea
+              defaultValue={s.rationale ?? ""}
+              rows={2}
+              onBlur={(e) => {
+                if (e.target.value !== (s.rationale ?? "")) save({ rationale: e.target.value || null });
+              }}
+            />
           </div>
-          <div>
-            <p className="text-muted-foreground">Review</p>
-            <p>{s.reviewDate ? new Date(s.reviewDate).toLocaleDateString() : "—"}</p>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Scope" defaultOpen>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Target Product</label>
+              <Select
+                value={s.productId ?? "__none__"}
+                onValueChange={(v) => {
+                  const nv = v === "__none__" ? null : v;
+                  save({ productId: nv, versionId: null });
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Target Version</label>
+              <Select
+                value={s.versionId ?? "__none__"}
+                onValueChange={(v) => save({ versionId: v === "__none__" ? null : v })}
+                disabled={!s.productId || versions.length === 0}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {versions.map((v) => <SelectItem key={v.id} value={v.id}>{v.version}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <p className="text-muted-foreground">Owner</p>
-            <p>{s.owner?.name ?? s.owner?.email ?? "—"}</p>
+          <div className="mt-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Owner</label>
+            <Select
+              value={s.ownerId ?? "__none__"}
+              onValueChange={(v) => save({ ownerId: v === "__none__" ? null : v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-        {s.rationale && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Rationale</p>
-            <p className="text-xs whitespace-pre-wrap">{s.rationale}</p>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Schedule" defaultOpen>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Effective</label>
+              <Input
+                type="date"
+                defaultValue={toDateInput(s.effectiveDate)}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const current = toDateInput(s.effectiveDate);
+                  if (e.target.value !== current) {
+                    save({ effectiveDate: e.target.value ? new Date(e.target.value) : null });
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Review</label>
+              <Input
+                type="date"
+                defaultValue={toDateInput(s.reviewDate)}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const current = toDateInput(s.reviewDate);
+                  if (e.target.value !== current) {
+                    save({ reviewDate: e.target.value ? new Date(e.target.value) : null });
+                  }
+                }}
+              />
+            </div>
           </div>
-        )}
-        <Separator />
-        <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={onEdit}>
-            <Edit2 className="h-3 w-3 mr-1" /> Edit
-          </Button>
+        </CollapsibleSection>
+
+        <div className="flex items-center gap-2 pt-2 border-t">
           <Button
             size="sm"
             variant="outline"
@@ -296,83 +428,23 @@ function StandardDetail({ standardId, onEdit, onDeleted }: { standardId: string;
   );
 }
 
-function StandardFormModal({
-  open,
-  editingId,
-  onClose,
-}: {
-  open: boolean;
-  editingId: string | null;
-  onClose: () => void;
-}) {
+function StandardFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
-  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
-  const { data: products = [] } = trpc.technologyProduct.list.useQuery({});
-  const { data: existing } = trpc.technologyStandard.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
-  );
 
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [category, setCategory] = useState<StandardCategory>("OTHER");
   const [level, setLevel] = useState<StandardLevel>("RECOMMENDED");
   const [status, setStatus] = useState<StandardStatus>("ACTIVE");
-  const [productId, setProductId] = useState("");
-  const [versionId, setVersionId] = useState("");
-  const [ownerId, setOwnerId] = useState("");
-  const [effectiveDate, setEffectiveDate] = useState("");
-  const [reviewDate, setReviewDate] = useState("");
-  const [rationale, setRationale] = useState("");
-
-  const { data: selectedProduct } = trpc.technologyProduct.getById.useQuery(
-    { id: productId },
-    { enabled: !!productId }
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    if (editingId && existing) {
-      setName(existing.name);
-      setDescription(existing.description ?? "");
-      setCategory(existing.category as StandardCategory);
-      setLevel(existing.level as StandardLevel);
-      setStatus(existing.status as StandardStatus);
-      setProductId(existing.productId ?? "");
-      setVersionId(existing.versionId ?? "");
-      setOwnerId(existing.ownerId ?? "");
-      setEffectiveDate(toDateInput(existing.effectiveDate));
-      setReviewDate(toDateInput(existing.reviewDate));
-      setRationale(existing.rationale ?? "");
-    } else if (!editingId) {
-      setName("");
-      setDescription("");
-      setCategory("OTHER");
-      setLevel("RECOMMENDED");
-      setStatus("ACTIVE");
-      setProductId("");
-      setVersionId("");
-      setOwnerId("");
-      setEffectiveDate("");
-      setReviewDate("");
-      setRationale("");
-    }
-  }, [open, editingId, existing]);
 
   const createMutation = trpc.technologyStandard.create.useMutation({
     onSuccess: () => {
       toast.success("Standard created");
       utils.technologyStandard.list.invalidate();
       utils.techArchitecture.kpis.invalidate();
-      onClose();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const updateMutation = trpc.technologyStandard.update.useMutation({
-    onSuccess: () => {
-      toast.success("Standard updated");
-      utils.technologyStandard.list.invalidate();
-      if (editingId) utils.technologyStandard.getById.invalidate({ id: editingId });
+      setName("");
+      setCategory("OTHER");
+      setLevel("RECOMMENDED");
+      setStatus("ACTIVE");
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -380,40 +452,31 @@ function StandardFormModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
+    createMutation.mutate({
       name,
-      description: description || null,
+      description: null,
       category,
       level,
       status,
-      productId: productId || null,
-      versionId: versionId || null,
-      ownerId: ownerId || null,
-      effectiveDate: effectiveDate ? new Date(effectiveDate) : null,
-      reviewDate: reviewDate ? new Date(reviewDate) : null,
-      rationale: rationale || null,
-    };
-    if (editingId) updateMutation.mutate({ id: editingId, ...payload });
-    else createMutation.mutate(payload);
+      productId: null,
+      versionId: null,
+      ownerId: null,
+      effectiveDate: null,
+      reviewDate: null,
+      rationale: null,
+    });
   }
-
-  const pending = createMutation.isPending || updateMutation.isPending;
-  const versions = selectedProduct?.versions ?? [];
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editingId ? "Edit Standard" : "New Standard"}</DialogTitle>
+          <DialogTitle>New Standard</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label htmlFor="s-name">Name *</Label>
             <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
-          </div>
-          <div>
-            <Label htmlFor="s-desc">Description</Label>
-            <Textarea id="s-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -439,65 +502,18 @@ function StandardFormModal({
               <Select value={status} onValueChange={(v) => setStatus(v as StandardStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {STATUSES.map((st) => <SelectItem key={st} value={st}>{st}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Target Product</Label>
-              <Select value={productId || "__none__"} onValueChange={(v) => { const nv = !v || v === "__none__" ? "" : v; setProductId(nv); setVersionId(""); }}>
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Target Version</Label>
-              <Select
-                value={versionId || "__none__"}
-                onValueChange={(v) => setVersionId(!v || v === "__none__" ? "" : v)}
-                disabled={!productId || versions.length === 0}
-              >
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {versions.map((v) => <SelectItem key={v.id} value={v.id}>{v.version}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label htmlFor="s-eff">Effective</Label>
-              <Input id="s-eff" type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="s-rev">Review</Label>
-              <Input id="s-rev" type="date" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} />
-            </div>
-            <div>
-              <Label>Owner</Label>
-              <Select value={ownerId || "__none__"} onValueChange={(v) => setOwnerId(!v || v === "__none__" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="s-rat">Rationale</Label>
-            <Textarea id="s-rat" value={rationale} onChange={(e) => setRationale(e.target.value)} rows={2} />
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Description, target product, owner, dates, and rationale can be filled in on the standard after creation.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editingId ? "Save Changes" : "Create Standard"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving…" : "Create Standard"}
             </Button>
           </div>
         </form>

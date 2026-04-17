@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Package, Trash2, Edit2, ExternalLink, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Package, Trash2, ExternalLink, X } from "lucide-react";
 import { TabFilters } from "./TabFilters";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const TYPES = [
   "SOFTWARE",
@@ -54,7 +54,6 @@ export function ProductsTab() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [vendorFilter, setVendorFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const { data: products = [], isLoading } = trpc.technologyProduct.list.useQuery({
@@ -92,7 +91,7 @@ export function ProductsTab() {
           }}
         />
         <div className="ml-auto">
-          <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Product
           </Button>
         </div>
@@ -145,25 +144,29 @@ export function ProductsTab() {
           {selected && (
             <ProductDetail
               productId={selected.id}
-              onEdit={() => { setEditingId(selected.id); setShowForm(true); }}
               onDeleted={() => setSelectedId(null)}
             />
           )}
         </SheetContent>
       </Sheet>
 
-      <ProductFormModal
-        open={showForm}
-        editingId={editingId}
-        onClose={() => { setShowForm(false); setEditingId(null); }}
-      />
+      <ProductFormModal open={showForm} onClose={() => setShowForm(false)} />
     </div>
   );
 }
 
-function ProductDetail({ productId, onEdit, onDeleted }: { productId: string; onEdit: () => void; onDeleted: () => void }) {
+function ProductDetail({ productId, onDeleted }: { productId: string; onDeleted: () => void }) {
   const utils = trpc.useUtils();
   const { data: product } = trpc.technologyProduct.getById.useQuery({ id: productId });
+  const { data: vendors = [] } = trpc.vendor.list.useQuery();
+  const updateMutation = trpc.technologyProduct.update.useMutation({
+    onSuccess: () => {
+      utils.technologyProduct.list.invalidate();
+      utils.technologyProduct.getById.invalidate({ id: productId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteMutation = trpc.technologyProduct.delete.useMutation({
     onSuccess: () => {
       toast.success("Product archived");
@@ -178,6 +181,9 @@ function ProductDetail({ productId, onEdit, onDeleted }: { productId: string; on
     return <div className="p-6"><div className="h-5 w-1/2 bg-muted/40 animate-pulse rounded" /></div>;
   }
 
+  const save = (patch: Omit<Parameters<typeof updateMutation.mutate>[0], "id">) =>
+    updateMutation.mutate({ ...patch, id: product.id });
+
   return (
     <>
       <SheetHeader>
@@ -185,21 +191,107 @@ function ProductDetail({ productId, onEdit, onDeleted }: { productId: string; on
         <div className="flex items-center gap-2 mt-1">
           <Badge variant="outline" className="text-[10px]">{product.type.replace(/_/g, " ")}</Badge>
           <span className="text-xs text-muted-foreground">{product.vendor?.name}</span>
+          {product.website && (
+            <a href={product.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              Link <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        {product.description && <p className="text-sm text-muted-foreground">{product.description}</p>}
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div><p className="text-muted-foreground">Category</p><p>{product.category ?? "—"}</p></div>
-          <div><p className="text-muted-foreground">License</p><p>{product.licenseType.replace(/_/g, " ")}</p></div>
-          <div><p className="text-muted-foreground">Open Source</p><p>{product.openSource ? "Yes" : "No"}</p></div>
-          <div><p className="text-muted-foreground">Website</p><p>{product.website ? <a href={product.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Link <ExternalLink className="h-3 w-3" /></a> : "—"}</p></div>
-        </div>
+        <CollapsibleSection title="Identity" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input
+                defaultValue={product.name}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== product.name) save({ name: v });
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Vendor</label>
+                <Select value={product.vendorId ?? undefined} onValueChange={(v) => { if (v) save({ vendorId: v }); }}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+                <Select value={product.type} onValueChange={(v) => save({ type: v as TechType })}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TYPES.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+              <Input
+                defaultValue={product.category ?? ""}
+                placeholder="e.g. Relational DB"
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (product.category ?? "")) save({ category: v || null });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+              <Textarea
+                defaultValue={product.description ?? ""}
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (product.description ?? "")) save({ description: e.target.value || null });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Website</label>
+              <Input
+                defaultValue={product.website ?? ""}
+                placeholder="https://…"
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (product.website ?? "")) save({ website: v || null });
+                }}
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
 
-        <Separator />
+        <CollapsibleSection title="Licensing" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">License type</label>
+              <Select value={product.licenseType} onValueChange={(v) => save({ licenseType: v as LicenseType })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LICENSES.map((l) => <SelectItem key={l} value={l}>{l.replace(/_/g, " ")}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="p-oss-inline"
+                checked={product.openSource}
+                onCheckedChange={(v) => save({ openSource: !!v })}
+              />
+              <Label htmlFor="p-oss-inline" className="cursor-pointer text-xs">Open source</Label>
+            </div>
+          </div>
+        </CollapsibleSection>
 
-        <div>
-          <p className="text-xs font-medium mb-2">Versions <span className="text-muted-foreground">({product.versions.length})</span></p>
+        <CollapsibleSection title="Versions" count={product.versions.length}>
           {product.versions.length === 0 ? (
             <p className="text-xs text-muted-foreground">No versions tracked.</p>
           ) : (
@@ -215,12 +307,9 @@ function ProductDetail({ productId, onEdit, onDeleted }: { productId: string; on
               ))}
             </ul>
           )}
-        </div>
+        </CollapsibleSection>
 
-        <Separator />
-
-        <div>
-          <p className="text-xs font-medium mb-2">Components <span className="text-muted-foreground">({product.components.length})</span></p>
+        <CollapsibleSection title="Components" count={product.components.length}>
           {product.components.length === 0 ? (
             <p className="text-xs text-muted-foreground">No deployed components.</p>
           ) : (
@@ -235,14 +324,13 @@ function ProductDetail({ productId, onEdit, onDeleted }: { productId: string; on
               ))}
             </ul>
           )}
-        </div>
+        </CollapsibleSection>
 
-        <Separator />
-        <ProductDependenciesSection productId={product.id} />
+        <CollapsibleSection title="Dependencies">
+          <ProductDependenciesSection productId={product.id} />
+        </CollapsibleSection>
 
-
-        <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={onEdit}><Edit2 className="h-3 w-3 mr-1" /> Edit</Button>
+        <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => {
             if (confirm(`Archive product "${product.name}"?`)) deleteMutation.mutate({ id: product.id });
           }} disabled={deleteMutation.isPending}>
@@ -254,60 +342,21 @@ function ProductDetail({ productId, onEdit, onDeleted }: { productId: string; on
   );
 }
 
-function ProductFormModal({ open, editingId, onClose }: { open: boolean; editingId: string | null; onClose: () => void }) {
+function ProductFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
   const { data: vendors = [] } = trpc.vendor.list.useQuery();
-  const { data: existing } = trpc.technologyProduct.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
-  );
 
   const [name, setName] = useState("");
   const [vendorId, setVendorId] = useState("");
   const [type, setType] = useState<TechType>("OTHER");
-  const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
-  const [website, setWebsite] = useState("");
-  const [openSource, setOpenSource] = useState(false);
   const [licenseType, setLicenseType] = useState<LicenseType>("UNKNOWN");
-
-  useEffect(() => {
-    if (!open) return;
-    if (editingId && existing) {
-      setName(existing.name);
-      setVendorId(existing.vendorId);
-      setType(existing.type as TechType);
-      setCategory(existing.category ?? "");
-      setDescription(existing.description ?? "");
-      setWebsite(existing.website ?? "");
-      setOpenSource(existing.openSource);
-      setLicenseType(existing.licenseType as LicenseType);
-    } else if (!editingId) {
-      setName("");
-      setVendorId("");
-      setType("OTHER");
-      setCategory("");
-      setDescription("");
-      setWebsite("");
-      setOpenSource(false);
-      setLicenseType("UNKNOWN");
-    }
-  }, [open, editingId, existing]);
 
   const createMutation = trpc.technologyProduct.create.useMutation({
     onSuccess: () => {
       toast.success("Product created");
       utils.technologyProduct.list.invalidate();
       utils.techArchitecture.kpis.invalidate();
-      onClose();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const updateMutation = trpc.technologyProduct.update.useMutation({
-    onSuccess: () => {
-      toast.success("Product updated");
-      utils.technologyProduct.list.invalidate();
-      if (editingId) utils.technologyProduct.getById.invalidate({ id: editingId });
+      setName(""); setVendorId(""); setType("OTHER"); setLicenseType("UNKNOWN");
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -319,29 +368,22 @@ function ProductFormModal({ open, editingId, onClose }: { open: boolean; editing
       toast.error("Select a vendor");
       return;
     }
-    const payload = {
+    createMutation.mutate({
       vendorId,
       name,
       type,
-      category: category || null,
-      description: description || null,
-      website: website || null,
-      openSource,
+      category: null,
+      description: null,
+      website: null,
+      openSource: false,
       licenseType,
-    };
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, ...payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+    });
   }
-
-  const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{editingId ? "Edit Product" : "New Product"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>New Product</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label htmlFor="p-name">Name *</Label>
@@ -377,26 +419,13 @@ function ProductFormModal({ open, editingId, onClose }: { open: boolean; editing
               </Select>
             </div>
           </div>
-          <div>
-            <Label htmlFor="p-cat">Category</Label>
-            <Input id="p-cat" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Relational DB" />
-          </div>
-          <div>
-            <Label htmlFor="p-desc">Description</Label>
-            <Textarea id="p-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-          </div>
-          <div>
-            <Label htmlFor="p-web">Website</Label>
-            <Input id="p-web" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="p-oss" checked={openSource} onCheckedChange={(v) => setOpenSource(!!v)} />
-            <Label htmlFor="p-oss" className="cursor-pointer">Open source</Label>
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Category, description, website, and open-source flag can be set on the product after creation.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editingId ? "Save Changes" : "Create Product"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving…" : "Create Product"}
             </Button>
           </div>
         </form>

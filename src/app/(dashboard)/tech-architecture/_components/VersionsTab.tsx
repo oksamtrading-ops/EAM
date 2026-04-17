@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus, History, Trash2, Edit2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, History, Trash2 } from "lucide-react";
 import { TabFilters } from "./TabFilters";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LifecycleHeatmap } from "./LifecycleHeatmap";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const LIFECYCLES = [
   "PREVIEW",
@@ -61,7 +62,6 @@ export function VersionsTab() {
   const [lifecycle, setLifecycle] = useState<string>("");
   const [productFilter, setProductFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const { data: versions = [], isLoading } = trpc.technologyVersion.list.useQuery({
@@ -96,7 +96,7 @@ export function VersionsTab() {
           }}
         />
         <div className="ml-auto">
-          <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Version
           </Button>
         </div>
@@ -157,25 +157,28 @@ export function VersionsTab() {
           {selected && (
             <VersionDetail
               versionId={selected.id}
-              onEdit={() => { setEditingId(selected.id); setShowForm(true); }}
               onDeleted={() => setSelectedId(null)}
             />
           )}
         </SheetContent>
       </Sheet>
 
-      <VersionFormModal
-        open={showForm}
-        editingId={editingId}
-        onClose={() => { setShowForm(false); setEditingId(null); }}
-      />
+      <VersionFormModal open={showForm} onClose={() => setShowForm(false)} />
     </div>
   );
 }
 
-function VersionDetail({ versionId, onEdit, onDeleted }: { versionId: string; onEdit: () => void; onDeleted: () => void }) {
+function VersionDetail({ versionId, onDeleted }: { versionId: string; onDeleted: () => void }) {
   const utils = trpc.useUtils();
   const { data: version } = trpc.technologyVersion.getById.useQuery({ id: versionId });
+  const updateMutation = trpc.technologyVersion.update.useMutation({
+    onSuccess: () => {
+      utils.technologyVersion.list.invalidate();
+      utils.technologyVersion.getById.invalidate({ id: versionId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteMutation = trpc.technologyVersion.delete.useMutation({
     onSuccess: () => {
       toast.success("Version archived");
@@ -188,6 +191,9 @@ function VersionDetail({ versionId, onEdit, onDeleted }: { versionId: string; on
 
   if (!version) return <div className="p-6"><div className="h-5 w-1/2 bg-muted/40 animate-pulse rounded" /></div>;
 
+  const save = (patch: Omit<Parameters<typeof updateMutation.mutate>[0], "id">) =>
+    updateMutation.mutate({ ...patch, id: version.id });
+
   return (
     <>
       <SheetHeader>
@@ -196,18 +202,78 @@ function VersionDetail({ versionId, onEdit, onDeleted }: { versionId: string; on
           <Badge variant="outline" className={`text-[10px] ${lifecycleColor(version.lifecycleStatus)}`}>
             {version.lifecycleStatus.replace(/_/g, " ")}
           </Badge>
+          <span className="text-xs text-muted-foreground">{version.product.vendor?.name ?? ""}</span>
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div><p className="text-muted-foreground">Release Date</p><p>{version.releaseDate ? new Date(version.releaseDate).toLocaleDateString() : "—"}</p></div>
-          <div><p className="text-muted-foreground">End of Support</p><p>{version.endOfSupportDate ? new Date(version.endOfSupportDate).toLocaleDateString() : "—"}</p></div>
-          <div><p className="text-muted-foreground">End of Life</p><p>{version.endOfLifeDate ? new Date(version.endOfLifeDate).toLocaleDateString() : "—"}</p></div>
-          <div><p className="text-muted-foreground">Vendor</p><p>{version.product.vendor?.name ?? "—"}</p></div>
-        </div>
-        {version.notes && <div><p className="text-xs text-muted-foreground mb-1">Notes</p><p className="text-xs whitespace-pre-wrap">{version.notes}</p></div>}
-        <div>
-          <p className="text-xs font-medium mb-2">Deployed Components <span className="text-muted-foreground">({version.components.length})</span></p>
+        <CollapsibleSection title="Identity" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Version</label>
+              <Input
+                defaultValue={version.version}
+                className="h-8 text-xs font-mono"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== version.version) save({ version: v });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Lifecycle status</label>
+              <Select value={version.lifecycleStatus} onValueChange={(v) => save({ lifecycleStatus: v as Lifecycle })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LIFECYCLES.map((l) => <SelectItem key={l} value={l}>{l.replace(/_/g, " ")}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+              <Textarea
+                defaultValue={version.notes ?? ""}
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (version.notes ?? "")) save({ notes: e.target.value || null });
+                }}
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Lifecycle" defaultOpen>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Release</label>
+              <Input
+                type="date"
+                defaultValue={toDateInput(version.releaseDate)}
+                className="h-8 text-xs"
+                onBlur={(e) => save({ releaseDate: e.target.value ? new Date(e.target.value) : null })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">End of support</label>
+              <Input
+                type="date"
+                defaultValue={toDateInput(version.endOfSupportDate)}
+                className="h-8 text-xs"
+                onBlur={(e) => save({ endOfSupportDate: e.target.value ? new Date(e.target.value) : null })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">End of life</label>
+              <Input
+                type="date"
+                defaultValue={toDateInput(version.endOfLifeDate)}
+                className="h-8 text-xs"
+                onBlur={(e) => save({ endOfLifeDate: e.target.value ? new Date(e.target.value) : null })}
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Deployed Components" count={version.components.length}>
           {version.components.length === 0 ? (
             <p className="text-xs text-muted-foreground">None.</p>
           ) : (
@@ -220,9 +286,9 @@ function VersionDetail({ versionId, onEdit, onDeleted }: { versionId: string; on
               ))}
             </ul>
           )}
-        </div>
-        <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={onEdit}><Edit2 className="h-3 w-3 mr-1" /> Edit</Button>
+        </CollapsibleSection>
+
+        <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => {
             if (confirm(`Archive version "${version.version}"?`)) deleteMutation.mutate({ id: version.id });
           }} disabled={deleteMutation.isPending}>
@@ -240,57 +306,20 @@ function toDateInput(d: Date | string | null | undefined): string {
   return date.toISOString().slice(0, 10);
 }
 
-function VersionFormModal({ open, editingId, onClose }: { open: boolean; editingId: string | null; onClose: () => void }) {
+function VersionFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
   const { data: products = [] } = trpc.technologyProduct.list.useQuery();
-  const { data: existing } = trpc.technologyVersion.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
-  );
 
   const [productId, setProductId] = useState("");
   const [version, setVersion] = useState("");
-  const [release, setRelease] = useState("");
-  const [eos, setEos] = useState("");
-  const [eol, setEol] = useState("");
   const [lifecycleStatus, setLifecycleStatus] = useState<Lifecycle>("CURRENT");
-  const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    if (editingId && existing) {
-      setProductId(existing.productId);
-      setVersion(existing.version);
-      setRelease(toDateInput(existing.releaseDate));
-      setEos(toDateInput(existing.endOfSupportDate));
-      setEol(toDateInput(existing.endOfLifeDate));
-      setLifecycleStatus(existing.lifecycleStatus as Lifecycle);
-      setNotes(existing.notes ?? "");
-    } else if (!editingId) {
-      setProductId("");
-      setVersion("");
-      setRelease("");
-      setEos("");
-      setEol("");
-      setLifecycleStatus("CURRENT");
-      setNotes("");
-    }
-  }, [open, editingId, existing]);
 
   const createMutation = trpc.technologyVersion.create.useMutation({
     onSuccess: () => {
       toast.success("Version created");
       utils.technologyVersion.list.invalidate();
       utils.techArchitecture.kpis.invalidate();
-      onClose();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const updateMutation = trpc.technologyVersion.update.useMutation({
-    onSuccess: () => {
-      toast.success("Version updated");
-      utils.technologyVersion.list.invalidate();
-      if (editingId) utils.technologyVersion.getById.invalidate({ id: editingId });
+      setProductId(""); setVersion(""); setLifecycleStatus("CURRENT");
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -299,31 +328,25 @@ function VersionFormModal({ open, editingId, onClose }: { open: boolean; editing
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!productId) { toast.error("Select a product"); return; }
-    const basePayload = {
+    createMutation.mutate({
+      productId,
       version,
-      releaseDate: release ? new Date(release) : null,
-      endOfSupportDate: eos ? new Date(eos) : null,
-      endOfLifeDate: eol ? new Date(eol) : null,
+      releaseDate: null,
+      endOfSupportDate: null,
+      endOfLifeDate: null,
       lifecycleStatus,
-      notes: notes || null,
-    };
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, ...basePayload });
-    } else {
-      createMutation.mutate({ productId, ...basePayload });
-    }
+      notes: null,
+    });
   }
-
-  const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{editingId ? "Edit Version" : "New Version"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>New Version</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label>Product *</Label>
-            <Select value={productId || "__none__"} onValueChange={(v) => setProductId(!v || v === "__none__" ? "" : v)} disabled={!!editingId}>
+            <Select value={productId || "__none__"} onValueChange={(v) => setProductId(!v || v === "__none__" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="Select a product" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Select a product</SelectItem>
@@ -335,20 +358,6 @@ function VersionFormModal({ open, editingId, onClose }: { open: boolean; editing
             <Label htmlFor="v-ver">Version *</Label>
             <Input id="v-ver" value={version} onChange={(e) => setVersion(e.target.value)} placeholder="e.g. 17.0.2, 2024-LTS" required autoFocus />
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label htmlFor="v-rel">Release</Label>
-              <Input id="v-rel" type="date" value={release} onChange={(e) => setRelease(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="v-eos">EOS</Label>
-              <Input id="v-eos" type="date" value={eos} onChange={(e) => setEos(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="v-eol">EOL</Label>
-              <Input id="v-eol" type="date" value={eol} onChange={(e) => setEol(e.target.value)} />
-            </div>
-          </div>
           <div>
             <Label>Lifecycle Status</Label>
             <Select value={lifecycleStatus} onValueChange={(v) => setLifecycleStatus(v as Lifecycle)}>
@@ -358,14 +367,13 @@ function VersionFormModal({ open, editingId, onClose }: { open: boolean; editing
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="v-notes">Notes</Label>
-            <Textarea id="v-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Release / EOS / EOL dates and notes can be set on the version after creation.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editingId ? "Save Changes" : "Create Version"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving…" : "Create Version"}
             </Button>
           </div>
         </form>

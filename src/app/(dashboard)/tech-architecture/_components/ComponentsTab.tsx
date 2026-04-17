@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Boxes, Trash2, Edit2, AlertTriangle, Link2, Unlink } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Boxes, Trash2, AlertTriangle, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabFilters } from "./TabFilters";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const ENVIRONMENTS = ["PRODUCTION", "STAGING", "TEST", "DEVELOPMENT", "DR", "SHARED"] as const;
 const HOSTING_MODELS = ["ON_PREMISES", "PRIVATE_CLOUD", "PUBLIC_IAAS", "PUBLIC_PAAS", "SAAS", "HYBRID"] as const;
@@ -55,7 +56,6 @@ export function ComponentsTab() {
   const [envFilter, setEnvFilter] = useState<string>("");
   const [hostingFilter, setHostingFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const { data: components = [], isLoading } = trpc.technologyComponent.list.useQuery({
@@ -88,7 +88,7 @@ export function ComponentsTab() {
           }}
         />
         <div className="ml-auto">
-          <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Component
           </Button>
         </div>
@@ -152,31 +152,40 @@ export function ComponentsTab() {
           {selected && (
             <ComponentDetail
               componentId={selected.id}
-              onEdit={() => { setEditingId(selected.id); setShowForm(true); }}
               onDeleted={() => setSelectedId(null)}
             />
           )}
         </SheetContent>
       </Sheet>
 
-      <ComponentFormModal
-        open={showForm}
-        editingId={editingId}
-        onClose={() => { setShowForm(false); setEditingId(null); }}
-      />
+      <ComponentFormModal open={showForm} onClose={() => setShowForm(false)} />
     </div>
   );
 }
 
-function ComponentDetail({ componentId, onEdit, onDeleted }: { componentId: string; onEdit: () => void; onDeleted: () => void }) {
+function ComponentDetail({ componentId, onDeleted }: { componentId: string; onDeleted: () => void }) {
   const utils = trpc.useUtils();
   const { data: component } = trpc.technologyComponent.getById.useQuery({ id: componentId });
   const { data: apps = [] } = trpc.application.list.useQuery();
+  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
+  const { data: versions = [] } = trpc.technologyVersion.list.useQuery(
+    { productId: component?.productId },
+    { enabled: !!component?.productId }
+  );
+
   const [linkAppId, setLinkAppId] = useState("");
   const [linkLayer, setLinkLayer] = useState<Layer>("APPLICATION");
   const [linkRole, setLinkRole] = useState<Role>("PRIMARY");
   const [linkCriticality, setLinkCriticality] = useState<Criticality>("STANDARD");
 
+  const updateMutation = trpc.technologyComponent.update.useMutation({
+    onSuccess: () => {
+      utils.technologyComponent.list.invalidate();
+      utils.technologyComponent.getById.invalidate({ id: componentId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteMutation = trpc.technologyComponent.delete.useMutation({
     onSuccess: () => {
       toast.success("Component archived");
@@ -210,6 +219,8 @@ function ComponentDetail({ componentId, onEdit, onDeleted }: { componentId: stri
 
   const risk = riskBadge(component.version);
   const linkedIds = new Set(component.applications.map((a) => a.applicationId));
+  const save = (patch: Omit<Parameters<typeof updateMutation.mutate>[0], "id">) =>
+    updateMutation.mutate({ ...patch, id: component.id });
 
   return (
     <>
@@ -228,20 +239,93 @@ function ComponentDetail({ componentId, onEdit, onDeleted }: { componentId: stri
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div><p className="text-muted-foreground">Hosting</p><p>{component.hostingModel.replace(/_/g, " ")}</p></div>
-          <div><p className="text-muted-foreground">Region</p><p>{component.region ?? "—"}</p></div>
-          <div><p className="text-muted-foreground">Vendor</p><p>{component.product.vendor?.name ?? "—"}</p></div>
-          <div><p className="text-muted-foreground">Owner</p><p>{component.owner?.name ?? component.owner?.email ?? "—"}</p></div>
-        </div>
-        {component.notes && <div><p className="text-xs text-muted-foreground mb-1">Notes</p><p className="text-xs whitespace-pre-wrap">{component.notes}</p></div>}
+        <CollapsibleSection title="Identity" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input
+                defaultValue={component.name}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== component.name) save({ name: v });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Version</label>
+              <Select
+                value={component.versionId ?? "__none__"}
+                onValueChange={(v) => save({ versionId: v === "__none__" ? null : v })}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="No version" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No version</SelectItem>
+                  {versions.map((v) => <SelectItem key={v.id} value={v.id}>{v.version}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+              <Textarea
+                defaultValue={component.notes ?? ""}
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (component.notes ?? "")) save({ notes: e.target.value || null });
+                }}
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
 
-        <Separator />
+        <CollapsibleSection title="Deployment" defaultOpen>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Environment</label>
+              <Select value={component.environment} onValueChange={(v) => save({ environment: v as Env })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{ENVIRONMENTS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Hosting</label>
+              <Select value={component.hostingModel} onValueChange={(v) => save({ hostingModel: v as Hosting })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{HOSTING_MODELS.map((h) => <SelectItem key={h} value={h}>{h.replace(/_/g, " ")}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Region</label>
+            <Input
+              defaultValue={component.region ?? ""}
+              placeholder="e.g. us-east-1"
+              className="h-8 text-xs"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v !== (component.region ?? "")) save({ region: v || null });
+              }}
+            />
+          </div>
+        </CollapsibleSection>
 
-        <div>
-          <p className="text-xs font-medium mb-2">
-            Applications <span className="text-muted-foreground">({component.applications.length})</span>
-          </p>
+        <CollapsibleSection title="Ownership" defaultOpen>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Owner</label>
+            <Select
+              value={component.ownerId ?? "__none__"}
+              onValueChange={(v) => save({ ownerId: v === "__none__" ? null : v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="No owner" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No owner</SelectItem>
+                {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Linked Applications" count={component.applications.length}>
           <ul className="space-y-1">
             {component.applications.map((link) => (
               <li key={link.applicationId} className="text-xs p-2 bg-muted/30 rounded flex items-center gap-2 group">
@@ -298,10 +382,9 @@ function ComponentDetail({ componentId, onEdit, onDeleted }: { componentId: stri
               <Link2 className="h-3 w-3 mr-1" /> Link Application
             </Button>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={onEdit}><Edit2 className="h-3 w-3 mr-1" /> Edit</Button>
+        <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => {
             if (confirm(`Archive component "${component.name}"?`)) deleteMutation.mutate({ id: component.id });
           }} disabled={deleteMutation.isPending}>
@@ -313,62 +396,31 @@ function ComponentDetail({ componentId, onEdit, onDeleted }: { componentId: stri
   );
 }
 
-function ComponentFormModal({ open, editingId, onClose }: { open: boolean; editingId: string | null; onClose: () => void }) {
+function ComponentFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
   const { data: products = [] } = trpc.technologyProduct.list.useQuery();
-  const { data: existing } = trpc.technologyComponent.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
-  );
 
   const [productId, setProductId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [name, setName] = useState("");
   const [environment, setEnvironment] = useState<Env>("PRODUCTION");
   const [hostingModel, setHostingModel] = useState<Hosting>("ON_PREMISES");
-  const [region, setRegion] = useState("");
-  const [notes, setNotes] = useState("");
 
   const { data: versions = [] } = trpc.technologyVersion.list.useQuery(
     { productId: productId || undefined },
     { enabled: !!productId }
   );
 
-  useEffect(() => {
-    if (!open) return;
-    if (editingId && existing) {
-      setProductId(existing.productId);
-      setVersionId(existing.versionId ?? "");
-      setName(existing.name);
-      setEnvironment(existing.environment as Env);
-      setHostingModel(existing.hostingModel as Hosting);
-      setRegion(existing.region ?? "");
-      setNotes(existing.notes ?? "");
-    } else if (!editingId) {
-      setProductId("");
-      setVersionId("");
-      setName("");
-      setEnvironment("PRODUCTION");
-      setHostingModel("ON_PREMISES");
-      setRegion("");
-      setNotes("");
-    }
-  }, [open, editingId, existing]);
-
   const createMutation = trpc.technologyComponent.create.useMutation({
     onSuccess: () => {
       toast.success("Component created");
       utils.technologyComponent.list.invalidate();
       utils.techArchitecture.kpis.invalidate();
-      onClose();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const updateMutation = trpc.technologyComponent.update.useMutation({
-    onSuccess: () => {
-      toast.success("Component updated");
-      utils.technologyComponent.list.invalidate();
-      if (editingId) utils.technologyComponent.getById.invalidate({ id: editingId });
+      setProductId("");
+      setVersionId("");
+      setName("");
+      setEnvironment("PRODUCTION");
+      setHostingModel("ON_PREMISES");
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -377,28 +429,21 @@ function ComponentFormModal({ open, editingId, onClose }: { open: boolean; editi
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!productId) { toast.error("Select a product"); return; }
-    const payload = {
+    createMutation.mutate({
       productId,
       versionId: versionId || null,
       name,
       environment,
       hostingModel,
-      region: region || null,
-      notes: notes || null,
-    };
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, ...payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+      region: null,
+      notes: null,
+    });
   }
-
-  const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{editingId ? "Edit Component" : "New Component"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>New Component</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label htmlFor="c-name">Name *</Label>
@@ -442,18 +487,13 @@ function ComponentFormModal({ open, editingId, onClose }: { open: boolean; editi
               </Select>
             </div>
           </div>
-          <div>
-            <Label htmlFor="c-region">Region</Label>
-            <Input id="c-region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="e.g. us-east-1" />
-          </div>
-          <div>
-            <Label htmlFor="c-notes">Notes</Label>
-            <Textarea id="c-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Region and notes can be filled in on the component after creation.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editingId ? "Save Changes" : "Create Component"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving…" : "Create Component"}
             </Button>
           </div>
         </form>

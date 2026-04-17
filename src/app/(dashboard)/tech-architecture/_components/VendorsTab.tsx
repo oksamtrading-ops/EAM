@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { Plus, Building2, Trash2, Edit2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Building2, Trash2 } from "lucide-react";
 import { TabFilters } from "./TabFilters";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -30,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 
 const CATEGORIES = [
   "HYPERSCALER",
@@ -67,7 +67,6 @@ export function VendorsTab() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const { data: vendors = [], isLoading } = trpc.vendor.list.useQuery({
@@ -107,7 +106,7 @@ export function VendorsTab() {
           }}
         />
         <div className="ml-auto">
-          <Button size="sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New Vendor
           </Button>
         </div>
@@ -170,32 +169,38 @@ export function VendorsTab() {
         </div>
       )}
 
-      {/* Detail sheet */}
       <Sheet open={!!selected} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
         <SheetContent className="w-full sm:!max-w-md overflow-y-auto">
           {selected && (
             <VendorDetail
               vendorId={selected.id}
-              onEdit={() => { setEditingId(selected.id); setShowForm(true); }}
               onDeleted={() => setSelectedId(null)}
             />
           )}
         </SheetContent>
       </Sheet>
 
-      {/* Form modal */}
       <VendorFormModal
         open={showForm}
-        editingId={editingId}
-        onClose={() => { setShowForm(false); setEditingId(null); }}
+        onClose={() => setShowForm(false)}
       />
     </div>
   );
 }
 
-function VendorDetail({ vendorId, onEdit, onDeleted }: { vendorId: string; onEdit: () => void; onDeleted: () => void }) {
+function VendorDetail({ vendorId, onDeleted }: { vendorId: string; onDeleted: () => void }) {
   const utils = trpc.useUtils();
   const { data: vendor } = trpc.vendor.getById.useQuery({ id: vendorId });
+  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
+
+  const updateMutation = trpc.vendor.update.useMutation({
+    onSuccess: () => {
+      utils.vendor.list.invalidate();
+      utils.vendor.getById.invalidate({ id: vendorId });
+      utils.techArchitecture.kpis.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteMutation = trpc.vendor.delete.useMutation({
     onSuccess: () => {
       toast.success("Vendor archived");
@@ -215,6 +220,9 @@ function VendorDetail({ vendorId, onEdit, onDeleted }: { vendorId: string; onEdi
     );
   }
 
+  const save = (patch: Omit<Parameters<typeof updateMutation.mutate>[0], "id">) =>
+    updateMutation.mutate({ ...patch, id: vendor.id });
+
   return (
     <>
       <SheetHeader>
@@ -229,41 +237,132 @@ function VendorDetail({ vendorId, onEdit, onDeleted }: { vendorId: string; onEdi
         </div>
       </SheetHeader>
       <div className="px-4 space-y-4">
-        {vendor.description && (
-          <p className="text-sm text-muted-foreground">{vendor.description}</p>
-        )}
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="text-muted-foreground">Website</p>
-            <p>{vendor.website ? <a href={vendor.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{vendor.website}</a> : "—"}</p>
+        <CollapsibleSection title="Identity" defaultOpen>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input
+                defaultValue={vendor.name}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== vendor.name) save({ name: v });
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+                <Select value={vendor.category} onValueChange={(v) => save({ category: v as VendorCategory })}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                <Select value={vendor.status} onValueChange={(v) => save({ status: v as VendorStatus })}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Website</label>
+              <Input
+                defaultValue={vendor.website ?? ""}
+                placeholder="https://…"
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (vendor.website ?? "")) save({ website: v || null });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+              <Textarea
+                defaultValue={vendor.description ?? ""}
+                rows={2}
+                onBlur={(e) => {
+                  if (e.target.value !== (vendor.description ?? "")) save({ description: e.target.value || null });
+                }}
+              />
+            </div>
           </div>
-          <div>
-            <p className="text-muted-foreground">HQ Country</p>
-            <p>{vendor.headquartersCountry ?? "—"}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Annual Spend</p>
-            <p className="tabular-nums">{vendor.annualSpend ? `${vendor.currency} ${Number(vendor.annualSpend).toLocaleString()}` : "—"}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Relationship Owner</p>
-            <p>{vendor.relationshipOwner?.name ?? vendor.relationshipOwner?.email ?? "—"}</p>
-          </div>
-        </div>
+        </CollapsibleSection>
 
-        {vendor.contractNotes && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Contract Notes</p>
-            <p className="text-xs whitespace-pre-wrap">{vendor.contractNotes}</p>
+        <CollapsibleSection title="Commercial" defaultOpen>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">HQ Country</label>
+              <Input
+                defaultValue={vendor.headquartersCountry ?? ""}
+                placeholder="USA"
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== (vendor.headquartersCountry ?? "")) save({ headquartersCountry: v || null });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Annual Spend</label>
+              <Input
+                type="number"
+                defaultValue={vendor.annualSpend ? Number(vendor.annualSpend) : ""}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const n = parseFloat(e.target.value);
+                  save({ annualSpend: isNaN(n) ? null : n });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Currency</label>
+              <Input
+                defaultValue={vendor.currency}
+                maxLength={3}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const v = e.target.value.toUpperCase();
+                  if (v && v !== vendor.currency) save({ currency: v });
+                }}
+              />
+            </div>
           </div>
-        )}
+          <div className="mt-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Contract Notes</label>
+            <Textarea
+              defaultValue={vendor.contractNotes ?? ""}
+              rows={2}
+              onBlur={(e) => {
+                if (e.target.value !== (vendor.contractNotes ?? "")) save({ contractNotes: e.target.value || null });
+              }}
+            />
+          </div>
+        </CollapsibleSection>
 
-        <Separator />
+        <CollapsibleSection title="Ownership" defaultOpen>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Relationship Owner</label>
+            <Select
+              value={vendor.relationshipOwnerId ?? "__none__"}
+              onValueChange={(v) => save({ relationshipOwnerId: v === "__none__" ? null : v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="No owner" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No owner</SelectItem>
+                {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </CollapsibleSection>
 
-        <div>
-          <p className="text-xs font-medium text-foreground mb-2">
-            Products <span className="text-muted-foreground">({vendor.products.length})</span>
-          </p>
+        <CollapsibleSection title="Linked Products" count={vendor.products.length}>
           {vendor.products.length === 0 ? (
             <p className="text-xs text-muted-foreground">No products yet.</p>
           ) : (
@@ -278,12 +377,9 @@ function VendorDetail({ vendorId, onEdit, onDeleted }: { vendorId: string; onEdi
               ))}
             </ul>
           )}
-        </div>
+        </CollapsibleSection>
 
-        <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={onEdit}>
-            <Edit2 className="h-3 w-3 mr-1" /> Edit
-          </Button>
+        <div className="flex items-center gap-2 pt-2 border-t">
           <Button
             size="sm"
             variant="outline"
@@ -303,74 +399,19 @@ function VendorDetail({ vendorId, onEdit, onDeleted }: { vendorId: string; onEdi
   );
 }
 
-function VendorFormModal({
-  open,
-  editingId,
-  onClose,
-}: {
-  open: boolean;
-  editingId: string | null;
-  onClose: () => void;
-}) {
+function VendorFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
-  const { data: users = [] } = trpc.workspace.listUsers.useQuery();
-  const { data: existing } = trpc.vendor.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
-  );
-
   const [name, setName] = useState("");
   const [category, setCategory] = useState<VendorCategory>("OTHER");
   const [status, setStatus] = useState<VendorStatus>("ACTIVE");
   const [website, setWebsite] = useState("");
-  const [description, setDescription] = useState("");
-  const [hq, setHq] = useState("");
-  const [spend, setSpend] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [ownerId, setOwnerId] = useState("");
-  const [contractNotes, setContractNotes] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    if (editingId && existing) {
-      setName(existing.name);
-      setCategory(existing.category as VendorCategory);
-      setStatus(existing.status as VendorStatus);
-      setWebsite(existing.website ?? "");
-      setDescription(existing.description ?? "");
-      setHq(existing.headquartersCountry ?? "");
-      setSpend(existing.annualSpend ? String(existing.annualSpend) : "");
-      setCurrency(existing.currency);
-      setOwnerId(existing.relationshipOwnerId ?? "");
-      setContractNotes(existing.contractNotes ?? "");
-    } else if (!editingId) {
-      setName("");
-      setCategory("OTHER");
-      setStatus("ACTIVE");
-      setWebsite("");
-      setDescription("");
-      setHq("");
-      setSpend("");
-      setCurrency("USD");
-      setOwnerId("");
-      setContractNotes("");
-    }
-  }, [open, editingId, existing]);
 
   const createMutation = trpc.vendor.create.useMutation({
     onSuccess: () => {
       toast.success("Vendor created");
       utils.vendor.list.invalidate();
       utils.techArchitecture.kpis.invalidate();
-      onClose();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const updateMutation = trpc.vendor.update.useMutation({
-    onSuccess: () => {
-      toast.success("Vendor updated");
-      utils.vendor.list.invalidate();
-      if (editingId) utils.vendor.getById.invalidate({ id: editingId });
+      setName(""); setCategory("OTHER"); setStatus("ACTIVE"); setWebsite("");
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -378,32 +419,25 @@ function VendorFormModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
+    createMutation.mutate({
       name,
       category,
       status,
       website: website || null,
-      description: description || null,
-      headquartersCountry: hq || null,
-      annualSpend: spend ? Number(spend) : null,
-      currency,
-      relationshipOwnerId: ownerId || null,
-      contractNotes: contractNotes || null,
-    };
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, ...payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+      description: null,
+      headquartersCountry: null,
+      annualSpend: null,
+      currency: "USD",
+      relationshipOwnerId: null,
+      contractNotes: null,
+    });
   }
-
-  const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editingId ? "Edit Vendor" : "New Vendor"}</DialogTitle>
+          <DialogTitle>New Vendor</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
@@ -434,42 +468,13 @@ function VendorFormModal({
             <Label htmlFor="v-web">Website</Label>
             <Input id="v-web" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
           </div>
-          <div>
-            <Label htmlFor="v-desc">Description</Label>
-            <Textarea id="v-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label htmlFor="v-hq">HQ Country</Label>
-              <Input id="v-hq" value={hq} onChange={(e) => setHq(e.target.value)} placeholder="USA" />
-            </div>
-            <div>
-              <Label htmlFor="v-spend">Annual Spend</Label>
-              <Input id="v-spend" type="number" value={spend} onChange={(e) => setSpend(e.target.value)} placeholder="0" />
-            </div>
-            <div>
-              <Label htmlFor="v-cur">Currency</Label>
-              <Input id="v-cur" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} />
-            </div>
-          </div>
-          <div>
-            <Label>Relationship Owner</Label>
-            <Select value={ownerId || "__none__"} onValueChange={(v) => setOwnerId(!v || v === "__none__" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="No owner" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">No owner</SelectItem>
-                {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name ?? u.email}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="v-notes">Contract Notes</Label>
-            <Textarea id="v-notes" value={contractNotes} onChange={(e) => setContractNotes(e.target.value)} rows={2} />
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Additional details (spend, ownership, contract notes) can be filled in on the vendor after creation.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : editingId ? "Save Changes" : "Create Vendor"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving…" : "Create Vendor"}
             </Button>
           </div>
         </form>
