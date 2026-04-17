@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { OwnerField } from "@/components/shared/OwnerField";
+import { DatePicker } from "@/components/shared/DatePicker";
 import { toast } from "sonner";
 import {
   LIFECYCLE_LABELS, BV_LABELS, BV_COLORS, TH_LABELS, TH_COLORS,
@@ -271,13 +272,10 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Renewal Date</label>
-                <Input
-                  type="date"
-                  defaultValue={app.costRenewalDate ? new Date(app.costRenewalDate).toISOString().split("T")[0] : ""}
-                  className="h-8 text-xs"
-                  onBlur={(e) => {
-                    updateMutation.mutate({ id: app.id, costRenewalDate: e.target.value || null });
-                  }}
+                <DatePicker
+                  value={app.costRenewalDate ? new Date(app.costRenewalDate).toISOString().split("T")[0] : ""}
+                  onChange={(v) => updateMutation.mutate({ id: app.id, costRenewalDate: v || null })}
+                  placeholder="Select renewal date"
                 />
               </div>
               <div>

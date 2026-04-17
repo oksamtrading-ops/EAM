@@ -23,6 +23,7 @@ import {
 import { LifecycleHeatmap } from "./LifecycleHeatmap";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
+import { DatePicker } from "@/components/shared/DatePicker";
 
 const LIFECYCLES = [
   "PREVIEW",
@@ -246,29 +247,26 @@ function VersionDetail({ versionId, onDeleted }: { versionId: string; onDeleted:
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Release</label>
-              <Input
-                type="date"
-                defaultValue={toDateInput(version.releaseDate)}
-                className="h-8 text-xs"
-                onBlur={(e) => save({ releaseDate: e.target.value ? new Date(e.target.value) : null })}
+              <DatePicker
+                value={toDateInput(version.releaseDate)}
+                onChange={(v) => save({ releaseDate: v ? new Date(v) : null })}
+                placeholder="Pick a date"
               />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">End of support</label>
-              <Input
-                type="date"
-                defaultValue={toDateInput(version.endOfSupportDate)}
-                className="h-8 text-xs"
-                onBlur={(e) => save({ endOfSupportDate: e.target.value ? new Date(e.target.value) : null })}
+              <DatePicker
+                value={toDateInput(version.endOfSupportDate)}
+                onChange={(v) => save({ endOfSupportDate: v ? new Date(v) : null })}
+                placeholder="Pick a date"
               />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">End of life</label>
-              <Input
-                type="date"
-                defaultValue={toDateInput(version.endOfLifeDate)}
-                className="h-8 text-xs"
-                onBlur={(e) => save({ endOfLifeDate: e.target.value ? new Date(e.target.value) : null })}
+              <DatePicker
+                value={toDateInput(version.endOfLifeDate)}
+                onChange={(v) => save({ endOfLifeDate: v ? new Date(v) : null })}
+                placeholder="Pick a date"
               />
             </div>
           </div>

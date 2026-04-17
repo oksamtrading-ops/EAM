@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/shared/DatePicker";
 import {
   Select,
   SelectContent,
@@ -116,11 +116,10 @@ export function RemediationModal({ riskId, onClose }: Props) {
 
           <div>
             <Label htmlFor="targetDate">Target Date</Label>
-            <Input
-              id="targetDate"
-              type="date"
+            <DatePicker
               value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
+              onChange={setTargetDate}
+              placeholder="Select target date"
             />
           </div>
 

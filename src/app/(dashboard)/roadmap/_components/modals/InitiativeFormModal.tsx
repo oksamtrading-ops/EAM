@@ -5,7 +5,7 @@ import { X, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
-import { DatePicker } from "../shared/DatePicker";
+import { DatePicker } from "@/components/shared/DatePicker";
 
 const EMPTY_FORM = {
   name: "",

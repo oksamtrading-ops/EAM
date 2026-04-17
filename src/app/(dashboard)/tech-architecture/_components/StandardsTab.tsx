@@ -32,6 +32,7 @@ import { TabFilters } from "./TabFilters";
 import { ToolbarActions } from "./ToolbarActions";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
+import { DatePicker } from "@/components/shared/DatePicker";
 
 const CATEGORIES = [
   "PRODUCT_CHOICE",
@@ -382,30 +383,26 @@ function StandardDetail({ standardId, onDeleted }: { standardId: string; onDelet
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Effective</label>
-              <Input
-                type="date"
-                defaultValue={toDateInput(s.effectiveDate)}
-                className="h-8 text-xs"
-                onBlur={(e) => {
-                  const current = toDateInput(s.effectiveDate);
-                  if (e.target.value !== current) {
-                    save({ effectiveDate: e.target.value ? new Date(e.target.value) : null });
+              <DatePicker
+                value={toDateInput(s.effectiveDate)}
+                onChange={(v) => {
+                  if (v !== toDateInput(s.effectiveDate)) {
+                    save({ effectiveDate: v ? new Date(v) : null });
                   }
                 }}
+                placeholder="Pick a date"
               />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Review</label>
-              <Input
-                type="date"
-                defaultValue={toDateInput(s.reviewDate)}
-                className="h-8 text-xs"
-                onBlur={(e) => {
-                  const current = toDateInput(s.reviewDate);
-                  if (e.target.value !== current) {
-                    save({ reviewDate: e.target.value ? new Date(e.target.value) : null });
+              <DatePicker
+                value={toDateInput(s.reviewDate)}
+                onChange={(v) => {
+                  if (v !== toDateInput(s.reviewDate)) {
+                    save({ reviewDate: v ? new Date(v) : null });
                   }
                 }}
+                placeholder="Pick a date"
               />
             </div>
           </div>

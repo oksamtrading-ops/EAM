@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X, Loader2, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
-import { DatePicker } from "@/app/(dashboard)/roadmap/_components/shared/DatePicker";
+import { DatePicker } from "@/components/shared/DatePicker";
 
 type Objective = {
   id: string;

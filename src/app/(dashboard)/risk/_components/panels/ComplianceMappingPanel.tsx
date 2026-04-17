@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/shared/DatePicker";
 import {
   Select,
   SelectContent,
@@ -184,11 +185,10 @@ export function ComplianceMappingPanel({ requirementId, controlTitle, onClose }:
 
             <div>
               <Label htmlFor="nextReview">Next Review Date</Label>
-              <Input
-                id="nextReview"
-                type="date"
+              <DatePicker
                 value={nextReviewDate}
-                onChange={(e) => setNextReviewDate(e.target.value)}
+                onChange={setNextReviewDate}
+                placeholder="Select review date"
               />
             </div>
           </div>

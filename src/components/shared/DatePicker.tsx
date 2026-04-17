@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { format, getDaysInMonth, startOfMonth, getDay } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const POPOVER_HEIGHT = 320;
+const POPOVER_WIDTH = 280;
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -33,7 +37,9 @@ export function DatePicker({
   const [viewYear, setViewYear] = useState(initialYear);
   const [viewMonth, setViewMonth] = useState(initialMonth);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; placement: "below" | "above" } | null>(null);
 
   // Sync view when value changes externally
   useEffect(() => {
@@ -43,13 +49,41 @@ export function DatePicker({
     }
   }, [value]);
 
-  // Close on outside click
+  // Compute popover position when open; recompute on scroll/resize
+  useLayoutEffect(() => {
+    if (!open) return;
+    function compute() {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placement: "below" | "above" =
+        spaceBelow < POPOVER_HEIGHT && rect.top > spaceBelow ? "above" : "below";
+      const top = placement === "below" ? rect.bottom + 4 : rect.top - 4 - POPOVER_HEIGHT;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - 8));
+      setPos({ top, left, placement });
+    }
+    compute();
+    window.addEventListener("scroll", compute, true);
+    window.addEventListener("resize", compute);
+    return () => {
+      window.removeEventListener("scroll", compute, true);
+      window.removeEventListener("resize", compute);
+    };
+  }, [open]);
+
+  // Close on outside click (must consider both trigger and portaled popover)
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+      if (
+        triggerRef.current?.contains(target) ||
+        popoverRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -92,8 +126,9 @@ export function DatePicker({
     : null;
 
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-full h-10 flex items-center gap-2 border rounded-md px-3 text-sm text-left focus:outline-none focus:ring-1 focus:ring-primary bg-background hover:border-gray-400 transition-colors"
@@ -112,8 +147,12 @@ export function DatePicker({
         )}
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-background border rounded-xl shadow-lg p-3 w-[280px]">
+      {open && pos && typeof document !== "undefined" && createPortal(
+        <div
+          ref={popoverRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: POPOVER_WIDTH }}
+          className="z-[100] bg-background border rounded-xl shadow-lg p-3"
+        >
           {/* Month / Year selectors */}
           <div className="flex items-center gap-1 mb-3">
             <button
@@ -187,7 +226,8 @@ export function DatePicker({
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

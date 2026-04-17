@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePicker } from "@/components/shared/DatePicker";
 import { toast } from "sonner";
 import {
   APP_TYPE_LABELS, LIFECYCLE_LABELS, DEPLOY_LABELS,
@@ -289,7 +290,13 @@ export function CreateApplicationDialog({ open, onClose, capTree }: Props) {
             </div>
             <div>
               <Label>Renewal Date</Label>
-              <Input type="date" value={form.costRenewalDate} onChange={(e) => set("costRenewalDate", e.target.value)} className="mt-1" />
+              <div className="mt-1">
+                <DatePicker
+                  value={form.costRenewalDate}
+                  onChange={(v) => set("costRenewalDate", v)}
+                  placeholder="Select renewal date"
+                />
+              </div>
             </div>
             <div>
               <Label>Licensed Users</Label>
