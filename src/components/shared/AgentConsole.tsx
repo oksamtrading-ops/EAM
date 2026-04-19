@@ -18,6 +18,9 @@ import {
   Check,
   Download,
   Activity,
+  Settings as SettingsIcon,
+  BookOpen,
+  CalendarClock,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -105,6 +108,7 @@ export function AgentConsole({
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   function startRename(id: string, current: string) {
     setEditingId(id);
@@ -179,6 +183,7 @@ export function AgentConsole({
     if (!open) {
       abortRef.current?.abort();
       setShowPicker(false);
+      setShowSettingsMenu(false);
     }
   }, [open]);
 
@@ -330,7 +335,7 @@ export function AgentConsole({
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 relative">
             {conversationId && turns.length > 0 && (
               <Button
                 size="icon"
@@ -347,11 +352,75 @@ export function AgentConsole({
             <Button
               size="icon"
               variant="ghost"
+              onClick={() => {
+                setShowSettingsMenu((v) => !v);
+                setShowPicker(false);
+              }}
+              aria-label="Agent settings"
+              title="Agent settings"
+            >
+              <SettingsIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
               onClick={() => onOpenChange(false)}
               aria-label="Close"
             >
               <X className="h-4 w-4" />
             </Button>
+            {showSettingsMenu && (
+              <div className="absolute right-0 top-full mt-1 w-56 rounded-lg border bg-popover shadow-xl z-[60] overflow-hidden">
+                <Link
+                  href="/agents/knowledge"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    onOpenChange(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b"
+                >
+                  <BookOpen className="h-3.5 w-3.5 text-[var(--ai)]" />
+                  <div className="min-w-0">
+                    <div className="text-foreground">Knowledge base</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Curated facts injected into every run
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  href="/agents/scheduled"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    onOpenChange(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b"
+                >
+                  <CalendarClock className="h-3.5 w-3.5 text-[var(--ai)]" />
+                  <div className="min-w-0">
+                    <div className="text-foreground">Scheduled tasks</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Recurring agent runs on a cron schedule
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  href="/agents/runs"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    onOpenChange(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted"
+                >
+                  <Activity className="h-3.5 w-3.5 text-[var(--ai)]" />
+                  <div className="min-w-0">
+                    <div className="text-foreground">Run traces</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Every LLM + tool call, step-by-step
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

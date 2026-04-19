@@ -16,8 +16,6 @@ import {
   Database,
   Layers,
   Inbox,
-  BookOpen,
-  CalendarClock,
   Menu,
   X,
   ChevronsLeft,
@@ -41,8 +39,6 @@ const navItems = [
   { label: "Risk & Compliance", href: "/risk", icon: ShieldAlert },
   { label: "Organization", href: "/organizations", icon: Building2 },
   { label: "Tags", href: "/tags", icon: Tags },
-  { label: "Knowledge", href: "/agents/knowledge", icon: BookOpen, ai: true },
-  { label: "Scheduled", href: "/agents/scheduled", icon: CalendarClock, ai: true },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
