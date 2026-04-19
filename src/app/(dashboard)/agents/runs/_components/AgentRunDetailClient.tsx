@@ -74,6 +74,16 @@ export function AgentRunDetailClient({ runId }: Props) {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-3xl mx-auto space-y-2">
+          {run.parent && (
+            <Link
+              href={`/agents/runs/${run.parent.id}`}
+              className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-[var(--ai)] transition-colors mb-1"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Parent run · {run.parent.kind} ({run.parent.status.toLowerCase()})
+            </Link>
+          )}
+
           {run.errorMessage && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 flex gap-2 text-sm text-red-900">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -91,9 +101,65 @@ export function AgentRunDetailClient({ runId }: Props) {
           ) : (
             run.steps.map((step) => <StepRow key={step.id} step={step} />)
           )}
+
+          {run.subRuns && run.subRuns.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                Sub-runs ({run.subRuns.length})
+              </p>
+              <div className="space-y-1.5">
+                {run.subRuns.map((sub) => (
+                  <SubRunRow key={sub.id} sub={sub} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+type SubRun = {
+  id: string;
+  kind: string;
+  status: string;
+  startedAt: Date;
+  endedAt: Date | null;
+  totalTokensIn: number;
+  totalTokensOut: number;
+  errorMessage: string | null;
+};
+
+function SubRunRow({ sub }: { sub: SubRun }) {
+  const duration =
+    sub.endedAt != null
+      ? new Date(sub.endedAt).getTime() - new Date(sub.startedAt).getTime()
+      : null;
+  return (
+    <Link
+      href={`/agents/runs/${sub.id}`}
+      className="rounded-lg border border-[var(--ai)]/30 bg-[var(--ai)]/5 p-2.5 flex items-center gap-2 hover:bg-[var(--ai)]/10 transition-colors"
+    >
+      <Sparkles className="h-3.5 w-3.5 text-[var(--ai)] shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="font-mono text-xs text-[var(--ai)] truncate">
+          {sub.kind}
+        </div>
+        {sub.errorMessage && (
+          <div className="text-[10px] text-red-600 truncate">
+            {sub.errorMessage}
+          </div>
+        )}
+      </div>
+      <div className="text-right text-[10px] text-muted-foreground tabular-nums shrink-0">
+        <div>{sub.status.toLowerCase()}</div>
+        <div>
+          {(sub.totalTokensIn + sub.totalTokensOut).toLocaleString()} tok
+          {duration != null && ` · ${(duration / 1000).toFixed(1)}s`}
+        </div>
+      </div>
+    </Link>
   );
 }
 

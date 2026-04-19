@@ -8,6 +8,9 @@ import {
   getToolSchemas,
   type AppCaller,
 } from "./tools";
+import { TOOLS_BY_NAME } from "./tools/definitions";
+
+const SUB_AGENT_BUDGET_PER_TURN = 3;
 import { db } from "@/server/db";
 
 export const MAX_TOOL_ITERATIONS = 6;
@@ -128,6 +131,7 @@ export async function runAgentLoop(
   let ordinal = 0;
   let totalTokensIn = 0;
   let totalTokensOut = 0;
+  let subAgentCallsSoFar = 0;
 
   try {
     for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
@@ -205,9 +209,15 @@ export async function runAgentLoop(
 
       for (const call of toolUses) {
         const t = Date.now();
+        const isSubAgentCall = TOOLS_BY_NAME[call.name]?.isSubAgent === true;
         const result = await executeTool(caller, call.name, call.input, {
           workspaceId,
+          userId,
+          parentRunId: runId,
+          subAgentCallsSoFar,
+          subAgentBudget: SUB_AGENT_BUDGET_PER_TURN,
         });
+        if (isSubAgentCall) subAgentCallsSoFar += 1;
         const stepLatency = Date.now() - t;
 
         await db.agentRunStep.create({

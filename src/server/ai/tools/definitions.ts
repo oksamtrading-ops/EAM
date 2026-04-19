@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { retrieveIntakeChunks } from "@/server/ai/rag/retrieve";
+import { runSubAgent } from "@/server/ai/subAgents";
 
 // Caller type — workspaceId is baked in at construction time (see executor).
 // The model can ask to call any of these tools with any inputs, but it cannot
@@ -23,9 +24,21 @@ export type ToolDefinition = {
   ) => Promise<unknown>;
   /** Marks tools that create/update/delete data. Useful for agent prompts and UI confirmation gates. */
   mutates?: boolean;
+  /** Marks tools that internally spawn a full agent loop. Budget-tracked by the parent loop. */
+  isSubAgent?: boolean;
 };
 
-export type ToolCtx = { workspaceId: string };
+export type ToolCtx = {
+  workspaceId: string;
+  /** Clerk userId — needed by sub-agent tools that call runAgentLoop themselves. */
+  userId?: string;
+  /** AgentRun id of the caller, used to link sub-runs back to the parent. */
+  parentRunId?: string;
+  /** How many sub-agent tool calls have already happened in the current parent turn. */
+  subAgentCallsSoFar?: number;
+  /** Hard cap per user turn. */
+  subAgentBudget?: number;
+};
 
 // ---- HORIZON 1 TOOL ALLOWLIST ----
 // Read-only only. Writes go through the approval queue (intake router — later PR).
@@ -161,6 +174,54 @@ const modifyIntakeDraft: ToolDefinition = {
   mutates: true,
 };
 
+// ---- Sub-agents (Phase B — multi-agent orchestration) ----
+
+const rationalizeApplicationSub: ToolDefinition = {
+  name: "rationalize_application",
+  description:
+    "Run a specialized sub-agent that produces a grounded Gartner TIME classification for ONE application. It fetches the app, its capabilities, and related risks via tools. Returns JSON with { classification, confidence, rationale, evidence, topRisks, relatedCapabilities }. Max 3 sub-agent calls per user turn — prefer this over fan-out across many apps.",
+  inputSchema: z.object({
+    id: z
+      .string()
+      .describe(
+        "Application id from list_applications. Must be an exact id string."
+      ),
+  }),
+  invoke: (_caller, input, ctx) =>
+    runSubAgent("rationalize_application", input as { id: string }, ctx),
+  isSubAgent: true,
+};
+
+const analyzeApplicationImpactSub: ToolDefinition = {
+  name: "analyze_application_impact",
+  description:
+    "Run a specialized sub-agent to assess the impact of retiring or replacing ONE application. Fetches the target, the portfolio, and the capability tree. Returns JSON with affected capabilities, alternatives, coverage gaps, overall risk level, and recommendation. Max 3 sub-agent calls per user turn.",
+  inputSchema: z.object({
+    id: z
+      .string()
+      .describe(
+        "Application id from list_applications. Must be an exact id string."
+      ),
+  }),
+  invoke: (_caller, input, ctx) =>
+    runSubAgent(
+      "analyze_application_impact",
+      input as { id: string },
+      ctx
+    ),
+  isSubAgent: true,
+};
+
+const capabilityCoverageReportSub: ToolDefinition = {
+  name: "capability_coverage_report",
+  description:
+    "Run a specialized sub-agent that produces a capability coverage report across the workspace: well-served, underserved, unserved, and overlap capabilities, with recommendations for the overlapping ones. Cheap and high-leverage for broad portfolio questions. Max 3 sub-agent calls per user turn.",
+  inputSchema: z.object({}).optional(),
+  invoke: (_caller, _input, ctx) =>
+    runSubAgent("capability_coverage_report", {}, ctx),
+  isSubAgent: true,
+};
+
 export const TOOL_DEFINITIONS: ReadonlyArray<ToolDefinition> = [
   listApplications,
   getApplicationById,
@@ -174,6 +235,9 @@ export const TOOL_DEFINITIONS: ReadonlyArray<ToolDefinition> = [
   acceptIntakeDraft,
   rejectIntakeDraft,
   modifyIntakeDraft,
+  rationalizeApplicationSub,
+  analyzeApplicationImpactSub,
+  capabilityCoverageReportSub,
 ];
 
 export const TOOLS_BY_NAME: Record<string, ToolDefinition> = Object.fromEntries(

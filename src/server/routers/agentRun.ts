@@ -43,6 +43,20 @@ export const agentRunRouter = router({
         where: { id: input.id, workspaceId: ctx.workspaceId },
         include: {
           steps: { orderBy: { ordinal: "asc" } },
+          parent: { select: { id: true, kind: true, status: true } },
+          subRuns: {
+            orderBy: { startedAt: "asc" },
+            select: {
+              id: true,
+              kind: true,
+              status: true,
+              startedAt: true,
+              endedAt: true,
+              totalTokensIn: true,
+              totalTokensOut: true,
+              errorMessage: true,
+            },
+          },
         },
       });
       if (!run) throw new TRPCError({ code: "NOT_FOUND" });
