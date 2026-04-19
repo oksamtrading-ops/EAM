@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { retrieveIntakeChunks } from "@/server/ai/rag/retrieve";
 import { retrieveKnowledge } from "@/server/ai/knowledge/retrieve";
+import { extractKnowledgeFromExistingDocument } from "@/server/ai/services/knowledgeExtraction";
 import { runSubAgent } from "@/server/ai/subAgents";
 
 // Caller type — workspaceId is baked in at construction time (see executor).
@@ -119,6 +120,32 @@ const searchKnowledge: ToolDefinition = {
       limit: limit ?? 5,
     });
   },
+};
+
+const distillKnowledgeFromDocument: ToolDefinition = {
+  name: "distill_knowledge_from_document",
+  description:
+    "Run fact extraction against an already-uploaded intake document and land the proposed facts as drafts in the knowledge approval queue. Use after the user uploads a strategy deck / current-state doc and asks you to 'capture what we know from this'. The user reviews each draft in /agents/knowledge before it's committed. ALWAYS confirm with the user before calling — mention the document filename you're about to distill.",
+  inputSchema: z.object({
+    documentId: z
+      .string()
+      .describe(
+        "IntakeDocument id. Must come from an existing upload (see intake.listDocuments or reference prior agent context)."
+      ),
+  }),
+  invoke: async (_caller, input, ctx) => {
+    const { documentId } = input as { documentId: string };
+    const result = await extractKnowledgeFromExistingDocument({
+      workspaceId: ctx.workspaceId,
+      documentId,
+    });
+    return {
+      documentId,
+      draftsCreated: result.draftsCreated,
+      message: `Created ${result.draftsCreated} knowledge draft(s). User reviews at /agents/knowledge → Drafts tab.`,
+    };
+  },
+  mutates: true,
 };
 
 const saveKnowledge: ToolDefinition = {
@@ -303,6 +330,7 @@ export const TOOL_DEFINITIONS: ReadonlyArray<ToolDefinition> = [
   listReferenceArchitectures,
   searchKnowledge,
   saveKnowledge,
+  distillKnowledgeFromDocument,
   searchIntakeDocuments,
   listIntakeDrafts,
   acceptIntakeDraft,

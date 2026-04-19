@@ -1,0 +1,396 @@
+import "server-only";
+import * as XLSX from "xlsx";
+import { anthropic } from "@/server/ai/client";
+import { MODEL_REASONER } from "@/server/ai/models";
+import {
+  KNOWLEDGE_FACTS_EXTRACTOR_PROMPT,
+  KNOWLEDGE_FACTS_EXTRACTOR_VERSION,
+} from "@/server/ai/prompts/knowledgeFactsExtractor.v1";
+import { db } from "@/server/db";
+import type { WorkspaceKnowledgeKind } from "@/generated/prisma/client";
+
+const MAX_CHUNK_CHARS = 4000;
+const MAX_OUTPUT_TOKENS = 6000;
+
+type FactCandidate = {
+  subject: string;
+  statement: string;
+  kind: WorkspaceKnowledgeKind;
+  confidence: number;
+  evidence: Array<{ chunkOrdinal: number; excerpt: string; page?: number | null }>;
+};
+
+type ExtractorResponse = {
+  chunks: Array<{ ordinal: number; text: string; page?: number | null }>;
+  facts: FactCandidate[];
+};
+
+const VALID_KINDS = new Set<WorkspaceKnowledgeKind>([
+  "FACT",
+  "DECISION",
+  "PATTERN",
+]);
+
+/**
+ * Run fact extraction against an existing IntakeDocument — re-uses its
+ * stored chunks, no re-parsing. Landing point: KnowledgeDraft rows.
+ */
+export async function extractKnowledgeFromExistingDocument(opts: {
+  documentId: string;
+  workspaceId: string;
+}): Promise<{ draftsCreated: number }> {
+  const { documentId, workspaceId } = opts;
+
+  const doc = await db.intakeDocument.findFirst({
+    where: { id: documentId, workspaceId },
+    select: { id: true, filename: true },
+  });
+  if (!doc) throw new Error("Document not found in this workspace");
+
+  const chunks = await db.intakeChunk.findMany({
+    where: { documentId: doc.id },
+    orderBy: { ordinal: "asc" },
+    select: { id: true, ordinal: true, text: true, page: true },
+  });
+  if (chunks.length === 0) {
+    throw new Error("Document has no chunks — intake extraction has not run yet.");
+  }
+
+  const pre = chunks
+    .map((c) => `<<CHUNK ordinal=${c.ordinal}>>\n${c.text}`)
+    .join("\n\n");
+  const response = await anthropic.messages.create({
+    model: MODEL_REASONER,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: KNOWLEDGE_FACTS_EXTRACTOR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Filename: ${doc.filename}\nPreChunked: true\n\n${pre}\n\nUse the provided chunks. Cite evidence by chunkOrdinal. Return JSON only.`,
+      },
+    ],
+  });
+
+  const parsed = parseExtractorResponse(response);
+  const ordinalToChunkId = new Map(chunks.map((c) => [c.ordinal, c.id]));
+
+  return persistDrafts({
+    workspaceId,
+    sourceDocumentId: doc.id,
+    facts: parsed.facts,
+    ordinalToChunkId,
+  });
+}
+
+/**
+ * Run fact extraction against a fresh upload — parse + chunk + persist
+ * an IntakeDocument row so evidence citations have a stable source, then
+ * extract facts.
+ */
+export async function extractKnowledgeFromNewUpload(opts: {
+  workspaceId: string;
+  userId: string; // internal User.id (uploadedBy)
+  bytes: Buffer;
+  filename: string;
+  mimeType: string;
+}): Promise<{ documentId: string; draftsCreated: number }> {
+  const { workspaceId, userId, bytes, filename, mimeType } = opts;
+
+  // Persist the document so drafts can cite it.
+  const document = await db.intakeDocument.create({
+    data: {
+      workspaceId,
+      filename,
+      mimeType,
+      sizeBytes: bytes.length,
+      storageKey: `inline:${filename}`,
+      status: "PROCESSING",
+      uploadedBy: userId,
+    },
+    select: { id: true },
+  });
+
+  try {
+    let extractor: ExtractorResponse;
+    if (mimeType === "application/pdf") {
+      extractor = await extractFromPdf(bytes, filename);
+    } else if (
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      mimeType === "application/vnd.ms-excel"
+    ) {
+      extractor = await extractFromXlsx(bytes, filename);
+    } else {
+      extractor = await extractFromText(bytes.toString("utf-8"), filename);
+    }
+
+    // Persist chunks so future distill / search calls can reuse them.
+    if (extractor.chunks.length > 0) {
+      await db.intakeChunk.createMany({
+        data: extractor.chunks.map((c) => ({
+          documentId: document.id,
+          ordinal: c.ordinal,
+          text: c.text.slice(0, 8000),
+          page: c.page ?? null,
+        })),
+      });
+    }
+
+    const savedChunks = await db.intakeChunk.findMany({
+      where: { documentId: document.id },
+      select: { id: true, ordinal: true },
+    });
+    const ordinalToChunkId = new Map(savedChunks.map((c) => [c.ordinal, c.id]));
+
+    const result = await persistDrafts({
+      workspaceId,
+      sourceDocumentId: document.id,
+      facts: extractor.facts,
+      ordinalToChunkId,
+    });
+
+    await db.intakeDocument.update({
+      where: { id: document.id },
+      data: { status: "EXTRACTED" },
+    });
+
+    return { documentId: document.id, draftsCreated: result.draftsCreated };
+  } catch (err) {
+    await db.intakeDocument.update({
+      where: { id: document.id },
+      data: {
+        status: "FAILED",
+        errorMessage: err instanceof Error ? err.message : String(err),
+      },
+    });
+    throw err;
+  }
+}
+
+async function persistDrafts(opts: {
+  workspaceId: string;
+  sourceDocumentId: string;
+  facts: FactCandidate[];
+  ordinalToChunkId: Map<number, string>;
+}): Promise<{ draftsCreated: number }> {
+  const { workspaceId, sourceDocumentId, facts, ordinalToChunkId } = opts;
+  let count = 0;
+  for (const f of facts) {
+    if (!VALID_KINDS.has(f.kind)) continue;
+    if (!f.subject?.trim() || !f.statement?.trim()) continue;
+    if (!Array.isArray(f.evidence) || f.evidence.length === 0) continue;
+
+    const evidence = f.evidence
+      .map((e) => ({
+        chunkId: ordinalToChunkId.get(e.chunkOrdinal) ?? null,
+        chunkOrdinal: e.chunkOrdinal,
+        excerpt:
+          typeof e.excerpt === "string" ? e.excerpt.slice(0, 600) : "",
+        page: typeof e.page === "number" ? e.page : null,
+      }))
+      .filter((e) => e.excerpt.length > 0);
+    if (evidence.length === 0) continue;
+
+    await db.knowledgeDraft.create({
+      data: {
+        workspaceId,
+        sourceDocumentId,
+        kind: f.kind,
+        subject: f.subject.trim().slice(0, 200),
+        statement: f.statement.trim().slice(0, 2000),
+        confidence: clamp01(f.confidence ?? 0.8),
+        evidence: JSON.parse(JSON.stringify(evidence)),
+        status: "PENDING",
+      },
+    });
+    count++;
+  }
+  return { draftsCreated: count };
+}
+
+// ────────────────────────────────────────────────────────────
+// Parsers — mirror intakeExtraction.ts but emit facts, not entities.
+// ────────────────────────────────────────────────────────────
+
+async function extractFromPdf(
+  bytes: Buffer,
+  filename: string
+): Promise<ExtractorResponse> {
+  const base64 = bytes.toString("base64");
+  const response = await anthropic.messages.create({
+    model: MODEL_REASONER,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: KNOWLEDGE_FACTS_EXTRACTOR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64,
+            },
+          } as never,
+          {
+            type: "text",
+            text: `Filename: ${filename}\n\nSegment the text into chunks tagged with page numbers, then distill the document into durable FACTS per the system prompt. Return JSON only.`,
+          },
+        ],
+      },
+    ],
+  });
+  return parseExtractorResponse(response);
+}
+
+async function extractFromXlsx(
+  bytes: Buffer,
+  filename: string
+): Promise<ExtractorResponse> {
+  const wb = XLSX.read(bytes, { type: "buffer" });
+  const chunks: Array<{ ordinal: number; text: string }> = [];
+  let ordinal = 0;
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    if (!sheet) continue;
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: "",
+    });
+    if (rows.length === 0) continue;
+    const columns = Object.keys(rows[0] ?? {});
+    chunks.push({
+      ordinal: ordinal++,
+      text: `[Sheet: ${sheetName}] Columns: ${columns.join(" | ")}. ${rows.length} rows.`,
+    });
+    for (const [i, row] of rows.entries()) {
+      const values = Object.values(row).filter((v) => v !== "" && v != null);
+      if (values.length === 0) continue;
+      const serialized = Object.entries(row)
+        .filter(([, v]) => v !== "" && v != null)
+        .map(([k, v]) => `${k}: ${String(v)}`)
+        .join(" | ");
+      chunks.push({
+        ordinal: ordinal++,
+        text: `[${sheetName} · row ${i + 2}] ${serialized}`,
+      });
+    }
+  }
+  if (chunks.length === 0) return { chunks: [], facts: [] };
+
+  const pre = chunks
+    .map((c) => `<<CHUNK ordinal=${c.ordinal}>>\n${c.text}`)
+    .join("\n\n");
+  const response = await anthropic.messages.create({
+    model: MODEL_REASONER,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: KNOWLEDGE_FACTS_EXTRACTOR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Filename: ${filename}\nPreChunked: true\nSource: Excel workbook\n\n${pre}\n\nDistill recurring structural patterns and durable facts from this data. Return JSON only.`,
+      },
+    ],
+  });
+  const parsed = parseExtractorResponse(response);
+  if (!parsed.chunks.length) parsed.chunks = chunks;
+  return parsed;
+}
+
+async function extractFromText(
+  text: string,
+  filename: string
+): Promise<ExtractorResponse> {
+  const chunks = chunkPlainText(text);
+  const pre = chunks
+    .map((c) => `<<CHUNK ordinal=${c.ordinal}>>\n${c.text}`)
+    .join("\n\n");
+  const response = await anthropic.messages.create({
+    model: MODEL_REASONER,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: KNOWLEDGE_FACTS_EXTRACTOR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Filename: ${filename}\nPreChunked: true\n\n${pre}\n\nDistill durable facts per the system prompt. Return JSON only.`,
+      },
+    ],
+  });
+  const parsed = parseExtractorResponse(response);
+  if (!parsed.chunks.length) parsed.chunks = chunks;
+  return parsed;
+}
+
+function chunkPlainText(text: string): Array<{ ordinal: number; text: string }> {
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const chunks: Array<{ ordinal: number; text: string }> = [];
+  let buffer = "";
+  let ordinal = 0;
+  for (const para of paragraphs) {
+    if ((buffer + "\n\n" + para).length > MAX_CHUNK_CHARS && buffer) {
+      chunks.push({ ordinal: ordinal++, text: buffer.trim() });
+      buffer = para;
+    } else {
+      buffer = buffer ? `${buffer}\n\n${para}` : para;
+    }
+  }
+  if (buffer.trim()) chunks.push({ ordinal: ordinal++, text: buffer.trim() });
+  return chunks;
+}
+
+function parseExtractorResponse(response: {
+  content: Array<{ type: string; text?: string }>;
+}): ExtractorResponse {
+  const textBlock = response.content.find((b) => b.type === "text");
+  const raw = textBlock?.text ?? "";
+  const json = extractJson(raw);
+  const parsed = JSON.parse(json) as Partial<ExtractorResponse>;
+
+  const chunks = Array.isArray(parsed.chunks)
+    ? parsed.chunks
+        .map((c, i) => ({
+          ordinal: typeof c.ordinal === "number" ? c.ordinal : i,
+          text: typeof c.text === "string" ? c.text : "",
+          page: typeof c.page === "number" ? c.page : undefined,
+        }))
+        .filter((c) => c.text.length > 0)
+    : [];
+
+  const facts = Array.isArray(parsed.facts)
+    ? parsed.facts.map((f) => ({
+        subject: typeof f.subject === "string" ? f.subject : "",
+        statement: typeof f.statement === "string" ? f.statement : "",
+        kind: (String(f.kind ?? "FACT").toUpperCase() as WorkspaceKnowledgeKind),
+        confidence: typeof f.confidence === "number" ? f.confidence : 0.8,
+        evidence: Array.isArray(f.evidence)
+          ? f.evidence.map((e) => ({
+              chunkOrdinal:
+                typeof e.chunkOrdinal === "number" ? e.chunkOrdinal : 0,
+              excerpt: typeof e.excerpt === "string" ? e.excerpt : "",
+              page: typeof e.page === "number" ? e.page : undefined,
+            }))
+          : [],
+      }))
+    : [];
+
+  return { chunks, facts };
+}
+
+function extractJson(raw: string): string {
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence?.[1]) return fence[1].trim();
+  const first = raw.indexOf("{");
+  const last = raw.lastIndexOf("}");
+  if (first >= 0 && last > first) return raw.slice(first, last + 1);
+  return raw.trim();
+}
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+export { KNOWLEDGE_FACTS_EXTRACTOR_VERSION };

@@ -365,6 +365,7 @@ model Workspace {
   agentRuns              AgentRun[]
   agentConversations     AgentConversation[]
   workspaceKnowledge     WorkspaceKnowledge[]
+  knowledgeDrafts        KnowledgeDraft[]
   scheduledAgentTasks    ScheduledAgentTask[]
 
   @@map("workspaces")
@@ -2102,9 +2103,10 @@ model IntakeDocument {
   uploadedAt  DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  chunks    IntakeChunk[]
-  drafts    IntakeDraft[]
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chunks          IntakeChunk[]
+  drafts          IntakeDraft[]
+  knowledgeDrafts KnowledgeDraft[]
 
   @@index([workspaceId, status])
   @@map("intake_documents")
@@ -2174,6 +2176,7 @@ model AgentRun {
   messages     AgentConversationMessage[]
   steps        AgentRunStep[]
   knowledge    WorkspaceKnowledge[]
+  knowledgeDrafts KnowledgeDraft[]
   scheduledTasks ScheduledAgentTask[]
 
   @@index([workspaceId, kind, startedAt])
@@ -2257,12 +2260,41 @@ model WorkspaceKnowledge {
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  sourceRun AgentRun? @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceRun   AgentRun?        @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  draftSource KnowledgeDraft[]
 
   @@index([workspaceId, isActive, updatedAt])
   @@index([workspaceId, subject])
   @@map("workspace_knowledge")
+}
+
+model KnowledgeDraft {
+  id                   String                 @id @default(cuid())
+  workspaceId          String
+  sourceDocumentId     String?
+  kind                 WorkspaceKnowledgeKind @default(FACT)
+  subject              String
+  statement            String
+  confidence           Float                  @default(0.8)
+  evidence             Json                   @default("[]")
+  status               DraftStatus            @default(PENDING)
+  sourceRunId          String?
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  rejectionReason      String?
+  committedKnowledgeId String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceDocument   IntakeDocument?     @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  sourceRun        AgentRun?           @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  committedKnowledge WorkspaceKnowledge? @relation(fields: [committedKnowledgeId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([sourceDocumentId])
+  @@map("knowledge_drafts")
 }
 
 // ============================================================

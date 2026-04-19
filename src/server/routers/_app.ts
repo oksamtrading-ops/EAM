@@ -32,6 +32,7 @@ import { intakeRouter } from "./intake";
 import { agentRunRouter } from "./agentRun";
 import { agentConversationRouter } from "./agentConversation";
 import { workspaceKnowledgeRouter } from "./workspaceKnowledge";
+import { knowledgeDraftRouter } from "./knowledgeDraft";
 import { scheduledAgentTaskRouter } from "./scheduledAgentTask";
 
 export const appRouter = router({
@@ -68,6 +69,7 @@ export const appRouter = router({
   agentRun: agentRunRouter,
   agentConversation: agentConversationRouter,
   workspaceKnowledge: workspaceKnowledgeRouter,
+  knowledgeDraft: knowledgeDraftRouter,
   scheduledAgentTask: scheduledAgentTaskRouter,
 });
 

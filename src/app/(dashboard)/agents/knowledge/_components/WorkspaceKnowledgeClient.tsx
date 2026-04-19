@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BookOpen,
   Plus,
@@ -9,6 +9,8 @@ import {
   Pencil,
   Archive,
   ArchiveRestore,
+  Upload,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,9 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { KnowledgeUploadDialog } from "./KnowledgeUploadDialog";
+import { KnowledgeDraftCard } from "./KnowledgeDraftCard";
 
 const KIND_META: Record<
   string,
@@ -62,10 +68,14 @@ const EMPTY: EditingState = {
   confidence: 0.9,
 };
 
+type Tab = "knowledge" | "drafts";
+
 export function WorkspaceKnowledgeClient() {
+  const [tab, setTab] = useState<Tab>("knowledge");
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: items, isLoading } = trpc.workspaceKnowledge.list.useQuery({
@@ -73,6 +83,91 @@ export function WorkspaceKnowledgeClient() {
     includeArchived,
     limit: 200,
   });
+  const { data: drafts, isLoading: draftsLoading } =
+    trpc.knowledgeDraft.list.useQuery({ status: undefined });
+  const pendingDrafts = useMemo(
+    () =>
+      (drafts ?? []).filter(
+        (d) => d.status === "PENDING" || d.status === "MODIFIED"
+      ),
+    [drafts]
+  );
+
+  const acceptDraft = trpc.knowledgeDraft.accept.useMutation({
+    onSuccess: () => {
+      toast.success("Fact accepted — now active in the knowledge base");
+      utils.knowledgeDraft.list.invalidate();
+      utils.workspaceKnowledge.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const rejectDraft = trpc.knowledgeDraft.reject.useMutation({
+    onSuccess: () => {
+      toast.success("Draft rejected");
+      utils.knowledgeDraft.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const modifyDraft = trpc.knowledgeDraft.modify.useMutation({
+    onSuccess: () => {
+      utils.knowledgeDraft.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const bulkAcceptDrafts = trpc.knowledgeDraft.bulkAcceptByConfidence.useMutation(
+    {
+      onSuccess: (r) => {
+        toast.success(
+          `Accepted ${r.accepted}${r.failed > 0 ? ` (${r.failed} failed)` : ""}`
+        );
+        utils.knowledgeDraft.list.invalidate();
+        utils.workspaceKnowledge.list.invalidate();
+      },
+      onError: (e) => toast.error(e.message),
+    }
+  );
+
+  const draftsByDocument = useMemo(() => {
+    const g: Record<
+      string,
+      { filename: string; drafts: typeof drafts }
+    > = {};
+    for (const d of drafts ?? []) {
+      const key = d.sourceDocumentId ?? "__manual__";
+      if (!g[key]) {
+        g[key] = {
+          filename: d.sourceDocument?.filename ?? "Agent-originated",
+          drafts: [] as never,
+        };
+      }
+      (g[key].drafts as unknown as typeof drafts)!.push(d);
+    }
+    return g;
+  }, [drafts]);
+
+  const overflowActions: OverflowAction[] = [
+    {
+      label: "Accept all ≥90%",
+      icon: <Sparkles className="h-4 w-4" />,
+      onClick: () => bulkAcceptDrafts.mutate({ threshold: 0.9 }),
+    },
+    {
+      label: "Accept all ≥80%",
+      icon: <Sparkles className="h-4 w-4" />,
+      onClick: () => bulkAcceptDrafts.mutate({ threshold: 0.8 }),
+    },
+    {
+      label: "Upload document",
+      icon: <Upload className="h-4 w-4" />,
+      onClick: () => setShowUpload(true),
+    },
+    {
+      label: "Add fact",
+      icon: <Plus className="h-4 w-4" />,
+      onClick: () => setEditing(EMPTY),
+      primary: true,
+    },
+  ];
 
   const create = trpc.workspaceKnowledge.create.useMutation({
     onSuccess: () => {
@@ -132,43 +227,111 @@ export function WorkspaceKnowledgeClient() {
             Workspace Knowledge
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {items?.length ?? 0} item{items?.length === 1 ? "" : "s"} ·
-            curated facts injected into every agent run
+            {items?.length ?? 0} active · {pendingDrafts.length} draft
+            {pendingDrafts.length === 1 ? "" : "s"} pending review
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setEditing(EMPTY)}
-          className="gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add fact
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowUpload(true)}
+            className="gap-1.5"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setEditing(EMPTY)}
+            className="gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add fact
+          </Button>
+          <OverflowMenu actions={overflowActions} />
+        </div>
       </div>
 
       <div className="border-b px-4 sm:px-5 py-2 flex items-center gap-3 bg-background/60">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search subject or statement…"
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
-          <input
-            type="checkbox"
-            checked={includeArchived}
-            onChange={(e) => setIncludeArchived(e.target.checked)}
-            className="h-3 w-3 accent-[var(--ai)]"
-          />
-          Include archived
-        </label>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+          <TabsList>
+            <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
+            <TabsTrigger value="drafts" className="gap-1.5">
+              Drafts
+              {pendingDrafts.length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1 py-0 bg-[var(--ai)]/10 text-[var(--ai)] border-[var(--ai)]/30"
+                >
+                  {pendingDrafts.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {tab === "knowledge" && (
+          <>
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search subject or statement…"
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+                className="h-3 w-3 accent-[var(--ai)]"
+              />
+              Include archived
+            </label>
+          </>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {isLoading ? (
+        {tab === "drafts" ? (
+          draftsLoading ? (
+            <p className="text-sm text-muted-foreground text-center pt-8">
+              Loading drafts…
+            </p>
+          ) : !drafts || drafts.length === 0 ? (
+            <DraftsEmpty onUpload={() => setShowUpload(true)} />
+          ) : (
+            <div className="max-w-3xl mx-auto space-y-6">
+              {Object.entries(draftsByDocument).map(([docId, group]) => (
+                <section key={docId} className="space-y-2">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.filename}
+                    <span className="ml-2 text-muted-foreground/70">
+                      ({group.drafts?.length ?? 0})
+                    </span>
+                  </h2>
+                  <div className="space-y-2">
+                    {(group.drafts ?? []).map((d) => (
+                      <KnowledgeDraftCard
+                        key={d.id}
+                        draft={d}
+                        onAccept={(overrides) =>
+                          acceptDraft.mutate({ id: d.id, overrides })
+                        }
+                        onReject={() => rejectDraft.mutate({ id: d.id })}
+                        onModify={(updates) =>
+                          modifyDraft.mutate({ id: d.id, ...updates })
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )
+        ) : isLoading ? (
           <p className="text-sm text-muted-foreground text-center pt-8">
             Loading…
           </p>
@@ -349,6 +512,34 @@ export function WorkspaceKnowledgeClient() {
           )}
         </DialogContent>
       </Dialog>
+
+      <KnowledgeUploadDialog
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        onExtracted={() => {
+          utils.knowledgeDraft.list.invalidate();
+          setTab("drafts");
+        }}
+      />
+    </div>
+  );
+}
+
+function DraftsEmpty({ onUpload }: { onUpload: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center">
+      <div className="h-12 w-12 rounded-xl bg-[var(--ai)]/15 flex items-center justify-center mb-3">
+        <Upload className="h-6 w-6 text-[var(--ai)]" />
+      </div>
+      <p className="text-sm font-medium mb-1">No drafts yet</p>
+      <p className="text-xs text-muted-foreground mb-4 max-w-md">
+        Upload a strategy deck, current-state review, or interview notes, and
+        Claude will distill it into proposed facts for your review.
+      </p>
+      <Button onClick={onUpload} size="sm" className="gap-1.5">
+        <Upload className="h-3.5 w-3.5" />
+        Upload document
+      </Button>
     </div>
   );
 }
