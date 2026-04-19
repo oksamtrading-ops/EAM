@@ -16,6 +16,7 @@ import {
   Database,
   Layers,
   Inbox,
+  Activity,
   Menu,
   X,
   ChevronsLeft,
@@ -39,6 +40,7 @@ const navItems = [
   { label: "Risk & Compliance", href: "/risk", icon: ShieldAlert },
   { label: "Organization", href: "/organizations", icon: Building2 },
   { label: "Tags", href: "/tags", icon: Tags },
+  { label: "Agent Runs", href: "/agents/runs", icon: Activity, ai: true },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

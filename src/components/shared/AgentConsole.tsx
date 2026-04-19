@@ -17,7 +17,9 @@ import {
   Pencil,
   Check,
   Download,
+  Activity,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -432,6 +434,17 @@ export function AgentConsole({
                 No prior threads
               </p>
             )}
+            <Link
+              href="/agents/runs"
+              onClick={() => {
+                setShowPicker(false);
+                onOpenChange(false);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-[11px] bg-popover border-t text-muted-foreground hover:text-[var(--ai)] hover:bg-muted transition-colors"
+            >
+              <Activity className="h-3 w-3" />
+              View all run traces
+            </Link>
           </div>
         )}
       </div>
