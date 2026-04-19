@@ -14,13 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
 
@@ -153,27 +146,33 @@ export function AgentConsole({ open, onOpenChange }: Props) {
     [workspaceId, streaming, turns]
   );
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:w-[480px] sm:max-w-none p-0 flex flex-col"
-      >
-        <SheetHeader className="px-5 py-4 border-b bg-gradient-to-r from-[var(--ai)]/10 to-transparent">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-[var(--ai)]" />
-            </div>
-            <div>
-              <SheetTitle className="text-sm font-bold">Agent Console</SheetTitle>
-              <SheetDescription className="text-[11px]">
-                Tool-grounded questions over your workspace
-              </SheetDescription>
-            </div>
-          </div>
-        </SheetHeader>
+  if (!open) return null;
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+  return (
+    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
+      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[var(--ai)]/10 to-transparent">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-[var(--ai)]" />
+          </div>
+          <div>
+            <h2 className="font-bold text-sm text-foreground">Agent Console</h2>
+            <p className="text-[11px] text-muted-foreground">
+              Tool-grounded questions over your workspace
+            </p>
+          </div>
+        </div>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => onOpenChange(false)}
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {turns.length === 0 && (
             <div className="text-center text-xs text-muted-foreground pt-8">
               <p className="mb-2">Ask about your portfolio, risks, or capabilities.</p>
@@ -196,35 +195,34 @@ export function AgentConsole({ open, onOpenChange }: Props) {
           ))}
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send(input);
-          }}
-          className="border-t px-4 py-3 flex items-center gap-2"
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+        className="border-t px-4 py-3 flex items-center gap-2"
+      >
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask the agent…"
+          disabled={streaming}
+          className="text-sm"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={streaming || !input.trim()}
+          className="bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white shrink-0"
         >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask the agent…"
-            disabled={streaming}
-            className="text-sm"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={streaming || !input.trim()}
-            className="bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white shrink-0"
-          >
-            {streaming ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </form>
-      </SheetContent>
-    </Sheet>
+          {streaming ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
+      </form>
+    </aside>
   );
 }
 
