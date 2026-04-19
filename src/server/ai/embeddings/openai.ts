@@ -50,6 +50,8 @@ export async function embedBatch(texts: string[]): Promise<EmbeddingResult> {
     }
     if (payloadInputs.length === 0) continue;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
     try {
       const res = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",
@@ -61,6 +63,7 @@ export async function embedBatch(texts: string[]): Promise<EmbeddingResult> {
           model: EMBEDDING_MODEL,
           input: payloadInputs,
         }),
+        signal: controller.signal,
       });
       if (!res.ok) {
         const body = await res.text().catch(() => "");
@@ -82,6 +85,8 @@ export async function embedBatch(texts: string[]): Promise<EmbeddingResult> {
         `[embeddings] fetch failed: ${err instanceof Error ? err.message : String(err)}`
       );
       continue;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
