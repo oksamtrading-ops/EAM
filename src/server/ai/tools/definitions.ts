@@ -128,9 +128,9 @@ const listIntakeDrafts: ToolDefinition = {
 const acceptIntakeDraft: ToolDefinition = {
   name: "accept_intake_draft",
   description:
-    "Accept an intake draft, committing it as a real record (capability, application, risk, or vendor). ALWAYS confirm with the user before calling this tool.",
+    "Accept an intake draft, committing it as a real record (capability, application, risk, or vendor). The `id` parameter MUST be the `id` string from a prior list_intake_drafts result (not `draftId`, not the entity name). ALWAYS confirm with the user before calling this tool.",
   inputSchema: z.object({
-    id: z.string(),
+    id: z.string().describe("The draft's `id` field from list_intake_drafts."),
     overrides: z.record(z.string(), z.unknown()).optional(),
   }),
   invoke: (caller, input) => caller.intake.acceptDraft(input),
@@ -140,9 +140,9 @@ const acceptIntakeDraft: ToolDefinition = {
 const rejectIntakeDraft: ToolDefinition = {
   name: "reject_intake_draft",
   description:
-    "Reject an intake draft. ALWAYS confirm with the user before calling this tool.",
+    "Reject an intake draft. The `id` parameter MUST be the `id` string from a prior list_intake_drafts result (not `draftId`, not the entity name). ALWAYS confirm with the user before calling this tool.",
   inputSchema: z.object({
-    id: z.string(),
+    id: z.string().describe("The draft's `id` field from list_intake_drafts."),
     reason: z.string().optional(),
   }),
   invoke: (caller, input) => caller.intake.rejectDraft(input),
@@ -152,9 +152,9 @@ const rejectIntakeDraft: ToolDefinition = {
 const modifyIntakeDraft: ToolDefinition = {
   name: "modify_intake_draft",
   description:
-    "Update an intake draft's payload (marks status as MODIFIED, does not commit). ALWAYS confirm with the user before calling this tool.",
+    "Update an intake draft's payload (marks status as MODIFIED, does not commit). The `id` parameter MUST be the `id` string from a prior list_intake_drafts result (not `draftId`, not the entity name). ALWAYS confirm with the user before calling this tool.",
   inputSchema: z.object({
-    id: z.string(),
+    id: z.string().describe("The draft's `id` field from list_intake_drafts."),
     payload: z.record(z.string(), z.unknown()),
   }),
   invoke: (caller, input) => caller.intake.modifyDraft(input),

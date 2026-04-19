@@ -46,7 +46,7 @@ export async function executeTool(
   if (!parsed.success) {
     return {
       ok: false,
-      error: `Invalid input for ${toolName}: ${parsed.error.message}`,
+      error: buildValidationError(toolName, sanitized, parsed.error),
     };
   }
 
@@ -62,6 +62,51 @@ export async function executeTool(
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+/**
+ * Build a didactic error message when a tool's Zod validation fails so the
+ * model can self-correct on the next turn. Lists the expected field names,
+ * which ones are missing, and which unexpected keys the model sent.
+ */
+function buildValidationError(
+  toolName: string,
+  input: unknown,
+  error: { issues?: ReadonlyArray<{ path?: PropertyKey[]; message?: string; code?: string }> }
+): string {
+  const issues = error.issues ?? [];
+  const provided =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? Object.keys(input as Record<string, unknown>)
+      : [];
+
+  const missing = Array.from(
+    new Set(
+      issues
+        .filter((i) => i.code === "invalid_type" && i.message?.toLowerCase().includes("received undefined"))
+        .map((i) => String(i.path?.[0] ?? ""))
+        .filter(Boolean)
+    )
+  );
+
+  const details = issues
+    .map((i) => {
+      const path = (i.path ?? []).join(".") || "(root)";
+      return `${path}: ${i.message ?? "invalid"}`;
+    })
+    .join("; ");
+
+  const parts = [`Invalid input for ${toolName}.`, details];
+  if (missing.length > 0) {
+    parts.push(`Missing required field(s): ${missing.join(", ")}.`);
+  }
+  if (provided.length > 0) {
+    parts.push(`You sent keys: [${provided.join(", ")}].`);
+  }
+  parts.push(
+    "Check the tool's inputSchema and use the exact parameter names (e.g. `id`, not `draftId` or the entity name)."
+  );
+  return parts.join(" ");
 }
 
 function sanitizeInput(input: unknown): unknown {
