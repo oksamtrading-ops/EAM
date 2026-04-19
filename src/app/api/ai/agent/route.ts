@@ -130,10 +130,27 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
+      // Tracks whether the SSE controller is still accepting writes.
+      // When the browser disconnects mid-stream (navigating away,
+      // closing the console, mobile backgrounding), controller.enqueue
+      // throws. We swallow that — the agent run still completes on
+      // the server and gets persisted; the client just missed the tail
+      // of the stream and can re-open the thread to see the full
+      // answer hydrated from the DB.
+      let clientConnected = true;
+
       const send = (event: AgentEvent) => {
-        controller.enqueue(
-          encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
-        );
+        if (clientConnected) {
+          try {
+            controller.enqueue(
+              encoder.encode(
+                `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`
+              )
+            );
+          } catch {
+            clientConnected = false;
+          }
+        }
 
         // Snapshot to persist as the assistant message
         if (event.type === "tool_call") {
@@ -222,7 +239,13 @@ export async function POST(req: Request) {
         } catch {
           // Non-fatal — the trace is still in AgentRun/AgentRunStep.
         }
-        controller.close();
+        if (clientConnected) {
+          try {
+            controller.close();
+          } catch {
+            // Client already went away; nothing to close.
+          }
+        }
       }
     },
   });
