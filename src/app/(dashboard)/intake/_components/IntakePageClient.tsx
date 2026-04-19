@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { UploadDialog } from "./UploadDialog";
 import { DraftCard, type DraftStatusFilter } from "./DraftCard";
 import { IntakeDraftPanel } from "./IntakeDraftPanel";
-import { AgentConsole } from "@/components/shared/AgentConsole";
 
 type EntityTypeFilter =
   | "ALL"
@@ -22,7 +21,6 @@ type EntityTypeFilter =
 
 export function IntakePageClient() {
   const [showUpload, setShowUpload] = useState(false);
-  const [showAgent, setShowAgent] = useState(false);
   const [statusFilter, setStatusFilter] = useState<DraftStatusFilter>("PENDING");
   const [entityFilter, setEntityFilter] = useState<EntityTypeFilter>("ALL");
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
@@ -80,12 +78,6 @@ export function IntakePageClient() {
     drafts?.find((d) => d.id === selectedDraftId) ?? null;
 
   const overflowActions: OverflowAction[] = [
-    {
-      label: "Agent Console",
-      icon: <Sparkles className="h-4 w-4" />,
-      onClick: () => setShowAgent(true),
-      active: showAgent,
-    },
     {
       label: "Accept all ≥90%",
       icon: <Sparkles className="h-4 w-4" />,
@@ -216,8 +208,6 @@ export function IntakePageClient() {
           utils.intake.listDocuments.invalidate();
         }}
       />
-
-      <AgentConsole open={showAgent} onOpenChange={setShowAgent} />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
 import { CmdPaletteProvider } from "./CmdPaletteProvider";
 import { SidebarSearchPill } from "./PageSearchTrigger";
+import { AgentConsoleLauncher } from "@/components/shared/AgentConsoleLauncher";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -239,6 +240,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           open={showCreate}
           onClose={() => setShowCreate(false)}
         />
+
+        {/* Global agent console — floating launcher + overlay panel */}
+        <AgentConsoleLauncher />
       </div>
     </CmdPaletteProvider>
   );

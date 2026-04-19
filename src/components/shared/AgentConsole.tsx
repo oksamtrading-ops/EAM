@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
+import { renderMarkdown } from "@/lib/utils/markdown";
 
 type ToolCall = {
   id: string;
@@ -303,11 +304,15 @@ function TurnView({ turn }: { turn: Turn }) {
       {(turn.text || turn.error) && (
         <div
           className={cn(
-            "rounded-2xl rounded-bl-md bg-card border px-3 py-2 text-sm",
+            "rounded-2xl rounded-bl-md bg-card border px-3 py-2 text-sm leading-relaxed",
             turn.error && "border-red-200 bg-red-50/50 text-red-900"
           )}
         >
-          {turn.text}
+          {turn.text && (
+            <span className="inline prose-sm">
+              {renderMarkdown(turn.text)}
+            </span>
+          )}
           {!turn.done && !turn.error && (
             <span className="inline-block w-1.5 h-3 bg-foreground/50 ml-0.5 animate-pulse align-middle" />
           )}
