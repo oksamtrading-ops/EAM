@@ -260,6 +260,8 @@ export function AgentConsole({
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let receivedFinal = false;
+        let activeConversationId: string | null = conversationId;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -274,14 +276,45 @@ export function AgentConsole({
             if (!dataLine) continue;
             const payload = JSON.parse(dataLine.slice(6));
             if (payload.type === "conversation_ready") {
+              activeConversationId = payload.conversationId;
               if (!conversationId) {
                 setConversationId(payload.conversationId);
                 onConversationChange?.(payload.conversationId);
               }
               setConversationTitle(payload.title);
+            } else if (payload.type === "final") {
+              receivedFinal = true;
+              applyEvent(assistantTurnId, payload, setTurns);
             } else {
               applyEvent(assistantTurnId, payload, setTurns);
             }
+          }
+        }
+
+        // Fallback: if the stream ended without a `final` event (idle
+        // proxy disconnect, mobile backgrounded, etc.) but the server
+        // run actually completed, hydrate from the DB so the user
+        // sees the answer instead of an empty assistant bubble.
+        if (!receivedFinal && activeConversationId) {
+          const fresh = await utils.agentConversation.getById
+            .fetch({ id: activeConversationId })
+            .catch(() => null);
+          const lastAssistant = fresh?.messages
+            ?.slice()
+            ?.reverse()
+            ?.find((m) => m.role === "assistant");
+          if (lastAssistant?.content) {
+            setTurns((t) =>
+              t.map((turn) =>
+                turn.id === assistantTurnId
+                  ? {
+                      ...turn,
+                      text: lastAssistant.content,
+                      done: true,
+                    }
+                  : turn
+              )
+            );
           }
         }
       } catch (err) {

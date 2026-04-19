@@ -139,6 +139,21 @@ export async function POST(req: Request) {
       // answer hydrated from the DB.
       let clientConnected = true;
 
+      // Keepalive: each tool-use iteration can take 15-30s with no
+      // outgoing events (Anthropic's messages.create is non-streaming
+      // in our loop). Idle SSE connections get killed by some proxies
+      // and browser heuristics after ~30s. Emit a comment frame every
+      // 10s to keep the socket warm. SSE comments start with ":" and
+      // are ignored by client parsers.
+      const heartbeat = setInterval(() => {
+        if (!clientConnected) return;
+        try {
+          controller.enqueue(encoder.encode(`: keepalive\n\n`));
+        } catch {
+          clientConnected = false;
+        }
+      }, 10_000);
+
       const send = (event: AgentEvent) => {
         if (clientConnected) {
           try {
@@ -239,6 +254,7 @@ export async function POST(req: Request) {
         } catch {
           // Non-fatal — the trace is still in AgentRun/AgentRunStep.
         }
+        clearInterval(heartbeat);
         if (clientConnected) {
           try {
             controller.close();
