@@ -329,13 +329,15 @@ export function AgentConsole({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {turns.length > 0 && (
+            {conversationId && turns.length > 0 && (
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => exportThreadToMarkdown(conversationTitle, turns)}
-                aria-label="Download thread as markdown"
-                title="Download thread (Markdown)"
+                onClick={() =>
+                  downloadThreadAsDocx(conversationId, conversationTitle)
+                }
+                aria-label="Download thread as Word document"
+                title="Download thread (Word .docx)"
               >
                 <Download className="h-4 w-4" />
               </Button>
@@ -647,52 +649,30 @@ function ToolCallCard({ call }: { call: ToolCall }) {
   );
 }
 
-function exportThreadToMarkdown(title: string, turns: Turn[]) {
-  const lines: string[] = [];
-  lines.push(`# ${title}`);
-  lines.push("");
-  lines.push(`_Exported ${new Date().toLocaleString()}_`);
-  lines.push("");
-
-  for (const turn of turns) {
-    if (turn.role === "user") {
-      lines.push(`## 🧑 You`);
-      lines.push("");
-      lines.push(turn.text);
-      lines.push("");
-    } else {
-      lines.push(`## ✨ Agent`);
-      lines.push("");
-      if (turn.toolCalls.length > 0) {
-        lines.push("**Tools used:**");
-        for (const c of turn.toolCalls) {
-          const badge =
-            c.status === "ok" ? "✓" : c.status === "error" ? "✗" : "…";
-          lines.push(`- ${badge} \`${c.name}\``);
-        }
-        lines.push("");
-      }
-      if (turn.text) {
-        lines.push(turn.text);
-        lines.push("");
-      }
-      if (turn.error) {
-        lines.push(`> ⚠️ Error: ${turn.error}`);
-        lines.push("");
-      }
+async function downloadThreadAsDocx(conversationId: string, title: string) {
+  try {
+    const res = await fetch("/api/export/agent-conversation-docx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId }),
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "Export failed");
+      toast.error(msg || "Export failed");
+      return;
     }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slugify(title)}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "Export failed");
   }
-
-  const md = lines.join("\n");
-  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${slugify(title)}.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function slugify(s: string): string {
