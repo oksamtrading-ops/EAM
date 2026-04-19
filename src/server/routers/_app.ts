@@ -28,6 +28,7 @@ import { technologyDependencyRouter } from "./technologyDependency";
 import { technologyStandardRouter } from "./technologyStandard";
 import { referenceArchitectureRouter } from "./referenceArchitecture";
 import { techArchitectureRouter } from "./techArchitecture";
+import { intakeRouter } from "./intake";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -59,6 +60,7 @@ export const appRouter = router({
   technologyStandard: technologyStandardRouter,
   referenceArchitecture: referenceArchitectureRouter,
   techArchitecture: techArchitectureRouter,
+  intake: intakeRouter,
 });
 
 export type AppRouter = typeof appRouter;

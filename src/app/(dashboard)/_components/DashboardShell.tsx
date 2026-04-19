@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Database,
   Layers,
+  Inbox,
   Menu,
   X,
   ChevronsLeft,
@@ -30,6 +31,7 @@ const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Capabilities", href: "/capabilities", icon: Network },
   { label: "Applications", href: "/applications", icon: AppWindow },
+  { label: "Intake", href: "/intake", icon: Inbox, ai: true },
   { label: "Data", href: "/data", icon: Database },
   { label: "Tech Architecture", href: "/tech-architecture", icon: Layers },
   { label: "Roadmap", href: "/roadmap", icon: Map },
@@ -163,12 +165,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   {isActive && (
                     <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-white/80 rounded-r-full" />
                   )}
-                  <item.icon
-                    className={cn(
-                      "h-[18px] w-[18px] shrink-0",
-                      isActive ? "text-white" : "text-[var(--sidebar-muted-foreground)]"
+                  <span className="relative shrink-0">
+                    <item.icon
+                      className={cn(
+                        "h-[18px] w-[18px]",
+                        isActive ? "text-white" : "text-[var(--sidebar-muted-foreground)]"
+                      )}
+                    />
+                    {item.ai && (
+                      <span
+                        className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[var(--ai)]"
+                        aria-hidden
+                      />
                     )}
-                  />
+                  </span>
                   {(sidebarExpanded || sidebarOpen) && (
                     <span className="whitespace-nowrap">{item.label}</span>
                   )}

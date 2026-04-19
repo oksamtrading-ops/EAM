@@ -14,6 +14,10 @@ export function deepLink(entityType: string, entityId: string): string {
       return `/risk?view=eol`;
     case "TechRadarEntry":
       return `/risk?view=radar`;
+    case "IntakeDocument":
+      return `/intake?documentId=${entityId}`;
+    case "IntakeDraft":
+      return `/intake?draftId=${entityId}`;
     default:
       return `/`;
   }
