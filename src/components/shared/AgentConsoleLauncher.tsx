@@ -3,14 +3,47 @@
 import { useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { AgentConsole } from "./AgentConsole";
+import { useWorkspace } from "@/hooks/useWorkspace";
+
+const STORAGE_KEY_PREFIX = "eam.agentConsole.lastThread.";
 
 /**
  * Floating AI button that opens the shared AgentConsole.
  * Mounted once in the dashboard shell so every page has an "ask the agent"
  * affordance. Keyboard shortcut: Cmd/Ctrl + Shift + A.
+ * Remembers the last-opened conversation per workspace in localStorage.
  */
 export function AgentConsoleLauncher() {
+  const { workspaceId } = useWorkspace();
   const [open, setOpen] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  const storageKey = `${STORAGE_KEY_PREFIX}${workspaceId}`;
+
+  // Restore the last-opened thread id for this workspace.
+  useEffect(() => {
+    if (!workspaceId) return;
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      setConversationId(stored ?? null);
+    } catch {
+      // ignore storage errors
+    }
+  }, [workspaceId, storageKey]);
+
+  // Persist whenever the active thread changes.
+  const handleConversationChange = useCallback(
+    (id: string | null) => {
+      setConversationId(id);
+      try {
+        if (id) window.localStorage.setItem(storageKey, id);
+        else window.localStorage.removeItem(storageKey);
+      } catch {
+        // ignore storage errors
+      }
+    },
+    [storageKey]
+  );
 
   const toggle = useCallback(() => setOpen((v) => !v), []);
 
@@ -40,7 +73,12 @@ export function AgentConsoleLauncher() {
           <span className="sr-only">Open Agent Console</span>
         </button>
       )}
-      <AgentConsole open={open} onOpenChange={setOpen} />
+      <AgentConsole
+        open={open}
+        onOpenChange={setOpen}
+        conversationId={conversationId}
+        onConversationChange={handleConversationChange}
+      />
     </>
   );
 }

@@ -14,6 +14,7 @@ export const MAX_TOOL_ITERATIONS = 6;
 
 export type AgentEvent =
   | { type: "run_started"; runId: string }
+  | { type: "conversation_ready"; conversationId: string; title: string }
   | { type: "text_delta"; text: string }
   | { type: "tool_call"; id: string; name: string; input: unknown }
   | { type: "tool_result"; id: string; name: string; ok: boolean; output: unknown }
@@ -37,6 +38,10 @@ export type AgentLoopOptions = {
   toolFilter?: (name: string) => boolean;
   workspaceId: string;
   userId: string;
+  /** Link this run to an AgentConversation so it's discoverable from the thread. */
+  conversationId?: string;
+  /** Link this run as a sub-run of another run (Phase B — multi-agent orchestration). */
+  parentRunId?: string;
   onEvent?: (event: AgentEvent) => void;
 };
 
@@ -63,6 +68,8 @@ export async function runAgentLoop(
     toolFilter,
     workspaceId,
     userId,
+    conversationId,
+    parentRunId,
     onEvent,
   } = opts;
 
@@ -79,6 +86,8 @@ export async function runAgentLoop(
       inputHash,
       promptVersion,
       model,
+      conversationId: conversationId ?? null,
+      parentRunId: parentRunId ?? null,
     },
     select: { id: true },
   });

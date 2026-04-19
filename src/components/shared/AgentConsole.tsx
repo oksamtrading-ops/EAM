@@ -11,12 +11,17 @@ import {
   Wrench,
   CheckCircle2,
   AlertCircle,
+  Plus,
+  MessageSquare,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
 import { renderMarkdown } from "@/lib/utils/markdown";
+import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
 
 type ToolCall = {
   id: string;
@@ -38,15 +43,91 @@ type Turn = {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When provided, the console loads this thread on mount. */
+  conversationId?: string | null;
+  /** Called when a conversation id becomes known (created server-side on first send, or switched via picker). */
+  onConversationChange?: (id: string | null) => void;
 };
 
-export function AgentConsole({ open, onOpenChange }: Props) {
+export function AgentConsole({
+  open,
+  onOpenChange,
+  conversationId: externalConversationId,
+  onConversationChange,
+}: Props) {
   const { workspaceId } = useWorkspace();
+  const [conversationId, setConversationId] = useState<string | null>(
+    externalConversationId ?? null
+  );
+  const [conversationTitle, setConversationTitle] = useState<string>("New thread");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const utils = trpc.useUtils();
+  const convoList = trpc.agentConversation.list.useQuery(
+    { limit: 30 },
+    { enabled: open }
+  );
+  const loadedConvo = trpc.agentConversation.getById.useQuery(
+    { id: conversationId ?? "" },
+    { enabled: !!conversationId && open }
+  );
+  const deleteConvo = trpc.agentConversation.delete.useMutation({
+    onSuccess: () => {
+      utils.agentConversation.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Track external id changes (e.g., launcher resumes last thread).
+  useEffect(() => {
+    if (externalConversationId !== undefined) {
+      setConversationId(externalConversationId);
+    }
+  }, [externalConversationId]);
+
+  // Hydrate turns from the loaded conversation's persisted messages.
+  useEffect(() => {
+    if (!loadedConvo.data) return;
+    const hydrated: Turn[] = loadedConvo.data.messages.map((m) => {
+      const toolCalls = Array.isArray(m.toolCalls)
+        ? (m.toolCalls as Array<{
+            id: string;
+            name: string;
+            input: unknown;
+            ok?: boolean;
+            output?: unknown;
+          }>).map((c) => ({
+            id: c.id,
+            name: c.name,
+            input: c.input,
+            status: (c.ok === false ? "error" : "ok") as ToolCall["status"],
+            output: c.output,
+          }))
+        : [];
+      return {
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        text: m.content,
+        toolCalls,
+        done: true,
+      };
+    });
+    setTurns(hydrated);
+    setConversationTitle(loadedConvo.data.title);
+  }, [loadedConvo.data]);
+
+  // When no conversation is loaded, reset to empty thread.
+  useEffect(() => {
+    if (conversationId == null) {
+      setTurns([]);
+      setConversationTitle("New thread");
+    }
+  }, [conversationId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -56,19 +137,25 @@ export function AgentConsole({ open, onOpenChange }: Props) {
   }, [turns]);
 
   useEffect(() => {
-    if (!open) abortRef.current?.abort();
+    if (!open) {
+      abortRef.current?.abort();
+      setShowPicker(false);
+    }
   }, [open]);
+
+  const switchTo = useCallback(
+    (id: string | null) => {
+      abortRef.current?.abort();
+      setConversationId(id);
+      setShowPicker(false);
+      onConversationChange?.(id);
+    },
+    [onConversationChange]
+  );
 
   const send = useCallback(
     async (message: string) => {
       if (!message.trim() || streaming) return;
-
-      // Snapshot prior turns as history BEFORE we append the new pair.
-      // Only include completed turns with text content (no tool-only
-      // assistant turns, no in-flight assistants, no errored turns).
-      const history = turns
-        .filter((t) => t.done && !t.error && t.text.trim().length > 0)
-        .map((t) => ({ role: t.role, text: t.text }));
 
       const userTurnId = crypto.randomUUID();
       const assistantTurnId = crypto.randomUUID();
@@ -103,7 +190,7 @@ export function AgentConsole({ open, onOpenChange }: Props) {
           body: JSON.stringify({
             workspaceId,
             message,
-            history: history.map((h) => ({ role: h.role, content: h.text })),
+            conversationId: conversationId ?? undefined,
           }),
           signal: ctrl.signal,
         });
@@ -127,7 +214,15 @@ export function AgentConsole({ open, onOpenChange }: Props) {
             const dataLine = raw.split("\n").find((l) => l.startsWith("data: "));
             if (!dataLine) continue;
             const payload = JSON.parse(dataLine.slice(6));
-            applyEvent(assistantTurnId, payload, setTurns);
+            if (payload.type === "conversation_ready") {
+              if (!conversationId) {
+                setConversationId(payload.conversationId);
+                onConversationChange?.(payload.conversationId);
+              }
+              setConversationTitle(payload.title);
+            } else {
+              applyEvent(assistantTurnId, payload, setTurns);
+            }
           }
         }
       } catch (err) {
@@ -142,59 +237,125 @@ export function AgentConsole({ open, onOpenChange }: Props) {
       } finally {
         setStreaming(false);
         abortRef.current = null;
+        // Refresh thread list so the newly-created convo appears and timestamps update.
+        utils.agentConversation.list.invalidate();
       }
     },
-    [workspaceId, streaming, turns]
+    [workspaceId, streaming, conversationId, onConversationChange, utils]
   );
 
   if (!open) return null;
 
   return (
     <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
-      <div className="px-5 py-4 border-b flex items-center justify-between bg-gradient-to-r from-[var(--ai)]/10 to-transparent">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-[var(--ai)]" />
+      <div className="px-5 py-4 border-b bg-gradient-to-r from-[var(--ai)]/10 to-transparent relative">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center shrink-0">
+              <Sparkles className="h-4 w-4 text-[var(--ai)]" />
+            </div>
+            <button
+              onClick={() => setShowPicker((v) => !v)}
+              className="flex items-center gap-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+              title="Switch thread"
+            >
+              <div className="min-w-0">
+                <h2 className="font-bold text-sm text-foreground truncate">
+                  {conversationTitle}
+                </h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Agent Console · click to switch
+                </p>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            </button>
           </div>
-          <div>
-            <h2 className="font-bold text-sm text-foreground">Agent Console</h2>
-            <p className="text-[11px] text-muted-foreground">
-              Tool-grounded questions over your workspace
-            </p>
-          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => onOpenChange(false)}
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+
+        {showPicker && (
+          <div className="absolute left-4 right-4 top-full mt-1 rounded-lg border bg-card shadow-xl z-10 max-h-80 overflow-y-auto">
+            <button
+              onClick={() => switchTo(null)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b text-[var(--ai)]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New thread
+            </button>
+            {convoList.data && convoList.data.length > 0 ? (
+              convoList.data.map((c) => (
+                <div
+                  key={c.id}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b last:border-b-0 group",
+                    c.id === conversationId && "bg-[var(--ai)]/5"
+                  )}
+                >
+                  <button
+                    onClick={() => switchTo(c.id)}
+                    className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-foreground">{c.title}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {c._count.messages} message
+                        {c._count.messages === 1 ? "" : "s"} ·{" "}
+                        {formatRelative(c.updatedAt)}
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!window.confirm(`Delete thread "${c.title}"?`)) return;
+                      if (c.id === conversationId) switchTo(null);
+                      deleteConvo.mutate({ id: c.id });
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all shrink-0"
+                    aria-label={`Delete ${c.title}`}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="px-3 py-3 text-xs text-muted-foreground text-center">
+                No prior threads
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {turns.length === 0 && (
-            <div className="text-center text-xs text-muted-foreground pt-8">
-              <p className="mb-2">Ask about your portfolio, risks, or capabilities.</p>
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {SAMPLE_PROMPTS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => send(p)}
-                    className="text-[11px] px-2 py-1 rounded-md border bg-background hover:bg-[var(--ai)]/5 hover:border-[var(--ai)]/40 transition-colors"
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
+        {turns.length === 0 && (
+          <div className="text-center text-xs text-muted-foreground pt-8">
+            <p className="mb-2">Ask about your portfolio, risks, or capabilities.</p>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {SAMPLE_PROMPTS.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => send(p)}
+                  className="text-[11px] px-2 py-1 rounded-md border bg-background hover:bg-[var(--ai)]/5 hover:border-[var(--ai)]/40 transition-colors"
+                >
+                  {p}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {turns.map((turn) => (
-            <TurnView key={turn.id} turn={turn} />
-          ))}
-        </div>
+        {turns.map((turn) => (
+          <TurnView key={turn.id} turn={turn} />
+        ))}
+      </div>
 
       <form
         onSubmit={(e) => {
@@ -369,4 +530,14 @@ function ToolCallCard({ call }: { call: ToolCall }) {
       )}
     </div>
   );
+}
+
+function formatRelative(d: Date | string): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const diff = Date.now() - date.getTime();
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  return date.toLocaleDateString();
 }

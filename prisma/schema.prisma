@@ -295,6 +295,7 @@ model User {
   ownedTechnologyComponents   TechnologyComponent[]  @relation("TechnologyComponentOwner")
   ownedTechnologyStandards    TechnologyStandard[]   @relation("TechnologyStandardOwner")
   ownedReferenceArchitectures ReferenceArchitecture[] @relation("ReferenceArchitectureOwner")
+  agentConversations          AgentConversation[]
 
   @@map("users")
 }
@@ -361,6 +362,7 @@ model Workspace {
   intakeDocuments        IntakeDocument[]
   intakeDrafts           IntakeDraft[]
   agentRuns              AgentRun[]
+  agentConversations     AgentConversation[]
 
   @@map("workspaces")
 }
@@ -2148,7 +2150,9 @@ model IntakeDraft {
 model AgentRun {
   id             String         @id @default(cuid())
   workspaceId    String
-  kind           String         // "palette" | "intake" | "rationalization-critic"
+  conversationId String?
+  parentRunId    String?
+  kind           String         // "palette" | "intake" | "rationalization-critic" | "console" | "sub-agent:*"
   status         AgentRunStatus @default(RUNNING)
   inputHash      String
   promptVersion  String?
@@ -2159,10 +2163,16 @@ model AgentRun {
   startedAt      DateTime       @default(now())
   endedAt        DateTime?
 
-  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  steps     AgentRunStep[]
+  workspace    Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversation AgentConversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  parent       AgentRun?                 @relation("AgentRunSubRuns", fields: [parentRunId], references: [id], onDelete: Cascade)
+  subRuns      AgentRun[]                @relation("AgentRunSubRuns")
+  messages     AgentConversationMessage[]
+  steps        AgentRunStep[]
 
   @@index([workspaceId, kind, startedAt])
+  @@index([conversationId])
+  @@index([parentRunId])
   @@map("agent_runs")
 }
 
@@ -2180,5 +2190,41 @@ model AgentRunStep {
 
   @@index([runId, ordinal])
   @@map("agent_run_steps")
+}
+
+model AgentConversation {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  title       String
+  kind        String   @default("console")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AgentConversationMessage[]
+  runs      AgentRun[]
+
+  @@index([workspaceId, updatedAt])
+  @@index([userId, updatedAt])
+  @@map("agent_conversations")
+}
+
+model AgentConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  ordinal        Int
+  role           String   // "user" | "assistant"
+  content        String
+  toolCalls      Json?    // assistant turns: [{ id, name, input, ok, output? }]
+  runId          String?
+  createdAt      DateTime @default(now())
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  run          AgentRun?         @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, ordinal])
+  @@map("agent_conversation_messages")
 }
 
