@@ -292,25 +292,52 @@ export function AgentConsole({
         }
 
         // Fallback: if the stream ended without a `final` event (idle
-        // proxy disconnect, mobile backgrounded, etc.) but the server
-        // run actually completed, hydrate from the DB so the user
-        // sees the answer instead of an empty assistant bubble.
+        // proxy disconnect, mobile backgrounded, etc.), poll the DB for
+        // up to ~90s for the persisted assistant message. The server's
+        // agent loop may still be running when our stream EOFs; we need
+        // to wait for it to finish its finally block and write the row.
         if (!receivedFinal && activeConversationId) {
-          const fresh = await utils.agentConversation.getById
-            .fetch({ id: activeConversationId })
-            .catch(() => null);
-          const lastAssistant = fresh?.messages
-            ?.slice()
-            ?.reverse()
-            ?.find((m) => m.role === "assistant");
-          if (lastAssistant?.content) {
+          const convoId = activeConversationId;
+          const startedAt = Date.now();
+          const deadline = startedAt + 90_000;
+          const delays = [500, 1000, 2000, 3000, 5000, 8000, 10_000];
+          let attempt = 0;
+          let hydrated = false;
+
+          while (Date.now() < deadline) {
+            const fresh = await utils.agentConversation.getById
+              .fetch({ id: convoId })
+              .catch(() => null);
+            const lastAssistant = fresh?.messages
+              ?.slice()
+              ?.reverse()
+              ?.find((m) => m.role === "assistant" && m.content?.trim());
+            if (lastAssistant?.content) {
+              setTurns((t) =>
+                t.map((turn) =>
+                  turn.id === assistantTurnId
+                    ? { ...turn, text: lastAssistant.content, done: true }
+                    : turn
+                )
+              );
+              hydrated = true;
+              break;
+            }
+            await new Promise((r) =>
+              setTimeout(r, delays[Math.min(attempt, delays.length - 1)] ?? 10_000)
+            );
+            attempt++;
+          }
+
+          if (!hydrated) {
             setTurns((t) =>
               t.map((turn) =>
                 turn.id === assistantTurnId
                   ? {
                       ...turn,
-                      text: lastAssistant.content,
                       done: true,
+                      error:
+                        "Stream dropped and the answer didn't persist within 90s. Check the run trace via the settings menu → Run traces.",
                     }
                   : turn
               )
