@@ -248,27 +248,33 @@ export function AgentConsole({
 
   return (
     <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
-      <div className="px-5 py-4 border-b bg-gradient-to-r from-[var(--ai)]/10 to-transparent relative">
+      <div className="px-5 py-3.5 border-b bg-gradient-to-r from-[var(--ai)]/10 to-transparent relative">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="h-8 w-8 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center shrink-0">
               <Sparkles className="h-4 w-4 text-[var(--ai)]" />
             </div>
-            <button
-              onClick={() => setShowPicker((v) => !v)}
-              className="flex items-center gap-1 min-w-0 text-left hover:opacity-80 transition-opacity"
-              title="Switch thread"
-            >
-              <div className="min-w-0">
-                <h2 className="font-bold text-sm text-foreground truncate">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ai)]/80 leading-none mb-1">
+                Agent Console
+              </p>
+              <button
+                onClick={() => setShowPicker((v) => !v)}
+                aria-expanded={showPicker}
+                title="Switch thread"
+                className="group flex items-center gap-1 max-w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-[var(--ai)]/5 transition-colors"
+              >
+                <h2 className="font-semibold text-[13px] text-foreground truncate">
                   {conversationTitle}
                 </h2>
-                <p className="text-[11px] text-muted-foreground">
-                  Agent Console · click to switch
-                </p>
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            </button>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform",
+                    showPicker && "rotate-180"
+                  )}
+                />
+              </button>
+            </div>
           </div>
           <Button
             size="icon"
@@ -281,10 +287,10 @@ export function AgentConsole({
         </div>
 
         {showPicker && (
-          <div className="absolute left-4 right-4 top-full mt-1 rounded-lg border bg-card shadow-xl z-10 max-h-80 overflow-y-auto">
+          <div className="absolute left-4 right-4 top-full mt-1 rounded-lg border bg-popover shadow-xl z-[60] max-h-80 overflow-y-auto backdrop-blur-none">
             <button
               onClick={() => switchTo(null)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b text-[var(--ai)]"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b text-[var(--ai)]"
             >
               <Plus className="h-3.5 w-3.5" />
               New thread
@@ -294,8 +300,8 @@ export function AgentConsole({
                 <div
                   key={c.id}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-b last:border-b-0 group",
-                    c.id === conversationId && "bg-[var(--ai)]/5"
+                    "flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b last:border-b-0 group",
+                    c.id === conversationId && "bg-[var(--ai)]/10"
                   )}
                 >
                   <button
@@ -326,7 +332,7 @@ export function AgentConsole({
                 </div>
               ))
             ) : (
-              <p className="px-3 py-3 text-xs text-muted-foreground text-center">
+              <p className="px-3 py-3 text-xs text-muted-foreground text-center bg-popover">
                 No prior threads
               </p>
             )}
