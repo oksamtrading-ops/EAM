@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -8,10 +9,13 @@ import {
   Loader2,
   Clock,
   XCircle,
+  Network,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const STATUS_META: Record<
   string,
@@ -39,21 +43,82 @@ const STATUS_META: Record<
   },
 };
 
+const PAGE_SIZE = 50;
+
 export function AgentRunsListClient() {
-  const { data: runs, isLoading } = trpc.agentRun.list.useQuery({ limit: 100 });
+  const [kind, setKind] = useState<string>("ALL");
+  const [hideSubRuns, setHideSubRuns] = useState<boolean>(true);
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+
+  const cursor = cursorStack[cursorStack.length - 1];
+  const { data: kindRows } = trpc.agentRun.listKinds.useQuery();
+  const { data, isLoading } = trpc.agentRun.list.useQuery({
+    limit: PAGE_SIZE,
+    cursor,
+    ...(kind === "ALL" ? {} : { kind }),
+    hideSubRuns,
+  });
+
+  const runs = data?.items ?? [];
+  const nextCursor = data?.nextCursor ?? null;
+  const currentPage = cursorStack.length + 1;
+
+  function nextPage() {
+    if (nextCursor) setCursorStack((s) => [...s, nextCursor]);
+  }
+  function prevPage() {
+    setCursorStack((s) => s.slice(0, -1));
+  }
+  function resetPagination() {
+    setCursorStack([]);
+  }
 
   return (
     <div className="flex h-full flex-col">
       <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5">
-        <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
-          <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 text-[var(--ai)]" />
-          </span>
-          Agent Runs
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {runs?.length ?? 0} runs · click one to inspect the trace
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+              <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+                <Sparkles className="h-3.5 w-3.5 text-[var(--ai)]" />
+              </span>
+              Agent Runs
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Page {currentPage} · {runs.length} run
+              {runs.length === 1 ? "" : "s"} · click one to inspect the trace
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hideSubRuns}
+                onChange={(e) => {
+                  setHideSubRuns(e.target.checked);
+                  resetPagination();
+                }}
+                className="h-3 w-3 accent-[var(--ai)]"
+              />
+              Hide sub-runs
+            </label>
+            <select
+              value={kind}
+              onChange={(e) => {
+                setKind(e.target.value);
+                resetPagination();
+              }}
+              className="text-xs border rounded-md px-2 py-1 bg-background"
+            >
+              <option value="ALL">All kinds</option>
+              {(kindRows ?? []).map((k) => (
+                <option key={k.kind} value={k.kind}>
+                  {k.kind} ({k.count})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -61,12 +126,12 @@ export function AgentRunsListClient() {
           <p className="text-sm text-muted-foreground text-center pt-8">
             Loading runs…
           </p>
-        ) : !runs || runs.length === 0 ? (
+        ) : runs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center pt-8">
-            No agent runs yet. Try the Agent Console or a Rationalization critic.
+            No agent runs match this filter.
           </p>
         ) : (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto space-y-3">
             <div className="rounded-lg border bg-card overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -75,13 +140,17 @@ export function AgentRunsListClient() {
                     <th className="text-left px-3 py-2 font-medium">Kind</th>
                     <th className="text-left px-3 py-2 font-medium">Started</th>
                     <th className="text-right px-3 py-2 font-medium">Steps</th>
+                    <th className="text-right px-3 py-2 font-medium">
+                      Sub-runs
+                    </th>
                     <th className="text-right px-3 py-2 font-medium">Tokens</th>
                     <th className="text-right px-3 py-2 font-medium">Model</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {runs.map((run) => {
-                    const meta = STATUS_META[run.status] ?? STATUS_META.RUNNING;
+                    const meta =
+                      STATUS_META[run.status] ?? STATUS_META.RUNNING;
                     const Icon = meta.icon;
                     return (
                       <tr
@@ -112,8 +181,14 @@ export function AgentRunsListClient() {
                         <td className="px-3 py-2">
                           <Link
                             href={`/agents/runs/${run.id}`}
-                            className="font-mono text-xs text-[var(--ai)] hover:underline"
+                            className="font-mono text-xs text-[var(--ai)] hover:underline inline-flex items-center gap-1"
                           >
+                            {run.parentRunId && (
+                              <Network
+                                className="h-3 w-3 text-muted-foreground"
+                                aria-label="sub-run"
+                              />
+                            )}
                             {run.kind}
                           </Link>
                         </td>
@@ -125,7 +200,12 @@ export function AgentRunsListClient() {
                           {run._count.steps}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
-                          {(run.totalTokensIn + run.totalTokensOut).toLocaleString()}
+                          {run._count.subRuns > 0 ? run._count.subRuns : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
+                          {(
+                            run.totalTokensIn + run.totalTokensOut
+                          ).toLocaleString()}
                         </td>
                         <td className="px-3 py-2 text-right text-[11px] text-muted-foreground font-mono">
                           {run.model ?? "—"}
@@ -136,6 +216,34 @@ export function AgentRunsListClient() {
                 </tbody>
               </table>
             </div>
+
+            {(cursorStack.length > 0 || nextCursor) && (
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={prevPage}
+                  disabled={cursorStack.length === 0}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Page {currentPage}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={nextPage}
+                  disabled={!nextCursor}
+                  className="gap-1"
+                >
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

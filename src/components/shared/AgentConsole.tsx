@@ -14,6 +14,9 @@ import {
   Plus,
   MessageSquare,
   Trash2,
+  Pencil,
+  Check,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +50,10 @@ type Props = {
   conversationId?: string | null;
   /** Called when a conversation id becomes known (created server-side on first send, or switched via picker). */
   onConversationChange?: (id: string | null) => void;
+  /** If set while the console is open, auto-sends this prompt once then consumes it. */
+  pendingPrompt?: string | null;
+  /** Called after the pending prompt has been dispatched. */
+  onPendingPromptConsumed?: () => void;
 };
 
 export function AgentConsole({
@@ -54,6 +61,8 @@ export function AgentConsole({
   onOpenChange,
   conversationId: externalConversationId,
   onConversationChange,
+  pendingPrompt,
+  onPendingPromptConsumed,
 }: Props) {
   const { workspaceId } = useWorkspace();
   const [conversationId, setConversationId] = useState<string | null>(
@@ -82,6 +91,32 @@ export function AgentConsole({
     },
     onError: (e) => toast.error(e.message),
   });
+  const renameConvo = trpc.agentConversation.rename.useMutation({
+    onSuccess: () => {
+      utils.agentConversation.list.invalidate();
+      utils.agentConversation.getById.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
+  function startRename(id: string, current: string) {
+    setEditingId(id);
+    setEditingTitle(current);
+  }
+  function commitRename() {
+    if (!editingId || !editingTitle.trim()) {
+      setEditingId(null);
+      return;
+    }
+    const id = editingId;
+    const title = editingTitle.trim().slice(0, 200);
+    renameConvo.mutate({ id, title });
+    if (id === conversationId) setConversationTitle(title);
+    setEditingId(null);
+  }
 
   // Track external id changes (e.g., launcher resumes last thread).
   useEffect(() => {
@@ -142,6 +177,21 @@ export function AgentConsole({
       setShowPicker(false);
     }
   }, [open]);
+
+  // Auto-dispatch a pending prompt (e.g. from AnalyzeWithAgentButton).
+  // Guarded by !streaming so a retry-click doesn't double-send.
+  useEffect(() => {
+    if (!open || !pendingPrompt || streaming) return;
+    // Fire once, then clear it via the parent callback.
+    const prompt = pendingPrompt;
+    onPendingPromptConsumed?.();
+    // Defer to next tick so setTurns doesn't race with the open transition.
+    const id = window.setTimeout(() => {
+      void send(prompt);
+    }, 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pendingPrompt]);
 
   const switchTo = useCallback(
     (id: string | null) => {
@@ -276,14 +326,27 @@ export function AgentConsole({
               </button>
             </div>
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {turns.length > 0 && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => exportThreadToMarkdown(conversationTitle, turns)}
+                aria-label="Download thread as markdown"
+                title="Download thread (Markdown)"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {showPicker && (
@@ -304,31 +367,64 @@ export function AgentConsole({
                     c.id === conversationId && "bg-[var(--ai)]/10"
                   )}
                 >
-                  <button
-                    onClick={() => switchTo(c.id)}
-                    className="flex-1 min-w-0 flex items-center gap-2 text-left"
-                  >
-                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-foreground">{c.title}</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {c._count.messages} message
-                        {c._count.messages === 1 ? "" : "s"} ·{" "}
-                        {formatRelative(c.updatedAt)}
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!window.confirm(`Delete thread "${c.title}"?`)) return;
-                      if (c.id === conversationId) switchTo(null);
-                      deleteConvo.mutate({ id: c.id });
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all shrink-0"
-                    aria-label={`Delete ${c.title}`}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  {editingId === c.id ? (
+                    <>
+                      <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <input
+                        autoFocus
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitRename();
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        onBlur={commitRename}
+                        className="flex-1 min-w-0 text-sm bg-background border rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-[var(--ai)]"
+                      />
+                      <button
+                        onClick={commitRename}
+                        className="p-1 rounded text-emerald-600 hover:bg-emerald-50 shrink-0"
+                        aria-label="Save"
+                      >
+                        <Check className="h-3 w-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => switchTo(c.id)}
+                        className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-foreground">{c.title}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {c._count.messages} message
+                            {c._count.messages === 1 ? "" : "s"} ·{" "}
+                            {formatRelative(c.updatedAt)}
+                          </div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => startRename(c.id, c.title)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-[var(--ai)] hover:bg-[var(--ai)]/10 transition-all shrink-0"
+                        aria-label={`Rename ${c.title}`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!window.confirm(`Delete thread "${c.title}"?`)) return;
+                          if (c.id === conversationId) switchTo(null);
+                          deleteConvo.mutate({ id: c.id });
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all shrink-0"
+                        aria-label={`Delete ${c.title}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))
             ) : (
@@ -535,6 +631,64 @@ function ToolCallCard({ call }: { call: ToolCall }) {
         </div>
       )}
     </div>
+  );
+}
+
+function exportThreadToMarkdown(title: string, turns: Turn[]) {
+  const lines: string[] = [];
+  lines.push(`# ${title}`);
+  lines.push("");
+  lines.push(`_Exported ${new Date().toLocaleString()}_`);
+  lines.push("");
+
+  for (const turn of turns) {
+    if (turn.role === "user") {
+      lines.push(`## 🧑 You`);
+      lines.push("");
+      lines.push(turn.text);
+      lines.push("");
+    } else {
+      lines.push(`## ✨ Agent`);
+      lines.push("");
+      if (turn.toolCalls.length > 0) {
+        lines.push("**Tools used:**");
+        for (const c of turn.toolCalls) {
+          const badge =
+            c.status === "ok" ? "✓" : c.status === "error" ? "✗" : "…";
+          lines.push(`- ${badge} \`${c.name}\``);
+        }
+        lines.push("");
+      }
+      if (turn.text) {
+        lines.push(turn.text);
+        lines.push("");
+      }
+      if (turn.error) {
+        lines.push(`> ⚠️ Error: ${turn.error}`);
+        lines.push("");
+      }
+    }
+  }
+
+  const md = lines.join("\n");
+  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugify(title)}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "agent-thread"
   );
 }
 

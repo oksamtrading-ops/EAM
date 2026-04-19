@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { OwnerField } from "@/components/shared/OwnerField";
 import { DatePicker } from "@/components/shared/DatePicker";
+import { AnalyzeWithAgentButton } from "@/components/shared/AnalyzeWithAgentButton";
 import { toast } from "sonner";
 import {
   LIFECYCLE_LABELS, BV_LABELS, BV_COLORS, TH_LABELS, TH_COLORS,
@@ -123,6 +124,12 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
           {app.vendor && <p className="text-xs text-muted-foreground">{app.vendor}</p>}
         </div>
         <div className="flex items-center gap-1">
+          <AnalyzeWithAgentButton
+            size="sm"
+            label="Analyze"
+            className="h-7 text-[10px] px-2"
+            prompt={`Analyze the application "${app.name}". Use rationalize_application and analyze_application_impact as needed. Summarize: recommended TIME classification with rationale, key risks, and what breaks if we retire it.`}
+          />
           {onAutoMap && (
             <Button
               size="sm"

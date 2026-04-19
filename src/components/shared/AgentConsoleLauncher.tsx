@@ -17,6 +17,7 @@ export function AgentConsoleLauncher() {
   const { workspaceId } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   const storageKey = `${STORAGE_KEY_PREFIX}${workspaceId}`;
 
@@ -59,6 +60,21 @@ export function AgentConsoleLauncher() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggle]);
 
+  // Cross-component entry point: AnalyzeWithAgentButton (or any caller)
+  // dispatches `agent-console:open` with a prompt to start a fresh thread.
+  useEffect(() => {
+    function onOpenEvent(e: Event) {
+      const detail = (e as CustomEvent<{ prompt?: string }>).detail ?? {};
+      const prompt = typeof detail.prompt === "string" ? detail.prompt : null;
+      // Fresh thread — don't clobber whatever the user was mid-way through.
+      handleConversationChange(null);
+      setPendingPrompt(prompt);
+      setOpen(true);
+    }
+    window.addEventListener("agent-console:open", onOpenEvent);
+    return () => window.removeEventListener("agent-console:open", onOpenEvent);
+  }, [handleConversationChange]);
+
   return (
     <>
       {!open && (
@@ -78,6 +94,8 @@ export function AgentConsoleLauncher() {
         onOpenChange={setOpen}
         conversationId={conversationId}
         onConversationChange={handleConversationChange}
+        pendingPrompt={pendingPrompt}
+        onPendingPromptConsumed={() => setPendingPrompt(null)}
       />
     </>
   );

@@ -8,18 +8,30 @@ export const agentRunRouter = router({
       z
         .object({
           kind: z.string().optional(),
+          kindPrefix: z.string().optional(),
+          hideSubRuns: z.boolean().optional(),
           limit: z.number().int().min(1).max(200).default(50),
+          cursor: z.string().optional(),
         })
         .optional()
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.agentRun.findMany({
+      const limit = input?.limit ?? 50;
+      const runs = await ctx.db.agentRun.findMany({
         where: {
           workspaceId: ctx.workspaceId,
-          kind: input?.kind,
+          kind: input?.kind
+            ? input.kind
+            : input?.kindPrefix
+              ? { startsWith: input.kindPrefix }
+              : undefined,
+          parentRunId: input?.hideSubRuns ? null : undefined,
         },
         orderBy: { startedAt: "desc" },
-        take: input?.limit ?? 50,
+        take: limit + 1, // fetch +1 to know if there's a next page
+        ...(input?.cursor
+          ? { cursor: { id: input.cursor }, skip: 1 }
+          : {}),
         select: {
           id: true,
           kind: true,
@@ -31,10 +43,27 @@ export const agentRunRouter = router({
           totalTokensIn: true,
           totalTokensOut: true,
           errorMessage: true,
-          _count: { select: { steps: true } },
+          parentRunId: true,
+          _count: { select: { steps: true, subRuns: true } },
         },
       });
+      const hasNext = runs.length > limit;
+      const items = hasNext ? runs.slice(0, limit) : runs;
+      return {
+        items,
+        nextCursor: hasNext ? items[items.length - 1]!.id : null,
+      };
     }),
+
+  listKinds: workspaceProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db.agentRun.groupBy({
+      by: ["kind"],
+      where: { workspaceId: ctx.workspaceId },
+      _count: { _all: true },
+      orderBy: { kind: "asc" },
+    });
+    return rows.map((r) => ({ kind: r.kind, count: r._count._all }));
+  }),
 
   getById: workspaceProcedure
     .input(z.object({ id: z.string() }))
