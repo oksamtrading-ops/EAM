@@ -31,6 +31,8 @@ import { techArchitectureRouter } from "./techArchitecture";
 import { intakeRouter } from "./intake";
 import { agentRunRouter } from "./agentRun";
 import { agentConversationRouter } from "./agentConversation";
+import { workspaceKnowledgeRouter } from "./workspaceKnowledge";
+import { scheduledAgentTaskRouter } from "./scheduledAgentTask";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -65,6 +67,8 @@ export const appRouter = router({
   intake: intakeRouter,
   agentRun: agentRunRouter,
   agentConversation: agentConversationRouter,
+  workspaceKnowledge: workspaceKnowledgeRouter,
+  scheduledAgentTask: scheduledAgentTaskRouter,
 });
 
 export type AppRouter = typeof appRouter;

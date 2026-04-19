@@ -8,16 +8,32 @@ export const agentConversationRouter = router({
       z
         .object({
           kind: z.string().optional(),
+          search: z.string().optional(),
           limit: z.number().int().min(1).max(100).default(30),
         })
         .optional()
     )
     .query(async ({ ctx, input }) => {
+      const search = input?.search?.trim();
       return ctx.db.agentConversation.findMany({
         where: {
           workspaceId: ctx.workspaceId,
           userId: ctx.dbUserId,
           kind: input?.kind,
+          ...(search
+            ? {
+                OR: [
+                  { title: { contains: search, mode: "insensitive" } },
+                  {
+                    messages: {
+                      some: {
+                        content: { contains: search, mode: "insensitive" },
+                      },
+                    },
+                  },
+                ],
+              }
+            : {}),
         },
         orderBy: { updatedAt: "desc" },
         take: input?.limit ?? 30,

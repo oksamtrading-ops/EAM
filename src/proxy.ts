@@ -4,6 +4,8 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",
+  // Vercel Cron endpoints — secured by CRON_SECRET Bearer token inside the handler.
+  "/api/cron(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

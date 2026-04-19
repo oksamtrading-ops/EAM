@@ -78,9 +78,11 @@ export function AgentConsole({
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const utils = trpc.useUtils();
   const convoList = trpc.agentConversation.list.useQuery(
-    { limit: 30 },
+    { limit: 30, search: searchQuery.trim() || undefined },
     { enabled: open }
   );
   const loadedConvo = trpc.agentConversation.getById.useQuery(
@@ -354,7 +356,18 @@ export function AgentConsole({
         </div>
 
         {showPicker && (
-          <div className="absolute left-4 right-4 top-full mt-1 rounded-lg border bg-popover shadow-xl z-[60] max-h-80 overflow-y-auto backdrop-blur-none">
+          <div className="absolute left-4 right-4 top-full mt-1 rounded-lg border bg-popover shadow-xl z-[60] max-h-[24rem] overflow-hidden backdrop-blur-none flex flex-col">
+            <div className="px-2 pt-2 pb-1 bg-popover border-b">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search threads…"
+                autoFocus
+                className="w-full text-xs bg-background border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-[var(--ai)]"
+              />
+            </div>
+            <div className="overflow-y-auto flex-1">
             <button
               onClick={() => switchTo(null)}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b text-[var(--ai)]"
@@ -433,9 +446,10 @@ export function AgentConsole({
               ))
             ) : (
               <p className="px-3 py-3 text-xs text-muted-foreground text-center bg-popover">
-                No prior threads
+                {searchQuery.trim() ? "No matching threads" : "No prior threads"}
               </p>
             )}
+            </div>
             <Link
               href="/agents/runs"
               onClick={() => {

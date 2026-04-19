@@ -10,6 +10,10 @@ import {
   AGENT_CONSOLE_PROMPT,
   AGENT_CONSOLE_PROMPT_VERSION,
 } from "@/server/ai/prompts/agentConsole.v1";
+import {
+  retrieveKnowledge,
+  formatKnowledgeForPrompt,
+} from "@/server/ai/knowledge/retrieve";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -162,10 +166,23 @@ export async function POST(req: Request) {
         title: conversationTitle,
       });
 
+      // Inject top-matched workspace knowledge into the system prompt.
+      // Small and cheap (ILIKE + in-memory scoring) — done per turn so
+      // newly-saved facts surface immediately.
+      const knowledge = await retrieveKnowledge({
+        workspaceId,
+        query: message,
+        limit: 5,
+      }).catch(() => []);
+      const systemPromptWithContext =
+        knowledge.length > 0
+          ? `${AGENT_CONSOLE_PROMPT}\n\n${formatKnowledgeForPrompt(knowledge)}`
+          : AGENT_CONSOLE_PROMPT;
+
       try {
         await runAgentLoop({
           kind: "console",
-          systemPrompt: AGENT_CONSOLE_PROMPT,
+          systemPrompt: systemPromptWithContext,
           promptVersion: AGENT_CONSOLE_PROMPT_VERSION,
           userMessage: message,
           history,

@@ -13,6 +13,7 @@ import {
   Building2,
   Layers,
   FileText,
+  Map as RoadmapIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,11 @@ const ENTITY_META: Record<
     icon: Layers,
     label: "Tech Component",
     accent: "bg-slate-50 text-slate-700 border-slate-200",
+  },
+  INITIATIVE: {
+    icon: RoadmapIcon,
+    label: "Initiative",
+    accent: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
 };
 

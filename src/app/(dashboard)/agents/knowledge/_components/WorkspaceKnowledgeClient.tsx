@@ -1,0 +1,374 @@
+"use client";
+
+import { useState } from "react";
+import {
+  BookOpen,
+  Plus,
+  Search,
+  Trash2,
+  Pencil,
+  Archive,
+  ArchiveRestore,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+const KIND_META: Record<
+  string,
+  { label: string; color: string }
+> = {
+  FACT: { label: "Fact", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  DECISION: {
+    label: "Decision",
+    color: "bg-violet-50 text-violet-700 border-violet-200",
+  },
+  PATTERN: {
+    label: "Pattern",
+    color: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+};
+
+type EditingState = {
+  id?: string;
+  subject: string;
+  statement: string;
+  kind: "FACT" | "DECISION" | "PATTERN";
+  confidence: number;
+};
+
+const EMPTY: EditingState = {
+  subject: "",
+  statement: "",
+  kind: "FACT",
+  confidence: 0.9,
+};
+
+export function WorkspaceKnowledgeClient() {
+  const [search, setSearch] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [editing, setEditing] = useState<EditingState | null>(null);
+
+  const utils = trpc.useUtils();
+  const { data: items, isLoading } = trpc.workspaceKnowledge.list.useQuery({
+    search: search.trim() || undefined,
+    includeArchived,
+    limit: 200,
+  });
+
+  const create = trpc.workspaceKnowledge.create.useMutation({
+    onSuccess: () => {
+      toast.success("Saved to knowledge base");
+      utils.workspaceKnowledge.list.invalidate();
+      setEditing(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const update = trpc.workspaceKnowledge.update.useMutation({
+    onSuccess: () => {
+      utils.workspaceKnowledge.list.invalidate();
+      setEditing(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const del = trpc.workspaceKnowledge.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Deleted");
+      utils.workspaceKnowledge.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  function save() {
+    if (!editing) return;
+    if (!editing.subject.trim() || !editing.statement.trim()) {
+      toast.error("Subject and statement are required");
+      return;
+    }
+    if (editing.id) {
+      update.mutate({
+        id: editing.id,
+        subject: editing.subject.trim(),
+        statement: editing.statement.trim(),
+        kind: editing.kind,
+        confidence: editing.confidence,
+      });
+    } else {
+      create.mutate({
+        subject: editing.subject.trim(),
+        statement: editing.statement.trim(),
+        kind: editing.kind,
+        confidence: editing.confidence,
+      });
+    }
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+            <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+              <BookOpen className="h-3.5 w-3.5 text-[var(--ai)]" />
+            </span>
+            Workspace Knowledge
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {items?.length ?? 0} item{items?.length === 1 ? "" : "s"} ·
+            curated facts injected into every agent run
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setEditing(EMPTY)}
+          className="gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add fact
+        </Button>
+      </div>
+
+      <div className="border-b px-4 sm:px-5 py-2 flex items-center gap-3 bg-background/60">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search subject or statement…"
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeArchived}
+            onChange={(e) => setIncludeArchived(e.target.checked)}
+            className="h-3 w-3 accent-[var(--ai)]"
+          />
+          Include archived
+        </label>
+      </div>
+
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground text-center pt-8">
+            Loading…
+          </p>
+        ) : !items || items.length === 0 ? (
+          <EmptyState onAdd={() => setEditing(EMPTY)} />
+        ) : (
+          <div className="max-w-3xl mx-auto space-y-2">
+            {items.map((item) => {
+              const meta = KIND_META[item.kind] ?? KIND_META.FACT;
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "rounded-lg border bg-card p-3 flex items-start gap-3 group",
+                    !item.isActive && "opacity-60"
+                  )}
+                >
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[10px] shrink-0 mt-0.5", meta.color)}
+                  >
+                    {meta.label}
+                  </Badge>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {item.subject}
+                    </p>
+                    <p className="text-[13px] text-muted-foreground leading-relaxed mt-0.5">
+                      {item.statement}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Confidence {Math.round(item.confidence * 100)}% · Updated{" "}
+                      {new Date(item.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() =>
+                        setEditing({
+                          id: item.id,
+                          subject: item.subject,
+                          statement: item.statement,
+                          kind: item.kind as "FACT" | "DECISION" | "PATTERN",
+                          confidence: item.confidence,
+                        })
+                      }
+                      className="p-1 rounded text-muted-foreground hover:text-[var(--ai)] hover:bg-[var(--ai)]/10"
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        update.mutate({
+                          id: item.id,
+                          isActive: !item.isActive,
+                        })
+                      }
+                      className="p-1 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50"
+                      aria-label={item.isActive ? "Archive" : "Restore"}
+                    >
+                      {item.isActive ? (
+                        <Archive className="h-3 w-3" />
+                      ) : (
+                        <ArchiveRestore className="h-3 w-3" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`Delete "${item.subject}"?`)) return;
+                        del.mutate({ id: item.id });
+                      }}
+                      className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <Dialog open={editing !== null} onOpenChange={(v) => !v && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editing?.id ? "Edit fact" : "Add workspace fact"}
+            </DialogTitle>
+            <DialogDescription>
+              Stable, non-obvious facts used as high-confidence context on every
+              agent run.
+            </DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Kind
+                </label>
+                <Select
+                  value={editing.kind}
+                  onValueChange={(v) =>
+                    setEditing({ ...editing, kind: v as EditingState["kind"] })
+                  }
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FACT">Fact</SelectItem>
+                    <SelectItem value="DECISION">Decision</SelectItem>
+                    <SelectItem value="PATTERN">Pattern</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Subject
+                </label>
+                <Input
+                  autoFocus={!editing.id}
+                  value={editing.subject}
+                  onChange={(e) =>
+                    setEditing({ ...editing, subject: e.target.value })
+                  }
+                  placeholder="e.g. Salesforce Sales Cloud"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Statement
+                </label>
+                <Textarea
+                  value={editing.statement}
+                  onChange={(e) =>
+                    setEditing({ ...editing, statement: e.target.value })
+                  }
+                  placeholder="One to three sentences, declarative."
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Confidence ({Math.round(editing.confidence * 100)}%)
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={editing.confidence}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      confidence: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full accent-[var(--ai)]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={save}
+                  disabled={create.isPending || update.isPending}
+                  className="bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
+                >
+                  {editing.id ? "Save" : "Add"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function EmptyState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center">
+      <div className="h-12 w-12 rounded-xl bg-[var(--ai)]/15 flex items-center justify-center mb-3">
+        <BookOpen className="h-6 w-6 text-[var(--ai)]" />
+      </div>
+      <p className="text-sm font-medium mb-1">No workspace facts yet</p>
+      <p className="text-xs text-muted-foreground mb-4 max-w-md">
+        Add curated facts about this workspace — or let the agent propose them
+        during a conversation. Stored facts are injected into every agent run
+        automatically.
+      </p>
+      <Button onClick={onAdd} size="sm" className="gap-1.5">
+        <Plus className="h-3.5 w-3.5" />
+        Add your first fact
+      </Button>
+    </div>
+  );
+}

@@ -17,6 +17,8 @@ import {
   Layers,
   Inbox,
   Activity,
+  BookOpen,
+  CalendarClock,
   Menu,
   X,
   ChevronsLeft,
@@ -41,6 +43,8 @@ const navItems = [
   { label: "Organization", href: "/organizations", icon: Building2 },
   { label: "Tags", href: "/tags", icon: Tags },
   { label: "Agent Runs", href: "/agents/runs", icon: Activity, ai: true },
+  { label: "Knowledge", href: "/agents/knowledge", icon: BookOpen, ai: true },
+  { label: "Scheduled", href: "/agents/scheduled", icon: CalendarClock, ai: true },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

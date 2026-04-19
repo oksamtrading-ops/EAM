@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { retrieveIntakeChunks } from "@/server/ai/rag/retrieve";
+import { retrieveKnowledge } from "@/server/ai/knowledge/retrieve";
 import { runSubAgent } from "@/server/ai/subAgents";
 
 // Caller type — workspaceId is baked in at construction time (see executor).
@@ -100,6 +101,48 @@ const listReferenceArchitectures: ToolDefinition = {
   invoke: (caller) => caller.referenceArchitecture.list(),
 };
 
+// ---- Workspace knowledge base ----
+
+const searchKnowledge: ToolDefinition = {
+  name: "search_workspace_knowledge",
+  description:
+    "Keyword search over the workspace knowledge base (curated facts about this workspace: what CRM/ERP/core systems are, key decisions, recurring patterns). Use this BEFORE you fan out to broader tool calls — a stored fact often answers the question in one hop.",
+  inputSchema: z.object({
+    query: z.string().min(3),
+    limit: z.number().int().min(1).max(20).optional(),
+  }),
+  invoke: async (_caller, input, ctx) => {
+    const { query, limit } = input as { query: string; limit?: number };
+    return retrieveKnowledge({
+      workspaceId: ctx.workspaceId,
+      query,
+      limit: limit ?? 5,
+    });
+  },
+};
+
+const saveKnowledge: ToolDefinition = {
+  name: "save_workspace_knowledge",
+  description:
+    "Persist a useful fact about this workspace so future agent runs can skip re-deriving it. Use for stable, non-obvious facts (e.g. 'Salesforce Sales Cloud is the GL system of record', 'All EMEA apps use Oracle DB'). Do NOT use for one-off answers or things already in entity records. ALWAYS confirm with the user before calling.",
+  inputSchema: z.object({
+    subject: z
+      .string()
+      .min(1)
+      .max(200)
+      .describe("Short noun phrase: the entity or topic the fact concerns."),
+    statement: z
+      .string()
+      .min(1)
+      .max(2000)
+      .describe("One to three sentences, declarative, future-reader-friendly."),
+    kind: z.enum(["FACT", "DECISION", "PATTERN"]).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+  }),
+  invoke: (caller, input) => caller.workspaceKnowledge.create(input),
+  mutates: true,
+};
+
 // ---- RAG: search uploaded intake documents ----
 
 const searchIntakeDocuments: ToolDefinition = {
@@ -174,6 +217,34 @@ const modifyIntakeDraft: ToolDefinition = {
   mutates: true,
 };
 
+const proposeInitiative: ToolDefinition = {
+  name: "propose_initiative",
+  description:
+    "Propose a roadmap initiative as a draft in the intake approval queue (status PENDING). Use this after a rationalization or impact analysis to turn findings into actionable draft initiatives for human review. Does NOT create the real initiative — the user accepts it from /intake. ALWAYS list the initiatives you plan to propose and confirm before calling.",
+  inputSchema: z.object({
+    name: z.string().min(1).max(200),
+    description: z.string().optional(),
+    category: z
+      .enum([
+        "MODERNISATION",
+        "CONSOLIDATION",
+        "DIGITALISATION",
+        "COMPLIANCE",
+        "OPTIMISATION",
+        "INNOVATION",
+        "DECOMMISSION",
+      ])
+      .optional(),
+    priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
+    horizon: z.enum(["H1_NOW", "H2_NEXT", "H3_LATER", "BEYOND"]).optional(),
+    rationale: z.string().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+  }),
+  invoke: (caller, input) =>
+    caller.intake.proposeInitiative(input),
+  mutates: true,
+};
+
 // ---- Sub-agents (Phase B — multi-agent orchestration) ----
 
 const rationalizeApplicationSub: ToolDefinition = {
@@ -230,11 +301,14 @@ export const TOOL_DEFINITIONS: ReadonlyArray<ToolDefinition> = [
   listInitiatives,
   listTechnologyComponents,
   listReferenceArchitectures,
+  searchKnowledge,
+  saveKnowledge,
   searchIntakeDocuments,
   listIntakeDrafts,
   acceptIntakeDraft,
   rejectIntakeDraft,
   modifyIntakeDraft,
+  proposeInitiative,
   rationalizeApplicationSub,
   analyzeApplicationImpactSub,
   capabilityCoverageReportSub,

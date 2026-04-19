@@ -296,6 +296,7 @@ model User {
   ownedTechnologyStandards    TechnologyStandard[]   @relation("TechnologyStandardOwner")
   ownedReferenceArchitectures ReferenceArchitecture[] @relation("ReferenceArchitectureOwner")
   agentConversations          AgentConversation[]
+  scheduledAgentTasks         ScheduledAgentTask[]
 
   @@map("users")
 }
@@ -363,6 +364,8 @@ model Workspace {
   intakeDrafts           IntakeDraft[]
   agentRuns              AgentRun[]
   agentConversations     AgentConversation[]
+  workspaceKnowledge     WorkspaceKnowledge[]
+  scheduledAgentTasks    ScheduledAgentTask[]
 
   @@map("workspaces")
 }
@@ -2069,6 +2072,7 @@ enum IntakeEntityType {
   RISK
   VENDOR
   TECH_COMPONENT
+  INITIATIVE
 }
 
 enum DraftStatus {
@@ -2169,6 +2173,8 @@ model AgentRun {
   subRuns      AgentRun[]                @relation("AgentRunSubRuns")
   messages     AgentConversationMessage[]
   steps        AgentRunStep[]
+  knowledge    WorkspaceKnowledge[]
+  scheduledTasks ScheduledAgentTask[]
 
   @@index([workspaceId, kind, startedAt])
   @@index([conversationId])
@@ -2226,5 +2232,63 @@ model AgentConversationMessage {
 
   @@index([conversationId, ordinal])
   @@map("agent_conversation_messages")
+}
+
+// ============================================================
+// WORKSPACE KNOWLEDGE — agent-curated facts about the workspace
+// ============================================================
+
+enum WorkspaceKnowledgeKind {
+  FACT
+  DECISION
+  PATTERN
+}
+
+model WorkspaceKnowledge {
+  id          String                 @id @default(cuid())
+  workspaceId String
+  kind        WorkspaceKnowledgeKind @default(FACT)
+  subject     String                 // e.g. "Salesforce Sales Cloud" or "Core banking stack"
+  statement   String                 // the fact itself
+  confidence  Float                  @default(0.8)
+  sourceRunId String?
+  createdBy   String?                // User.id of author (null = agent)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceRun AgentRun? @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, isActive, updatedAt])
+  @@index([workspaceId, subject])
+  @@map("workspace_knowledge")
+}
+
+// ============================================================
+// SCHEDULED AGENT TASKS — cron-style recurring agent runs
+// ============================================================
+
+model ScheduledAgentTask {
+  id             String    @id @default(cuid())
+  workspaceId    String
+  userId         String    // owner; runs use this user's Clerk id for auth scope
+  name           String
+  prompt         String
+  cronExpression String    // standard 5-field cron
+  enabled        Boolean   @default(true)
+  lastRunAt      DateTime?
+  lastRunId      String?
+  nextRunAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastRun   AgentRun? @relation(fields: [lastRunId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, enabled, nextRunAt])
+  @@index([userId])
+  @@map("scheduled_agent_tasks")
 }
 

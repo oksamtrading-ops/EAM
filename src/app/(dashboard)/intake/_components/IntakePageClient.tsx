@@ -17,7 +17,8 @@ type EntityTypeFilter =
   | "APPLICATION"
   | "RISK"
   | "VENDOR"
-  | "TECH_COMPONENT";
+  | "TECH_COMPONENT"
+  | "INITIATIVE";
 
 export function IntakePageClient() {
   const [showUpload, setShowUpload] = useState(false);
@@ -154,6 +155,7 @@ export function IntakePageClient() {
             <option value="RISK">Risks</option>
             <option value="VENDOR">Vendors</option>
             <option value="TECH_COMPONENT">Tech Components</option>
+            <option value="INITIATIVE">Initiatives</option>
           </select>
         </div>
 

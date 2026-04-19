@@ -11,6 +11,7 @@ const EntityTypeEnum = z.enum([
   "RISK",
   "VENDOR",
   "TECH_COMPONENT",
+  "INITIATIVE",
 ]);
 
 const PayloadOverrides = z.record(z.string(), z.unknown()).optional();
@@ -165,6 +166,55 @@ export const intakeRouter = router({
       });
     }),
 
+  proposeInitiative: workspaceProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().optional(),
+        category: z.string().optional(),
+        priority: z.string().optional(),
+        horizon: z.string().optional(),
+        rationale: z.string().optional(),
+        confidence: z.number().min(0).max(1).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const confidence =
+        typeof input.confidence === "number" ? input.confidence : 0.75;
+      return ctx.db.intakeDraft.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          entityType: "INITIATIVE",
+          confidence,
+          status: "PENDING",
+          payload: JSON.parse(
+            JSON.stringify({
+              name: input.name,
+              description: input.description,
+              category: input.category,
+              priority: input.priority,
+              horizon: input.horizon,
+              sourceType: "AI_AGENT",
+              sourceContext: input.rationale ?? null,
+            })
+          ),
+          evidence: JSON.parse(
+            JSON.stringify(
+              input.rationale
+                ? [
+                    {
+                      excerpt: input.rationale.slice(0, 600),
+                      source: "agent_proposal",
+                    },
+                  ]
+                : []
+            )
+          ),
+        },
+        select: { id: true, entityType: true, status: true },
+      });
+    }),
+
   bulkAcceptByConfidence: workspaceProcedure
     .input(z.object({ threshold: z.number().min(0).max(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -311,6 +361,25 @@ async function commitDraft(
         message:
           "Accept tech-component drafts from the Tech Architecture page (vendor + product must be chosen).",
       });
+    case "INITIATIVE": {
+      const name = String(payload.name ?? "").trim();
+      if (!name)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "name required" });
+      return ctx.db.initiative.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          name,
+          description: stringOrNull(payload.description),
+          category: asInitiativeCategory(payload.category),
+          priority: asInitiativePriority(payload.priority),
+          horizon: asInitiativeHorizon(payload.horizon),
+          status: "DRAFT",
+          sourceType: stringOrNull(payload.sourceType) ?? "AI_AGENT",
+          sourceContext: stringOrNull(payload.sourceContext),
+        },
+        select: { id: true },
+      });
+    }
     default:
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -390,4 +459,43 @@ function riskScoreFor(
   const L: Record<string, number> = { RARE: 1, LOW: 2, MEDIUM: 3, HIGH: 4 };
   const I: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
   return (L[likelihood] ?? 3) * (I[impact] ?? 2);
+}
+
+function asInitiativeCategory(
+  v: unknown
+):
+  | "MODERNISATION"
+  | "CONSOLIDATION"
+  | "DIGITALISATION"
+  | "COMPLIANCE"
+  | "OPTIMISATION"
+  | "INNOVATION"
+  | "DECOMMISSION" {
+  const s = String(v ?? "").toUpperCase().replace(/\s+/g, "_");
+  const allowed = [
+    "MODERNISATION",
+    "CONSOLIDATION",
+    "DIGITALISATION",
+    "COMPLIANCE",
+    "OPTIMISATION",
+    "INNOVATION",
+    "DECOMMISSION",
+  ];
+  return (allowed.includes(s) ? s : "MODERNISATION") as never;
+}
+
+function asInitiativePriority(
+  v: unknown
+): "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" {
+  const s = String(v ?? "").toUpperCase();
+  const allowed = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+  return (allowed.includes(s) ? s : "MEDIUM") as never;
+}
+
+function asInitiativeHorizon(
+  v: unknown
+): "H1_NOW" | "H2_NEXT" | "H3_LATER" | "BEYOND" {
+  const s = String(v ?? "").toUpperCase();
+  const allowed = ["H1_NOW", "H2_NEXT", "H3_LATER", "BEYOND"];
+  return (allowed.includes(s) ? s : "H2_NEXT") as never;
 }
