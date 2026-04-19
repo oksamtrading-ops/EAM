@@ -1,8 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@clerk/nextjs/server";
 import { rateLimit } from "@/lib/rate-limit";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { anthropic as client } from "@/server/ai/client";
+import { MODEL_SONNET, MODEL_OPUS } from "@/server/ai/models";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -169,7 +168,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: MODEL_SONNET,
       max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
@@ -248,7 +247,7 @@ FORMAT: Flowing prose with no bullet points or headers.`;
 
   try {
     const message = await client.messages.create({
-      model: "claude-opus-4-6",
+      model: MODEL_OPUS,
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     });
@@ -323,7 +322,7 @@ OUTPUT FORMAT (JSON only, no markdown):
 
   try {
     const message = await client.messages.create({
-      model: "claude-opus-4-6",
+      model: MODEL_OPUS,
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });

@@ -1,9 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { rateLimit } from "@/lib/rate-limit";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { anthropic as client } from "@/server/ai/client";
+import { MODEL_SONNET } from "@/server/ai/models";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -98,7 +97,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 }`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL_SONNET,
     max_tokens: 2000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -227,7 +226,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 }`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL_SONNET,
     max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -363,7 +362,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 }`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL_SONNET,
     max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   });

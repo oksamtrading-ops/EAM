@@ -1,10 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { anthropic as client } from "@/server/ai/client";
+import { MODEL_OPUS } from "@/server/ai/models";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = "claude-opus-4-6";
+const MODEL = MODEL_OPUS;
 
 /** Strip markdown code-block fences (```json ... ```) from AI responses */
 function stripCodeBlock(text: string): string {

@@ -1,9 +1,13 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { rateLimit } from "@/lib/rate-limit";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { anthropic as client } from "@/server/ai/client";
+import { MODEL_SONNET } from "@/server/ai/models";
+import {
+  evaluateRationalization,
+  type AppSummary,
+  type RationalizationSingle,
+} from "@/server/ai/services/rationalizationEvaluator";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -30,6 +34,8 @@ export async function POST(req: Request) {
   switch (action) {
     case "rationalization":
       return generateRationalization(workspace, payload);
+    case "rationalization-critic":
+      return refineRationalization(workspace, payload);
     case "impact-analysis":
       return generateImpactAnalysis(workspace, payload);
     case "tech-recommendations":
@@ -166,7 +172,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 }`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL_SONNET,
     max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -176,6 +182,33 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
     return Response.json(JSON.parse(stripCodeBlock(text)));
   } catch {
     return Response.json({ recommendations: [], error: "Failed to parse AI response" }, { status: 200 });
+  }
+}
+
+// ─── Rationalization Critic (evaluator-optimizer) ────────
+
+async function refineRationalization(
+  workspace: { id: string },
+  payload: { app: AppSummary; initial: RationalizationSingle }
+) {
+  if (!payload?.app?.name || !payload?.initial?.classification) {
+    return Response.json(
+      { error: "Missing app or initial classification" },
+      { status: 400 }
+    );
+  }
+  try {
+    const result = await evaluateRationalization({
+      workspaceId: workspace.id,
+      app: payload.app,
+      initial: payload.initial,
+    });
+    return Response.json(result);
+  } catch (err) {
+    return Response.json(
+      { error: err instanceof Error ? err.message : "Critic failed" },
+      { status: 500 }
+    );
   }
 }
 
@@ -309,7 +342,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 }`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL_SONNET,
     max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -443,7 +476,7 @@ OUTPUT FORMAT (JSON only, no markdown, no explanation):
 }`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL_SONNET,
     max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });

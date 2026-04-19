@@ -1,11 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { anthropic as client } from "@/server/ai/client";
+import { MODEL_SONNET } from "@/server/ai/models";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = MODEL_SONNET;
 const PROMPT_VERSION = "v1.5";
 const THINKING_BUDGET = 5000;
 const MAX_BATCH_SIZE = 30;
