@@ -165,13 +165,11 @@ export function TableView({ apps, onSelect, selectedId }: Props) {
                   </div>
                 ) : (
                   <Tooltip>
-                    <TooltipTrigger >
-                      <button
-                        onClick={() => setPendingDeleteId(app.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-all"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                    <TooltipTrigger
+                      onClick={() => setPendingDeleteId(app.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-all"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
                     </TooltipTrigger>
                     <TooltipContent side="left">Delete application</TooltipContent>
                   </Tooltip>
