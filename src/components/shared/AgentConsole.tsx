@@ -717,11 +717,20 @@ function TurnView({ turn }: { turn: Turn }) {
     );
   }
 
+  // Show a "thinking" bubble when the assistant turn is in-flight but
+  // has produced neither text nor an error yet. Covers:
+  // - Gap between user send and first LLM response
+  // - After a tool call finishes, while the next LLM call is running
+  // - DB fallback polling window after an SSE disconnect
+  // Tool-call cards still render independently above this.
+  const isThinking = !turn.done && !turn.error && !turn.text;
+
   return (
     <div className="space-y-2">
       {turn.toolCalls.map((tc) => (
         <ToolCallCard key={tc.id} call={tc} />
       ))}
+      {isThinking && <ThinkingBubble hasTools={turn.toolCalls.length > 0} />}
       {(turn.text || turn.error) && (
         <div
           className={cn(
@@ -745,6 +754,19 @@ function TurnView({ turn }: { turn: Turn }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function ThinkingBubble({ hasTools }: { hasTools: boolean }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md bg-card border border-[var(--ai)]/30 px-3 py-2 text-xs text-muted-foreground">
+      <span className="flex gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--ai)] animate-bounce [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--ai)] animate-bounce [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--ai)] animate-bounce" />
+      </span>
+      <span>{hasTools ? "Synthesizing…" : "Thinking…"}</span>
     </div>
   );
 }
