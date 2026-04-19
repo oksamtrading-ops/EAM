@@ -358,6 +358,9 @@ model Workspace {
   technologyDependencies TechnologyDependency[]
   technologyStandards    TechnologyStandard[]
   referenceArchitectures ReferenceArchitecture[]
+  intakeDocuments        IntakeDocument[]
+  intakeDrafts           IntakeDraft[]
+  agentRuns              AgentRun[]
 
   @@map("workspaces")
 }
@@ -2044,5 +2047,138 @@ model ReferenceArchitectureComponent {
   @@id([architectureId, productId])
   @@index([productId])
   @@map("reference_architecture_components")
+}
+
+// ============================================================
+// HORIZON 1 — AGENTIC AI FOUNDATIONS
+// Document intake pipeline + approval queue + agent-run trace
+// ============================================================
+
+enum IntakeStatus {
+  PENDING
+  PROCESSING
+  EXTRACTED
+  FAILED
+}
+
+enum IntakeEntityType {
+  CAPABILITY
+  APPLICATION
+  RISK
+  VENDOR
+  TECH_COMPONENT
+}
+
+enum DraftStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  MODIFIED
+}
+
+enum AgentRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model IntakeDocument {
+  id          String       @id @default(cuid())
+  workspaceId String
+  filename    String
+  mimeType    String
+  sizeBytes   Int
+  storageKey  String       // Vercel Blob key or inline-data marker
+  status      IntakeStatus @default(PENDING)
+  errorMessage String?
+  uploadedBy  String
+  uploadedAt  DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chunks    IntakeChunk[]
+  drafts    IntakeDraft[]
+
+  @@index([workspaceId, status])
+  @@map("intake_documents")
+}
+
+model IntakeChunk {
+  id         String @id @default(cuid())
+  documentId String
+  ordinal    Int
+  text       String
+  page       Int?
+
+  embedding Unsupported("vector(1536)")?
+
+  createdAt DateTime @default(now())
+
+  document IntakeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("intake_chunks")
+}
+
+model IntakeDraft {
+  id                String           @id @default(cuid())
+  workspaceId       String
+  documentId        String?
+  entityType        IntakeEntityType
+  payload           Json
+  confidence        Float            @default(0)
+  evidence          Json             @default("[]")
+  status            DraftStatus      @default(PENDING)
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  committedEntityId String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  document  IntakeDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, entityType])
+  @@index([documentId])
+  @@map("intake_drafts")
+}
+
+model AgentRun {
+  id             String         @id @default(cuid())
+  workspaceId    String
+  kind           String         // "palette" | "intake" | "rationalization-critic"
+  status         AgentRunStatus @default(RUNNING)
+  inputHash      String
+  promptVersion  String?
+  model          String?
+  totalTokensIn  Int            @default(0)
+  totalTokensOut Int            @default(0)
+  errorMessage   String?
+  startedAt      DateTime       @default(now())
+  endedAt        DateTime?
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  steps     AgentRunStep[]
+
+  @@index([workspaceId, kind, startedAt])
+  @@map("agent_runs")
+}
+
+model AgentRunStep {
+  id        String   @id @default(cuid())
+  runId     String
+  ordinal   Int
+  kind      String   // "llm" | "tool_call" | "tool_result" | "error"
+  toolName  String?
+  payload   Json
+  latencyMs Int?
+  createdAt DateTime @default(now())
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, ordinal])
+  @@map("agent_run_steps")
 }
 
