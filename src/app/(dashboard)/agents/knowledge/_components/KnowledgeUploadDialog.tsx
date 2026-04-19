@@ -41,12 +41,14 @@ type Mode = "upload" | "existing";
 type Result = {
   documentId: string;
   draftsCreated: number;
+  extracted?: boolean;
 };
 
 export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
   const { workspaceId } = useWorkspace();
   const fileRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>("upload");
+  const [skipExtraction, setSkipExtraction] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string>("");
   const [running, setRunning] = useState(false);
@@ -60,6 +62,7 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
   function reset() {
     setFile(null);
     setSelectedDocId("");
+    setSkipExtraction(false);
     setRunning(false);
     setResult(null);
     setError(null);
@@ -79,6 +82,7 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
       const formData = new FormData();
       formData.append("file", f);
       formData.append("workspaceId", workspaceId);
+      if (skipExtraction) formData.append("skipExtraction", "true");
       const res = await fetch("/api/ai/knowledge/extract", {
         method: "POST",
         body: formData,
@@ -90,9 +94,15 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
         return;
       }
       setResult(data);
-      toast.success(
-        `Extracted ${data.draftsCreated} fact${data.draftsCreated === 1 ? "" : "s"}`
-      );
+      if (data.extracted === false) {
+        toast.success(
+          `Uploaded "${f.name}". Distill it later from Existing document mode.`
+        );
+      } else {
+        toast.success(
+          `Extracted ${data.draftsCreated} fact${data.draftsCreated === 1 ? "" : "s"}`
+        );
+      }
       onExtracted();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Extraction failed";
@@ -165,6 +175,25 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
         </div>
 
         {mode === "upload" && (
+          <>
+          <label className="flex items-start gap-2 text-xs text-muted-foreground select-none cursor-pointer p-2 rounded-md border bg-background/60">
+            <input
+              type="checkbox"
+              checked={skipExtraction}
+              onChange={(e) => setSkipExtraction(e.target.checked)}
+              className="h-3.5 w-3.5 mt-0.5 accent-[var(--ai)]"
+            />
+            <span className="min-w-0">
+              <span className="font-medium text-foreground">
+                Just upload — don&apos;t distill yet
+              </span>
+              <span className="block">
+                Store the document and its chunks for later. You can distill it
+                whenever you want via the &ldquo;Existing document&rdquo; mode
+                above.
+              </span>
+            </span>
+          </label>
           <div
             className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-[var(--ai)] hover:bg-[var(--ai)]/5 transition-colors"
             onClick={() => !running && fileRef.current?.click()}
@@ -182,9 +211,13 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
             {running ? (
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-8 w-8 text-[var(--ai)] animate-spin" />
-                <p className="text-sm font-medium">Distilling facts…</p>
+                <p className="text-sm font-medium">
+                  {skipExtraction ? "Uploading…" : "Distilling facts…"}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  30–90 seconds for typical documents.
+                  {skipExtraction
+                    ? "Parsing and chunking; no Anthropic call."
+                    : "30–90 seconds for typical documents."}
                 </p>
               </div>
             ) : file && !result && !error ? (
@@ -202,6 +235,7 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
               </div>
             )}
           </div>
+          </>
         )}
 
         {mode === "existing" && (
@@ -255,14 +289,29 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
           <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 flex items-start gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-xs">
-              <p className="font-medium text-emerald-900">
-                Extracted {result.draftsCreated} fact
-                {result.draftsCreated === 1 ? "" : "s"}
-              </p>
-              <p className="text-emerald-800/80">
-                Review them in the Drafts tab. Accept to commit, reject to
-                discard.
-              </p>
+              {result.extracted === false ? (
+                <>
+                  <p className="font-medium text-emerald-900">
+                    Uploaded — no distillation run
+                  </p>
+                  <p className="text-emerald-800/80">
+                    The document is stored and searchable by the agent. When
+                    you want facts distilled, re-open this dialog and use
+                    &ldquo;Existing document&rdquo; mode.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-emerald-900">
+                    Extracted {result.draftsCreated} fact
+                    {result.draftsCreated === 1 ? "" : "s"}
+                  </p>
+                  <p className="text-emerald-800/80">
+                    Review them in the Drafts tab. Accept to commit, reject to
+                    discard.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         )}

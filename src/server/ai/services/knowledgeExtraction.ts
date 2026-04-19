@@ -93,10 +93,13 @@ export async function extractKnowledgeFromNewUpload(opts: {
   bytes: Buffer;
   filename: string;
   mimeType: string;
-}): Promise<{ documentId: string; draftsCreated: number }> {
-  const { workspaceId, userId, bytes, filename, mimeType } = opts;
+  /** When true, parse + chunk + persist the document only; skip the LLM extraction pass. */
+  skipExtraction?: boolean;
+}): Promise<{ documentId: string; draftsCreated: number; extracted: boolean }> {
+  const { workspaceId, userId, bytes, filename, mimeType, skipExtraction } =
+    opts;
 
-  // Persist the document so drafts can cite it.
+  // Persist the document so chunks + any future drafts can cite it.
   const document = await db.intakeDocument.create({
     data: {
       workspaceId,
@@ -111,6 +114,30 @@ export async function extractKnowledgeFromNewUpload(opts: {
   });
 
   try {
+    // Two paths:
+    // - skipExtraction=true → parse + chunk only; no Anthropic call.
+    // - default → full distill pass, emit KnowledgeDraft rows.
+    if (skipExtraction) {
+      const chunks = await parseAndChunk(bytes, mimeType, filename);
+      if (chunks.length > 0) {
+        await db.intakeChunk.createMany({
+          data: chunks.map((c) => ({
+            documentId: document.id,
+            ordinal: c.ordinal,
+            text: c.text.slice(0, 8000),
+            page: c.page ?? null,
+          })),
+        });
+      }
+      // Status: EXTRACTED still conveys "chunks stored, ready for retrieval";
+      // drafts remain empty until a later distill action.
+      await db.intakeDocument.update({
+        where: { id: document.id },
+        data: { status: "EXTRACTED" },
+      });
+      return { documentId: document.id, draftsCreated: 0, extracted: false };
+    }
+
     let extractor: ExtractorResponse;
     if (mimeType === "application/pdf") {
       extractor = await extractFromPdf(bytes, filename);
@@ -124,7 +151,6 @@ export async function extractKnowledgeFromNewUpload(opts: {
       extractor = await extractFromText(bytes.toString("utf-8"), filename);
     }
 
-    // Persist chunks so future distill / search calls can reuse them.
     if (extractor.chunks.length > 0) {
       await db.intakeChunk.createMany({
         data: extractor.chunks.map((c) => ({
@@ -154,7 +180,11 @@ export async function extractKnowledgeFromNewUpload(opts: {
       data: { status: "EXTRACTED" },
     });
 
-    return { documentId: document.id, draftsCreated: result.draftsCreated };
+    return {
+      documentId: document.id,
+      draftsCreated: result.draftsCreated,
+      extracted: true,
+    };
   } catch (err) {
     await db.intakeDocument.update({
       where: { id: document.id },
@@ -165,6 +195,74 @@ export async function extractKnowledgeFromNewUpload(opts: {
     });
     throw err;
   }
+}
+
+/**
+ * Cheap parse-and-chunk path shared by the "upload only" mode.
+ * Mirrors what the full extractors produce locally but skips the
+ * Anthropic call. For PDFs we don't have pdf-parse installed, so we
+ * store a single metadata chunk; the user can run distill later which
+ * sends the PDF to Anthropic's native document block.
+ */
+async function parseAndChunk(
+  bytes: Buffer,
+  mimeType: string,
+  filename: string
+): Promise<Array<{ ordinal: number; text: string; page?: number | null }>> {
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    mimeType === "application/vnd.ms-excel"
+  ) {
+    // Reuse the xlsx chunker — no LLM call.
+    const wb = XLSX.read(bytes, { type: "buffer" });
+    const chunks: Array<{ ordinal: number; text: string }> = [];
+    let ordinal = 0;
+    for (const sheetName of wb.SheetNames) {
+      const sheet = wb.Sheets[sheetName];
+      if (!sheet) continue;
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+        defval: "",
+      });
+      if (rows.length === 0) continue;
+      const columns = Object.keys(rows[0] ?? {});
+      chunks.push({
+        ordinal: ordinal++,
+        text: `[Sheet: ${sheetName}] Columns: ${columns.join(" | ")}. ${rows.length} rows.`,
+      });
+      for (const [i, row] of rows.entries()) {
+        const values = Object.values(row).filter((v) => v !== "" && v != null);
+        if (values.length === 0) continue;
+        const serialized = Object.entries(row)
+          .filter(([, v]) => v !== "" && v != null)
+          .map(([k, v]) => `${k}: ${String(v)}`)
+          .join(" | ");
+        chunks.push({
+          ordinal: ordinal++,
+          text: `[${sheetName} · row ${i + 2}] ${serialized}`,
+        });
+      }
+    }
+    return chunks;
+  }
+
+  if (mimeType === "text/plain" || mimeType === "text/markdown") {
+    return chunkPlainText(bytes.toString("utf-8"));
+  }
+
+  if (mimeType === "application/pdf") {
+    // No server-side PDF text extractor installed; stamp a metadata
+    // chunk so the document is discoverable, and defer real extraction
+    // to the distill pass (which uses Anthropic's native PDF block).
+    return [
+      {
+        ordinal: 0,
+        text: `[PDF] ${filename} — ${bytes.length.toLocaleString()} bytes. Pending distillation.`,
+      },
+    ];
+  }
+
+  return [];
 }
 
 async function persistDrafts(opts: {

@@ -104,6 +104,9 @@ export async function POST(req: Request) {
     );
   }
 
+  const skipExtraction =
+    (formData.get("skipExtraction") as string | null) === "true";
+
   const bytes = Buffer.from(await file.arrayBuffer());
 
   try {
@@ -113,11 +116,13 @@ export async function POST(req: Request) {
       bytes,
       filename: file.name,
       mimeType,
+      skipExtraction,
     });
     return NextResponse.json({
       mode: "new",
       documentId: result.documentId,
       draftsCreated: result.draftsCreated,
+      extracted: result.extracted,
     });
   } catch (err) {
     const info = classifyAnthropicError(err);
