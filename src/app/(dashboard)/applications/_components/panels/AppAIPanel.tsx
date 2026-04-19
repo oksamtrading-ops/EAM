@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, Target, Cpu, Loader2, AlertTriangle, CalendarPlus, DollarSign, BarChart3 } from "lucide-react";
+import { X, Sparkles, Target, Cpu, Loader2, AlertTriangle, CalendarPlus, DollarSign, BarChart3, Gavel, ArrowRight } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,9 +131,95 @@ const TIME_CONFIG: Record<string, { label: string; color: string; bg: string; bo
   CONSOLIDATE: { label: "Consolidate", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
 };
 
+type CriticVerdict = {
+  score: number;
+  verdict: "ACCEPT" | "REVISE";
+  suggestedClassification: "TOLERATE" | "INVEST" | "MIGRATE" | "ELIMINATE";
+  issues: string[];
+  rationale: string;
+};
+
+type CriticResponse = {
+  runId: string;
+  final: {
+    classification: "TOLERATE" | "INVEST" | "MIGRATE" | "ELIMINATE";
+    rationale: string;
+    confidence: "HIGH" | "MEDIUM" | "LOW";
+  };
+  iterations: number;
+  history: Array<{
+    proposal: { classification: string; rationale: string; confidence: string };
+    critic: CriticVerdict;
+  }>;
+};
+
 function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]; workspaceId: string; onAddToRoadmap: (d: InitiativeFormDefaults) => void }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RatResult | null>(null);
+  const [critiques, setCritiques] = useState<Record<string, CriticResponse>>({});
+  const [critiquing, setCritiquing] = useState<Record<string, boolean>>({});
+
+  async function runCritic(rec: any) {
+    const key = rec.applicationName as string;
+    if (critiquing[key]) return;
+
+    // CONSOLIDATE isn't a TIME-4 category; normalize to MIGRATE for the critic
+    const initialClass =
+      rec.timeCategory === "CONSOLIDATE" ? "MIGRATE" : rec.timeCategory;
+    if (!["TOLERATE", "INVEST", "MIGRATE", "ELIMINATE"].includes(initialClass)) {
+      toast.error("Can't critique this category");
+      return;
+    }
+
+    const sourceApp = apps.find((a) => a.name === rec.applicationName);
+    const appSummary = {
+      name: rec.applicationName,
+      vendor: rec.vendor ?? sourceApp?.vendor ?? null,
+      lifecycle: sourceApp?.lifecycle ?? rec.currentStatus ?? "ACTIVE",
+      businessValue: rec.businessValue,
+      technicalHealth: rec.technicalHealth,
+      functionalFit: rec.functionalFit ?? null,
+      annualCostUsd: rec.annualCost ? Number(rec.annualCost) : null,
+      adoptionRate: rec.adoptionRate ?? null,
+      integrationCount: rec.integrationCount ?? 0,
+    };
+
+    setCritiquing((s) => ({ ...s, [key]: true }));
+    try {
+      const res = await fetch("/api/ai/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "rationalization-critic",
+          workspaceId,
+          payload: {
+            app: appSummary,
+            initial: {
+              classification: initialClass,
+              rationale: rec.rationale,
+              confidence: rec.confidence ?? "MEDIUM",
+            },
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      setCritiques((s) => ({ ...s, [key]: data as CriticResponse }));
+      const changed = data.final.classification !== initialClass;
+      toast.success(
+        changed
+          ? `Critic revised to ${data.final.classification} after ${data.iterations} pass${data.iterations === 1 ? "" : "es"}`
+          : `Critic confirmed ${data.final.classification} (${data.iterations} pass${data.iterations === 1 ? "" : "es"})`
+      );
+    } catch {
+      toast.error("Critic request failed");
+    } finally {
+      setCritiquing((s) => ({ ...s, [key]: false }));
+    }
+  }
   const { data: stats } = trpc.application.getStats.useQuery();
   const { data: matrix } = trpc.application.getRationalizationMatrix.useQuery();
   const { data: aiContext } = trpc.application.getAIRationalizationContext.useQuery();
@@ -315,6 +401,12 @@ function RationalizationTab({ apps, workspaceId, onAddToRoadmap }: { apps: any[]
                       {rec.savingsIfActioned > 0 && (
                         <p className="text-[10px] text-green-600 mt-1">Potential savings: ${Number(rec.savingsIfActioned).toLocaleString()}/yr</p>
                       )}
+                      <CriticPanel
+                        critique={critiques[rec.applicationName]}
+                        running={!!critiquing[rec.applicationName]}
+                        originalCategory={rec.timeCategory}
+                        onRun={() => runCritic(rec)}
+                      />
                       {(rec.timeCategory === "MIGRATE" || rec.timeCategory === "ELIMINATE" || rec.timeCategory === "CONSOLIDATE") && (
                         <AddToRoadmapBtn onClick={() => onAddToRoadmap({
                           name: `${rec.timeCategory === "ELIMINATE" ? "Decommission" : rec.timeCategory === "MIGRATE" ? "Migrate" : "Consolidate"} ${rec.applicationName}`,
@@ -932,6 +1024,104 @@ function ConfidenceDot({ confidence }: { confidence?: string }) {
       <span className={`w-2 h-2 rounded-full ${colors[confidence] ?? "bg-gray-400"}`} />
       {confidence}
     </span>
+  );
+}
+
+function CriticPanel({
+  critique,
+  running,
+  originalCategory,
+  onRun,
+}: {
+  critique: CriticResponse | undefined;
+  running: boolean;
+  originalCategory: string;
+  onRun: () => void;
+}) {
+  if (!critique) {
+    return (
+      <button
+        onClick={onRun}
+        disabled={running}
+        className="flex items-center gap-1 mt-2 px-2 py-1 rounded-md text-[10px] font-medium text-[var(--ai)] bg-[var(--ai)]/5 border border-[var(--ai)]/20 hover:bg-[var(--ai)]/10 disabled:opacity-60 transition-colors"
+      >
+        {running ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Running critic…
+          </>
+        ) : (
+          <>
+            <Gavel className="h-3 w-3" />
+            Refine with critic
+          </>
+        )}
+      </button>
+    );
+  }
+
+  const normalizedOriginal =
+    originalCategory === "CONSOLIDATE" ? "MIGRATE" : originalCategory;
+  const changed = critique.final.classification !== normalizedOriginal;
+  const finalConf = TIME_CONFIG[critique.final.classification];
+  const lastCritic = critique.history[critique.history.length - 1]?.critic;
+
+  return (
+    <div className="mt-2 p-2 rounded-md border border-[var(--ai)]/30 bg-[var(--ai)]/5 space-y-1">
+      <div className="flex items-center gap-1.5 text-[10px]">
+        <Gavel className="h-3 w-3 text-[var(--ai)]" />
+        <span className="font-bold uppercase tracking-wider text-[var(--ai)]">
+          Critic
+        </span>
+        <span className="text-muted-foreground">
+          · {critique.iterations} pass{critique.iterations === 1 ? "" : "es"}
+        </span>
+        {lastCritic && (
+          <span className="ml-auto text-muted-foreground tabular-nums">
+            score {Math.round(lastCritic.score * 100)}%
+          </span>
+        )}
+      </div>
+
+      {changed ? (
+        <div className="flex items-center gap-1.5 text-[11px]">
+          <span className="text-muted-foreground">{normalizedOriginal}</span>
+          <ArrowRight className="h-3 w-3 text-[var(--ai)]" />
+          <span
+            className={`font-semibold px-1.5 py-0.5 rounded border ${finalConf?.bg ?? ""} ${finalConf?.color ?? ""} ${finalConf?.border ?? ""}`}
+          >
+            {finalConf?.label ?? critique.final.classification}
+          </span>
+          <span className="text-[10px] text-muted-foreground ml-1">
+            · {critique.final.confidence}
+          </span>
+        </div>
+      ) : (
+        <p className="text-[11px] text-foreground">
+          Confirmed{" "}
+          <span
+            className={`font-semibold px-1 rounded ${finalConf?.color ?? ""}`}
+          >
+            {finalConf?.label ?? critique.final.classification}
+          </span>{" "}
+          · {critique.final.confidence}
+        </p>
+      )}
+
+      {critique.final.rationale && (
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          {critique.final.rationale}
+        </p>
+      )}
+
+      {lastCritic?.issues && lastCritic.issues.length > 0 && (
+        <ul className="text-[10px] text-muted-foreground list-disc pl-4 space-y-0.5">
+          {lastCritic.issues.slice(0, 5).map((issue, i) => (
+            <li key={i}>{issue}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
