@@ -18,6 +18,8 @@ export function deepLink(entityType: string, entityId: string): string {
       return `/intake?documentId=${entityId}`;
     case "IntakeDraft":
       return `/intake?draftId=${entityId}`;
+    case "AgentRun":
+      return `/agents/runs/${entityId}`;
     default:
       return `/`;
   }

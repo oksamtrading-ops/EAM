@@ -29,6 +29,7 @@ import { technologyStandardRouter } from "./technologyStandard";
 import { referenceArchitectureRouter } from "./referenceArchitecture";
 import { techArchitectureRouter } from "./techArchitecture";
 import { intakeRouter } from "./intake";
+import { agentRunRouter } from "./agentRun";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -61,6 +62,7 @@ export const appRouter = router({
   referenceArchitecture: referenceArchitectureRouter,
   techArchitecture: techArchitectureRouter,
   intake: intakeRouter,
+  agentRun: agentRunRouter,
 });
 
 export type AppRouter = typeof appRouter;
