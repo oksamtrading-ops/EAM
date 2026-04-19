@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
+import { embedOne, pgvectorLiteral } from "@/server/ai/embeddings/openai";
 
 export type RetrievedChunk = {
   chunkId: string;
@@ -9,15 +10,21 @@ export type RetrievedChunk = {
   page: number | null;
   excerpt: string;
   matchRank: number;
+  /** Source of the match: "semantic" = cosine distance; "keyword" = token-hit; "hybrid" = both. */
+  matchType?: "semantic" | "keyword" | "hybrid";
 };
 
 /**
- * Keyword retrieval over intake document chunks, workspace-scoped.
- * Splits the query into tokens, each token must appear (AND semantics),
- * ranks chunks by token hit count. Returns top-N excerpts with their source.
+ * Hybrid retrieval over intake document chunks, workspace-scoped.
  *
- * Note: pgvector semantic retrieval is a future upgrade — embedding provider
- * isn't configured, and all queries here pass through the same interface.
+ * Strategy:
+ * - Always runs keyword scoring (token-hit count, case-insensitive).
+ * - If an embedding for the query is available, also runs a pgvector
+ *   cosine-distance search over chunks that have embeddings, then
+ *   merges the two result sets (dedup by chunkId; semantic + keyword
+ *   boost each other in ranking).
+ * - Graceful degradation: if OPENAI_API_KEY is missing or an embedding
+ *   fails, falls back to keyword-only. Same output shape either way.
  */
 export async function retrieveIntakeChunks(opts: {
   workspaceId: string;
@@ -26,10 +33,38 @@ export async function retrieveIntakeChunks(opts: {
 }): Promise<RetrievedChunk[]> {
   const { workspaceId, query, limit = 8 } = opts;
   const tokens = tokenize(query);
+
+  const keywordResults = await keywordSearch(workspaceId, tokens, limit * 2);
+  const semanticResults = await semanticSearch(workspaceId, query, limit * 2);
+
+  // Merge: seen chunkIds get their scores blended. A chunk in both
+  // lists ranks higher than one in either alone. We cap output at limit.
+  const merged = new Map<string, RetrievedChunk>();
+  for (const r of keywordResults) merged.set(r.chunkId, r);
+  for (const r of semanticResults) {
+    const existing = merged.get(r.chunkId);
+    if (existing) {
+      merged.set(r.chunkId, {
+        ...existing,
+        matchRank: existing.matchRank + r.matchRank,
+        matchType: "hybrid",
+      });
+    } else {
+      merged.set(r.chunkId, r);
+    }
+  }
+  return Array.from(merged.values())
+    .sort((a, b) => b.matchRank - a.matchRank)
+    .slice(0, limit);
+}
+
+async function keywordSearch(
+  workspaceId: string,
+  tokens: string[],
+  limit: number
+): Promise<RetrievedChunk[]> {
   if (tokens.length === 0) return [];
 
-  // Get candidate chunks — all chunks whose document belongs to this workspace,
-  // and whose text contains the FIRST token (broadest filter cheaply).
   const firstToken = tokens[0]!;
   const candidates = await db.intakeChunk.findMany({
     where: {
@@ -41,15 +76,12 @@ export async function retrieveIntakeChunks(opts: {
       ordinal: true,
       page: true,
       text: true,
-      document: {
-        select: { id: true, filename: true },
-      },
+      document: { select: { id: true, filename: true } },
     },
     take: 200,
     orderBy: { ordinal: "asc" },
   });
 
-  // Score: count distinct tokens that appear (case-insensitive)
   const scored = candidates
     .map((c) => {
       const lower = c.text.toLowerCase();
@@ -71,6 +103,62 @@ export async function retrieveIntakeChunks(opts: {
     page: chunk.page,
     excerpt: excerptAround(chunk.text, tokens, 240),
     matchRank: hits,
+    matchType: "keyword" as const,
+  }));
+}
+
+type SemanticRow = {
+  id: string;
+  ordinal: number;
+  page: number | null;
+  text: string;
+  documentId: string;
+  filename: string;
+  distance: number;
+};
+
+async function semanticSearch(
+  workspaceId: string,
+  query: string,
+  limit: number
+): Promise<RetrievedChunk[]> {
+  const embedding = await embedOne(query).catch(() => null);
+  if (!embedding) return [];
+
+  const literal = pgvectorLiteral(embedding);
+
+  // pgvector cosine distance: smaller = more similar (range 0..2).
+  // We filter by workspaceId via the JOIN on intake_documents.
+  const rows = await db.$queryRaw<SemanticRow[]>`
+    SELECT
+      c.id,
+      c.ordinal,
+      c.page,
+      c.text,
+      d.id AS "documentId",
+      d.filename,
+      (c.embedding <=> ${literal}::vector) AS distance
+    FROM intake_chunks c
+    INNER JOIN intake_documents d ON d.id = c."documentId"
+    WHERE d."workspaceId" = ${workspaceId}
+      AND c.embedding IS NOT NULL
+    ORDER BY c.embedding <=> ${literal}::vector
+    LIMIT ${limit}
+  `;
+
+  // Convert distance → rank: closer distance = higher rank.
+  // Scale to roughly match keyword hit-count magnitudes (0-5) so merge
+  // ranking gives reasonable blends when both hit. cosine distance 0
+  // → rank 5; distance 1 → rank 0.
+  return rows.map((r) => ({
+    chunkId: r.id,
+    documentId: r.documentId,
+    filename: r.filename,
+    ordinal: r.ordinal,
+    page: r.page,
+    excerpt: (r.text ?? "").slice(0, 240),
+    matchRank: Math.max(0, 5 * (1 - Math.min(1, r.distance))),
+    matchType: "semantic" as const,
   }));
 }
 

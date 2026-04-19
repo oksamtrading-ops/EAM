@@ -8,6 +8,7 @@ import {
 } from "@/server/ai/prompts/intakeExtractor.v1";
 import { db } from "@/server/db";
 import type { IntakeEntityType } from "@/generated/prisma/client";
+import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
 
 const MAX_CHUNK_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 6000;
@@ -131,6 +132,15 @@ export async function extractFromDocument(opts: {
         where: { id: documentId },
         data: { status: "EXTRACTED" },
       });
+    });
+
+    // Backfill pgvector embeddings outside the transaction — cheap,
+    // non-blocking for retrieval (keyword fallback works regardless),
+    // and graceful if OPENAI_API_KEY isn't configured.
+    await embedIntakeChunks(documentId).catch((err) => {
+      console.warn(
+        `[intake] embedding backfill failed for ${documentId}: ${err instanceof Error ? err.message : String(err)}`
+      );
     });
 
     return {

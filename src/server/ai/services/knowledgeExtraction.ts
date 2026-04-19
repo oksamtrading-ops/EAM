@@ -8,6 +8,7 @@ import {
 } from "@/server/ai/prompts/knowledgeFactsExtractor.v1";
 import { db } from "@/server/db";
 import type { WorkspaceKnowledgeKind } from "@/generated/prisma/client";
+import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
 
 const MAX_CHUNK_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 6000;
@@ -74,6 +75,11 @@ export async function extractKnowledgeFromExistingDocument(opts: {
   const parsed = parseExtractorResponse(response);
   const ordinalToChunkId = new Map(chunks.map((c) => [c.ordinal, c.id]));
 
+  // Existing-doc path: chunks were already persisted by whichever
+  // extractor ran first (intake or knowledge upload). Backfill
+  // embeddings if they're missing — cheap and idempotent enough.
+  await embedIntakeChunks(doc.id).catch(() => {});
+
   return persistDrafts({
     workspaceId,
     sourceDocumentId: doc.id,
@@ -129,8 +135,9 @@ export async function extractKnowledgeFromNewUpload(opts: {
           })),
         });
       }
-      // Status: EXTRACTED still conveys "chunks stored, ready for retrieval";
-      // drafts remain empty until a later distill action.
+      // Backfill embeddings — makes the doc semantically searchable
+      // immediately, even without a distill pass.
+      await embedIntakeChunks(document.id).catch(() => {});
       await db.intakeDocument.update({
         where: { id: document.id },
         data: { status: "EXTRACTED" },
@@ -179,6 +186,10 @@ export async function extractKnowledgeFromNewUpload(opts: {
       where: { id: document.id },
       data: { status: "EXTRACTED" },
     });
+
+    // Backfill embeddings after the drafts land — non-blocking for
+    // the extractor, lets semantic retrieval work on next turn.
+    await embedIntakeChunks(document.id).catch(() => {});
 
     return {
       documentId: document.id,
