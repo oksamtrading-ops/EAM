@@ -3,6 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { CronExpressionParser } from "cron-parser";
 import { router, workspaceProcedure } from "@/server/trpc";
 
+const NotifyModeEnum = z.enum(["NEVER", "ON_FAILURE", "ALWAYS"]);
+const EmailOrNull = z
+  .string()
+  .trim()
+  .email("Enter a valid email")
+  .max(320)
+  .nullable();
+
 function computeNextRun(cronExpression: string, from: Date = new Date()): Date {
   const interval = CronExpressionParser.parse(cronExpression, {
     currentDate: from,
@@ -38,6 +46,8 @@ export const scheduledAgentTaskRouter = router({
         prompt: z.string().min(1).max(5000),
         cronExpression: z.string().min(9).max(200),
         enabled: z.boolean().default(true),
+        notifyEmail: EmailOrNull.optional(),
+        notifyMode: NotifyModeEnum.optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -59,6 +69,8 @@ export const scheduledAgentTaskRouter = router({
           cronExpression: input.cronExpression,
           enabled: input.enabled,
           nextRunAt,
+          notifyEmail: input.notifyEmail ?? null,
+          notifyMode: input.notifyMode ?? "NEVER",
         },
       });
     }),
@@ -71,6 +83,8 @@ export const scheduledAgentTaskRouter = router({
         prompt: z.string().min(1).max(5000).optional(),
         cronExpression: z.string().min(9).max(200).optional(),
         enabled: z.boolean().optional(),
+        notifyEmail: EmailOrNull.optional(),
+        notifyMode: NotifyModeEnum.optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -10,6 +10,8 @@ import {
   retrieveKnowledge,
   formatKnowledgeForPrompt,
 } from "@/server/ai/knowledge/retrieve";
+import { sendEmail } from "@/server/email/client";
+import { renderScheduledRunCompleteEmail } from "@/server/email/templates/scheduledRunComplete";
 
 function computeNextRun(cronExpression: string, from: Date = new Date()): Date {
   return CronExpressionParser.parse(cronExpression, {
@@ -29,7 +31,10 @@ export async function executeScheduledTask(
 ): Promise<{ runId?: string; error?: string }> {
   const task = await db.scheduledAgentTask.findUnique({
     where: { id: taskId },
-    include: { user: { select: { clerkId: true } } },
+    include: {
+      user: { select: { clerkId: true } },
+      workspace: { select: { name: true, clientName: true } },
+    },
   });
   if (!task) return { error: "Task not found" };
 
@@ -72,6 +77,20 @@ export async function executeScheduledTask(
       },
     });
 
+    // Best-effort notification. `task.notifyMode === ALWAYS` fires on
+    // every completion; ON_FAILURE only fires on the catch branch.
+    // Email errors never fail the run.
+    if (task.notifyEmail && task.notifyMode === "ALWAYS") {
+      await notifyCompletion({
+        task,
+        runId: result.runId,
+        status: "SUCCEEDED",
+        errorMessage: null,
+      }).catch((e) => {
+        console.warn(`[scheduled-email] notify failed: ${String(e)}`);
+      });
+    }
+
     return { runId: result.runId };
   } catch (err) {
     await db.scheduledAgentTask.update({
@@ -81,9 +100,82 @@ export async function executeScheduledTask(
         nextRunAt,
       },
     });
-    return {
-      error: err instanceof Error ? err.message : "Scheduled run failed",
-    };
+    const errorMessage =
+      err instanceof Error ? err.message : "Scheduled run failed";
+    if (
+      task.notifyEmail &&
+      (task.notifyMode === "ALWAYS" || task.notifyMode === "ON_FAILURE")
+    ) {
+      await notifyCompletion({
+        task,
+        runId: null,
+        status: "FAILED",
+        errorMessage,
+      }).catch((e) => {
+        console.warn(`[scheduled-email] notify failed: ${String(e)}`);
+      });
+    }
+    return { error: errorMessage };
+  }
+}
+
+/**
+ * Pull the final assistant text for the run (so the email includes a
+ * useful preview) and hand off to the Resend client. Graceful failure
+ * — a missing API key no-ops; a Resend error is logged but doesn't
+ * propagate.
+ */
+async function notifyCompletion(opts: {
+  task: {
+    id: string;
+    name: string;
+    notifyEmail: string | null;
+    workspace: { name: string; clientName: string | null };
+  };
+  runId: string | null;
+  status: "SUCCEEDED" | "FAILED";
+  errorMessage: string | null;
+}): Promise<void> {
+  const { task, runId, status, errorMessage } = opts;
+  if (!task.notifyEmail) return;
+
+  let excerpt: string | null = null;
+  if (runId) {
+    const lastMsg = await db.agentConversationMessage
+      .findFirst({
+        where: { runId, role: "assistant" },
+        orderBy: { ordinal: "desc" },
+        select: { content: true },
+      })
+      .catch(() => null);
+    if (lastMsg?.content) {
+      excerpt = lastMsg.content.slice(0, 500);
+      if (lastMsg.content.length > 500) excerpt += "…";
+    }
+  }
+
+  const workspaceLabel =
+    task.workspace.clientName?.trim() || task.workspace.name;
+
+  const { subject, html, text } = renderScheduledRunCompleteEmail({
+    taskName: task.name,
+    workspaceLabel,
+    runId,
+    status,
+    excerpt,
+    errorMessage,
+  });
+
+  const result = await sendEmail({
+    to: task.notifyEmail,
+    subject,
+    html,
+    text,
+  });
+  if (!result.ok && !result.skipped) {
+    console.warn(
+      `[scheduled-email] Resend rejected send for task ${task.id}: ${result.reason}`
+    );
   }
 }
 

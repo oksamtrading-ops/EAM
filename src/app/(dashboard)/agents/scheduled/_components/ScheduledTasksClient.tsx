@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import {
   CalendarClock,
   Plus,
@@ -12,10 +13,18 @@ import {
   PlayCircle,
   AlertCircle,
   CheckCircle2,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -27,12 +36,16 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+type NotifyMode = "NEVER" | "ON_FAILURE" | "ALWAYS";
+
 type EditingState = {
   id?: string;
   name: string;
   prompt: string;
   cronExpression: string;
   enabled: boolean;
+  notifyEmail: string;
+  notifyMode: NotifyMode;
 };
 
 const EMPTY: EditingState = {
@@ -40,6 +53,8 @@ const EMPTY: EditingState = {
   prompt: "",
   cronExpression: "0 9 * * 1", // Monday 09:00 UTC
   enabled: true,
+  notifyEmail: "",
+  notifyMode: "NEVER",
 };
 
 const CRON_PRESETS: Array<{ label: string; value: string }> = [
@@ -53,6 +68,9 @@ export function ScheduledTasksClient() {
   const [editing, setEditing] = useState<EditingState | null>(null);
   const utils = trpc.useUtils();
   const { data: tasks, isLoading } = trpc.scheduledAgentTask.list.useQuery();
+  const { user } = useUser();
+  const defaultEmail =
+    user?.primaryEmailAddress?.emailAddress ?? "";
 
   const create = trpc.scheduledAgentTask.create.useMutation({
     onSuccess: () => {
@@ -90,11 +108,19 @@ export function ScheduledTasksClient() {
       toast.error("Name, prompt, and schedule are required");
       return;
     }
+    const trimmedEmail = editing.notifyEmail.trim();
+    const wantsNotify = editing.notifyMode !== "NEVER";
+    if (wantsNotify && !trimmedEmail) {
+      toast.error("Provide an email or set notifications to Never.");
+      return;
+    }
     const payload = {
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
       cronExpression: editing.cronExpression.trim(),
       enabled: editing.enabled,
+      notifyEmail: wantsNotify && trimmedEmail ? trimmedEmail : null,
+      notifyMode: editing.notifyMode,
     };
     if (editing.id) {
       update.mutate({ id: editing.id, ...payload });
@@ -120,7 +146,7 @@ export function ScheduledTasksClient() {
         </div>
         <Button
           size="sm"
-          onClick={() => setEditing(EMPTY)}
+          onClick={() => setEditing({ ...EMPTY, notifyEmail: defaultEmail })}
           className="gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -134,7 +160,7 @@ export function ScheduledTasksClient() {
             Loading…
           </p>
         ) : !tasks || tasks.length === 0 ? (
-          <EmptyState onAdd={() => setEditing(EMPTY)} />
+          <EmptyState onAdd={() => setEditing({ ...EMPTY, notifyEmail: defaultEmail })} />
         ) : (
           <div className="max-w-3xl mx-auto space-y-2">
             {tasks.map((t) => (
@@ -159,6 +185,19 @@ export function ScheduledTasksClient() {
                       <code className="text-[10px] bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded font-mono">
                         {t.cronExpression}
                       </code>
+                      {t.notifyEmail && t.notifyMode !== "NEVER" && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] text-[var(--ai)] bg-[var(--ai)]/10 border border-[var(--ai)]/20 px-1.5 py-0.5 rounded"
+                          title={`Emails ${t.notifyEmail} ${
+                            t.notifyMode === "ALWAYS"
+                              ? "on every run"
+                              : "on failures only"
+                          }`}
+                        >
+                          <Mail className="h-2.5 w-2.5" />
+                          {t.notifyMode === "ALWAYS" ? "Always" : "On fail"}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2">
                       {t.prompt}
@@ -223,6 +262,8 @@ export function ScheduledTasksClient() {
                           prompt: t.prompt,
                           cronExpression: t.cronExpression,
                           enabled: t.enabled,
+                          notifyEmail: t.notifyEmail ?? "",
+                          notifyMode: t.notifyMode as NotifyMode,
                         })
                       }
                       className="p-1.5 rounded text-muted-foreground hover:text-[var(--ai)] hover:bg-[var(--ai)]/10"
@@ -318,6 +359,46 @@ export function ScheduledTasksClient() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="border-t pt-3 space-y-2">
+                <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Mail className="h-3 w-3" /> Email notifications
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Input
+                    type="email"
+                    value={editing.notifyEmail}
+                    onChange={(e) =>
+                      setEditing({ ...editing, notifyEmail: e.target.value })
+                    }
+                    placeholder="you@example.com"
+                    className="text-sm"
+                  />
+                  <Select
+                    value={editing.notifyMode}
+                    onValueChange={(v) =>
+                      setEditing({
+                        ...editing,
+                        notifyMode: v as NotifyMode,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NEVER">Never</SelectItem>
+                      <SelectItem value="ON_FAILURE">
+                        On failure only
+                      </SelectItem>
+                      <SelectItem value="ALWAYS">On every run</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Requires RESEND_API_KEY + RESEND_FROM on the server. When
+                  unset, runs complete silently.
+                </p>
               </div>
               <label className="flex items-center gap-2 text-xs text-muted-foreground select-none cursor-pointer">
                 <input

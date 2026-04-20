@@ -2317,6 +2317,12 @@ model KnowledgeDraft {
 // SCHEDULED AGENT TASKS — cron-style recurring agent runs
 // ============================================================
 
+enum ScheduledTaskNotifyMode {
+  NEVER
+  ON_FAILURE
+  ALWAYS
+}
+
 model ScheduledAgentTask {
   id             String    @id @default(cuid())
   workspaceId    String
@@ -2328,6 +2334,11 @@ model ScheduledAgentTask {
   lastRunAt      DateTime?
   lastRunId      String?
   nextRunAt      DateTime?
+  // Email notifications. Null notifyEmail or NEVER mode = silent. When
+  // set, executeScheduledTask fires a Resend email per notifyMode. The
+  // email call fails open if RESEND_API_KEY is missing.
+  notifyEmail    String?
+  notifyMode     ScheduledTaskNotifyMode @default(NEVER)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
