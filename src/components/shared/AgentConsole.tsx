@@ -23,6 +23,7 @@ import {
   CalendarClock,
   Link2,
   Package,
+  DollarSign,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -507,6 +508,22 @@ export function AgentConsole({
                     <div className="text-foreground">Agent settings</div>
                     <div className="text-[10px] text-muted-foreground">
                       Per-workspace budgets and toggles
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  href="/agents/costs"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    onOpenChange(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b"
+                >
+                  <DollarSign className="h-3.5 w-3.5 text-[var(--ai)]" />
+                  <div className="min-w-0">
+                    <div className="text-foreground">Cost dashboard</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Token spend per kind, day, and run
                     </div>
                   </div>
                 </Link>

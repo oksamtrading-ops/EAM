@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
+import { estimateRunCostUsd } from "@/lib/utils/agentPricing";
+
+const SinceDaysInput = z
+  .object({ sinceDays: z.number().int().min(1).max(365).default(30) })
+  .optional();
 
 export const agentRunRouter = router({
   list: workspaceProcedure
@@ -83,6 +88,180 @@ export const agentRunRouter = router({
     });
     return rows.map((r) => ({ kind: r.kind, count: r._count._all }));
   }),
+
+  /**
+   * Aggregate cost/token totals for a workspace over the last N days.
+   * `totalUsd` is estimated from per-model pricing — not a billed
+   * figure, but close enough for operator awareness.
+   */
+  costSummary: workspaceProcedure
+    .input(SinceDaysInput)
+    .query(async ({ ctx, input }) => {
+      const sinceDays = input?.sinceDays ?? 30;
+      const since = new Date(Date.now() - sinceDays * 86_400_000);
+      const rows = await ctx.db.agentRun.findMany({
+        where: {
+          workspaceId: ctx.workspaceId,
+          startedAt: { gte: since },
+          parentRunId: null, // parent only; sub-runs roll up into parents conceptually
+        },
+        select: {
+          model: true,
+          totalTokensIn: true,
+          totalTokensOut: true,
+        },
+      });
+      let totalUsd = 0;
+      let totalTokensIn = 0;
+      let totalTokensOut = 0;
+      for (const r of rows) {
+        totalUsd += estimateRunCostUsd(r);
+        totalTokensIn += r.totalTokensIn;
+        totalTokensOut += r.totalTokensOut;
+      }
+      return {
+        sinceDays,
+        runCount: rows.length,
+        totalUsd,
+        totalTokensIn,
+        totalTokensOut,
+      };
+    }),
+
+  /**
+   * Cost + run counts grouped by AgentRun.kind, so operators can see
+   * which workflow is burning the most.
+   */
+  costByKind: workspaceProcedure
+    .input(SinceDaysInput)
+    .query(async ({ ctx, input }) => {
+      const sinceDays = input?.sinceDays ?? 30;
+      const since = new Date(Date.now() - sinceDays * 86_400_000);
+      const rows = await ctx.db.agentRun.findMany({
+        where: {
+          workspaceId: ctx.workspaceId,
+          startedAt: { gte: since },
+          parentRunId: null,
+        },
+        select: {
+          kind: true,
+          model: true,
+          totalTokensIn: true,
+          totalTokensOut: true,
+        },
+      });
+      const byKind = new Map<
+        string,
+        { kind: string; usd: number; tokens: number; runs: number }
+      >();
+      for (const r of rows) {
+        const entry = byKind.get(r.kind) ?? {
+          kind: r.kind,
+          usd: 0,
+          tokens: 0,
+          runs: 0,
+        };
+        entry.usd += estimateRunCostUsd(r);
+        entry.tokens += r.totalTokensIn + r.totalTokensOut;
+        entry.runs += 1;
+        byKind.set(r.kind, entry);
+      }
+      return Array.from(byKind.values()).sort((a, b) => b.usd - a.usd);
+    }),
+
+  /**
+   * Daily cost rollup for a trend chart. Uses a raw query because
+   * Prisma groupBy can't truncate dates.
+   */
+  costByDay: workspaceProcedure
+    .input(SinceDaysInput)
+    .query(async ({ ctx, input }) => {
+      const sinceDays = input?.sinceDays ?? 30;
+      const since = new Date(Date.now() - sinceDays * 86_400_000);
+      const rows = await ctx.db.agentRun.findMany({
+        where: {
+          workspaceId: ctx.workspaceId,
+          startedAt: { gte: since },
+          parentRunId: null,
+        },
+        select: {
+          model: true,
+          startedAt: true,
+          totalTokensIn: true,
+          totalTokensOut: true,
+        },
+      });
+      const byDay = new Map<
+        string,
+        { day: string; usd: number; tokens: number; runs: number }
+      >();
+      for (const r of rows) {
+        // Bucket by UTC date — ignore timezones in the KPI; cost is
+        // already an estimate.
+        const day = r.startedAt.toISOString().slice(0, 10);
+        const entry = byDay.get(day) ?? {
+          day,
+          usd: 0,
+          tokens: 0,
+          runs: 0,
+        };
+        entry.usd += estimateRunCostUsd(r);
+        entry.tokens += r.totalTokensIn + r.totalTokensOut;
+        entry.runs += 1;
+        byDay.set(day, entry);
+      }
+      return Array.from(byDay.values()).sort((a, b) =>
+        a.day < b.day ? -1 : a.day > b.day ? 1 : 0
+      );
+    }),
+
+  /**
+   * Top N most expensive runs in the window — operator's "where did
+   * the money go?" view.
+   */
+  topCostRuns: workspaceProcedure
+    .input(
+      z
+        .object({
+          sinceDays: z.number().int().min(1).max(365).default(30),
+          limit: z.number().int().min(1).max(50).default(10),
+        })
+        .optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const sinceDays = input?.sinceDays ?? 30;
+      const limit = input?.limit ?? 10;
+      const since = new Date(Date.now() - sinceDays * 86_400_000);
+      // Fetch enough to sort by cost; tokens+model decides cost, and
+      // there's no DB column to sort on directly. Limit the pool so we
+      // don't pull every run for a heavy workspace.
+      const rows = await ctx.db.agentRun.findMany({
+        where: {
+          workspaceId: ctx.workspaceId,
+          startedAt: { gte: since },
+          parentRunId: null,
+        },
+        orderBy: [
+          { totalTokensOut: "desc" },
+          { totalTokensIn: "desc" },
+        ],
+        take: 500,
+        select: {
+          id: true,
+          kind: true,
+          model: true,
+          status: true,
+          startedAt: true,
+          totalTokensIn: true,
+          totalTokensOut: true,
+          conversation: { select: { title: true } },
+        },
+      });
+      return rows
+        .map((r) => ({ ...r, usd: estimateRunCostUsd(r) }))
+        .sort((a, b) => b.usd - a.usd)
+        .slice(0, limit);
+    }),
 
   getById: workspaceProcedure
     .input(z.object({ id: z.string() }))
