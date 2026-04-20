@@ -13,6 +13,7 @@ import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
 import { embedKnowledgeRow } from "@/server/ai/embeddings/writeKnowledgeEmbeddings";
 import { findSimilarKnowledge } from "@/server/ai/knowledge/findSimilar";
 import { loadAgentSettings } from "@/server/ai/settings";
+import { extractPdfText } from "@/server/ai/services/pdfExtract";
 
 const MAX_CHUNK_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 6000;
@@ -282,9 +283,19 @@ async function parseAndChunk(
   }
 
   if (mimeType === "application/pdf") {
-    // No server-side PDF text extractor installed; stamp a metadata
-    // chunk so the document is discoverable, and defer real extraction
-    // to the distill pass (which uses Anthropic's native PDF block).
+    // Server-side PDF text extraction via pdf-parse. Success → chunk
+    // like any other plain text. Failure (corrupted PDF, image-only
+    // scan, pdf-parse throws) → fall back to the legacy placeholder
+    // so the upload still lands and the distill-later path (which
+    // ships the raw PDF to Anthropic's native document block) stays
+    // available.
+    const text = await extractPdfText(bytes);
+    if (text && text.length > 0) {
+      return chunkPlainText(text);
+    }
+    console.warn(
+      `[parseAndChunk] PDF "${filename}" yielded no extractable text — stamping placeholder chunk.`
+    );
     return [
       {
         ordinal: 0,
