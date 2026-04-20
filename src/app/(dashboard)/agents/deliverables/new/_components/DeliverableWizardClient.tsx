@@ -35,6 +35,9 @@ export function DeliverableWizardClient() {
   const { data: runs } = trpc.agentRun.list.useQuery({
     limit: 100,
     hideSubRuns: true,
+    // Skip runs whose conversation was deleted — they'd show as
+    // anonymous "console" rows without a title.
+    hideOrphanConsole: true,
   });
   const { data: facts } = trpc.workspaceKnowledge.list.useQuery({
     limit: 200,

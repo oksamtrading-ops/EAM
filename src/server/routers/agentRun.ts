@@ -10,6 +10,13 @@ export const agentRunRouter = router({
           kind: z.string().optional(),
           kindPrefix: z.string().optional(),
           hideSubRuns: z.boolean().optional(),
+          /**
+           * Drops console runs whose conversation has been deleted.
+           * Use in UIs where orphaned rows are noise (e.g. the
+           * deliverable wizard). The trace viewer at /agents/runs
+           * still surfaces them for audit purposes.
+           */
+          hideOrphanConsole: z.boolean().optional(),
           limit: z.number().int().min(1).max(200).default(50),
           cursor: z.string().optional(),
         })
@@ -17,6 +24,12 @@ export const agentRunRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 50;
+      const orphanFilter =
+        input?.hideOrphanConsole
+          ? {
+              NOT: { kind: "console", conversationId: null },
+            }
+          : {};
       const runs = await ctx.db.agentRun.findMany({
         where: {
           workspaceId: ctx.workspaceId,
@@ -26,6 +39,7 @@ export const agentRunRouter = router({
               ? { startsWith: input.kindPrefix }
               : undefined,
           parentRunId: input?.hideSubRuns ? null : undefined,
+          ...orphanFilter,
         },
         orderBy: { startedAt: "desc" },
         take: limit + 1, // fetch +1 to know if there's a next page

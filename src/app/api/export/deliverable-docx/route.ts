@@ -55,7 +55,14 @@ export async function POST(req: Request) {
   const [runs, facts, initiatives] = await Promise.all([
     runIds.length > 0
       ? db.agentRun.findMany({
-          where: { id: { in: runIds }, workspaceId },
+          where: {
+            id: { in: runIds },
+            workspaceId,
+            // Reject orphaned console runs whose conversation has
+            // been deleted — no title, no context, shouldn't ship in
+            // a client-facing deliverable.
+            NOT: { kind: "console", conversationId: null },
+          },
           select: {
             id: true,
             kind: true,
