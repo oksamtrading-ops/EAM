@@ -234,7 +234,12 @@ export function DeliverableWizardClient() {
         </div>
       </div>
 
-      <div className="border-t px-4 sm:px-5 py-3 bg-background/60 flex items-center justify-between">
+      {/*
+        Right-pad the footer by the launcher footprint (48px button + 24px
+        right edge = ~72px clearance) so the Next button never sits
+        under the global AgentConsoleLauncher.
+      */}
+      <div className="border-t px-4 sm:px-5 py-3 bg-background/60 flex items-center justify-between sm:pr-24">
         <Button
           variant="outline"
           size="sm"
