@@ -44,6 +44,11 @@ export const agentRunRouter = router({
           totalTokensOut: true,
           errorMessage: true,
           parentRunId: true,
+          // Conversation title is the human-friendly label for "console"
+          // runs (auto-derived from the first user message). Sub-agent
+          // and scheduled runs have no conversation — fall back to kind
+          // in the UI.
+          conversation: { select: { id: true, title: true } },
           _count: { select: { steps: true, subRuns: true } },
         },
       });

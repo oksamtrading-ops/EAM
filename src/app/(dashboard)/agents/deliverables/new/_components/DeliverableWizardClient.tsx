@@ -124,15 +124,26 @@ export function DeliverableWizardClient() {
               empty={!runs || runs.items.length === 0 ? "No runs yet" : null}
             >
               <div className="rounded-lg border bg-card divide-y">
-                {(runs?.items ?? []).map((r) => (
-                  <CheckboxRow
-                    key={r.id}
-                    checked={runIds.has(r.id)}
-                    onChange={() => setRunIds((s) => toggle(s, r.id))}
-                    primary={r.kind}
-                    secondary={`${r.status} · ${new Date(r.startedAt).toLocaleDateString()} · ${r._count.steps} steps`}
-                  />
-                ))}
+                {(runs?.items ?? []).map((r) => {
+                  // Prefer the conversation title (e.g. "Which apps
+                  // are candidates to retire?") over the raw kind
+                  // ("console"), which is identical for every
+                  // Agent Console run and uselessly ambiguous here.
+                  const primary =
+                    r.conversation?.title?.trim() || r.kind;
+                  const secondary = r.conversation
+                    ? `${r.kind} · ${r.status} · ${new Date(r.startedAt).toLocaleDateString()} · ${r._count.steps} steps`
+                    : `${r.status} · ${new Date(r.startedAt).toLocaleDateString()} · ${r._count.steps} steps`;
+                  return (
+                    <CheckboxRow
+                      key={r.id}
+                      checked={runIds.has(r.id)}
+                      onChange={() => setRunIds((s) => toggle(s, r.id))}
+                      primary={primary}
+                      secondary={secondary}
+                    />
+                  );
+                })}
               </div>
             </StepPanel>
           )}

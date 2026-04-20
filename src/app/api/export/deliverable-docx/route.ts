@@ -62,9 +62,11 @@ export async function POST(req: Request) {
             startedAt: true,
             // finalText isn't a column — the last assistant message
             // on the linked conversation holds it. Pull the last
-            // assistant message per run.
+            // assistant message per run, plus the conversation title
+            // for a human-friendly section heading.
             conversation: {
               select: {
+                title: true,
                 messages: {
                   where: { role: "assistant" },
                   orderBy: { ordinal: "desc" },
@@ -128,6 +130,7 @@ export async function POST(req: Request) {
       runs: runs.map((r) => ({
         id: r.id,
         kind: r.kind,
+        label: r.conversation?.title?.trim() || r.kind,
         startedAt: r.startedAt,
         finalText: r.conversation?.messages[0]?.content ?? "",
       })),

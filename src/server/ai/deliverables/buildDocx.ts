@@ -22,7 +22,13 @@ import {
 export type DeliverableInput = {
   title: string;
   workspaceLabel: string;
-  runs: Array<{ id: string; kind: string; finalText: string; startedAt: Date }>;
+  runs: Array<{
+    id: string;
+    kind: string;
+    label: string; // human-friendly heading — conversation title when available
+    finalText: string;
+    startedAt: Date;
+  }>;
   facts: Array<{
     id: string;
     subject: string;
@@ -131,7 +137,7 @@ export async function buildDeliverableDocx(
     for (const run of input.runs) {
       children.push(
         new Paragraph({
-          text: `${run.kind} · ${run.startedAt.toLocaleDateString()}`,
+          text: `${run.label} · ${run.startedAt.toLocaleDateString()}`,
           heading: HeadingLevel.HEADING_3,
           spacing: { before: 180, after: 80 },
         })
@@ -239,7 +245,7 @@ export async function buildDeliverableDocx(
           spacing: { after: 40 },
           children: [
             new TextRun({
-              text: `${run.kind} — `,
+              text: `${run.label} (${run.kind}) — `,
               size: 20,
             }),
             new TextRun({
@@ -275,7 +281,7 @@ async function generateSummary(
   for (const r of input.runs) {
     items.push({
       kind: "run",
-      content: `[${r.kind}] ${r.finalText}`.slice(0, 4000),
+      content: `[${r.label}] ${r.finalText}`.slice(0, 4000),
     });
   }
   for (const f of input.facts) {
