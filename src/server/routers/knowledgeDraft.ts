@@ -32,6 +32,9 @@ export const knowledgeDraftRouter = router({
         ],
         include: {
           sourceDocument: { select: { id: true, filename: true } },
+          similarKnowledge: {
+            select: { id: true, subject: true, statement: true, kind: true },
+          },
         },
       });
     }),
@@ -143,6 +146,76 @@ export const knowledgeDraftRouter = router({
         where: { id },
         data: { ...data, status: "MODIFIED" },
       });
+    }),
+
+  supersede: workspaceProcedure
+    .input(
+      z.object({
+        draftId: z.string(),
+        existingKnowledgeId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const draft = await ctx.db.knowledgeDraft.findFirst({
+        where: { id: input.draftId, workspaceId: ctx.workspaceId },
+      });
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND" });
+      if (draft.status === "ACCEPTED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Draft already accepted",
+        });
+      }
+
+      const existing = await ctx.db.workspaceKnowledge.findFirst({
+        where: {
+          id: input.existingKnowledgeId,
+          workspaceId: ctx.workspaceId,
+        },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Existing knowledge row not found",
+        });
+      }
+
+      // Archive the old row, create the new one, mark draft accepted.
+      await ctx.db.workspaceKnowledge.update({
+        where: { id: existing.id },
+        data: { isActive: false },
+      });
+
+      const committed = await ctx.db.workspaceKnowledge.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          subject: draft.subject,
+          statement: draft.statement,
+          kind: draft.kind,
+          confidence: draft.confidence,
+          sourceRunId: draft.sourceRunId ?? null,
+          createdBy: ctx.dbUserId,
+        },
+        select: { id: true },
+      });
+      await embedKnowledgeRow(committed.id).catch(() => {});
+
+      const updated = await ctx.db.knowledgeDraft.update({
+        where: { id: input.draftId },
+        data: {
+          status: "ACCEPTED",
+          reviewedBy: ctx.dbUserId,
+          reviewedAt: new Date(),
+          committedKnowledgeId: committed.id,
+        },
+      });
+
+      return {
+        draft: updated,
+        committedKnowledgeId: committed.id,
+        archivedKnowledgeId: existing.id,
+      };
     }),
 
   bulkAcceptByConfidence: workspaceProcedure

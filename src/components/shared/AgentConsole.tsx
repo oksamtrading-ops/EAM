@@ -21,6 +21,8 @@ import {
   Settings as SettingsIcon,
   BookOpen,
   CalendarClock,
+  Link2,
+  Package,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { renderMarkdown } from "@/lib/utils/markdown";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
+import { ShareConversationDialog } from "./ShareConversationDialog";
 
 type ToolCall = {
   id: string;
@@ -109,6 +112,7 @@ export function AgentConsole({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   function startRename(id: string, current: string) {
     setEditingId(id);
@@ -397,17 +401,28 @@ export function AgentConsole({
           </div>
           <div className="flex items-center gap-1 relative">
             {conversationId && turns.length > 0 && (
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() =>
-                  downloadThreadAsDocx(conversationId, conversationTitle)
-                }
-                aria-label="Download thread as Word document"
-                title="Download thread (Word .docx)"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowShareDialog(true)}
+                  aria-label="Share conversation"
+                  title="Share (read-only link)"
+                >
+                  <Link2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() =>
+                    downloadThreadAsDocx(conversationId, conversationTitle)
+                  }
+                  aria-label="Download thread as Word document"
+                  title="Download thread (Word .docx)"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </>
             )}
             <Button
               size="icon"
@@ -469,13 +484,45 @@ export function AgentConsole({
                     setShowSettingsMenu(false);
                     onOpenChange(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted"
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b"
                 >
                   <Activity className="h-3.5 w-3.5 text-[var(--ai)]" />
                   <div className="min-w-0">
                     <div className="text-foreground">Run traces</div>
                     <div className="text-[10px] text-muted-foreground">
                       Every LLM + tool call, step-by-step
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  href="/settings/agent"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    onOpenChange(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted border-b"
+                >
+                  <SettingsIcon className="h-3.5 w-3.5 text-[var(--ai)]" />
+                  <div className="min-w-0">
+                    <div className="text-foreground">Agent settings</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Per-workspace budgets and toggles
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  href="/agents/deliverables/new"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    onOpenChange(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm bg-popover hover:bg-muted"
+                >
+                  <Package className="h-3.5 w-3.5 text-[var(--ai)]" />
+                  <div className="min-w-0">
+                    <div className="text-foreground">Bundle deliverable</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Compile runs, facts, and initiatives into one DOCX
                     </div>
                   </div>
                 </Link>
@@ -644,6 +691,12 @@ export function AgentConsole({
           )}
         </Button>
       </form>
+
+      <ShareConversationDialog
+        open={showShareDialog}
+        onClose={() => setShowShareDialog(false)}
+        conversationId={conversationId}
+      />
     </aside>
   );
 }

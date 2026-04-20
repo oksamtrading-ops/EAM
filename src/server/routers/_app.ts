@@ -31,8 +31,10 @@ import { techArchitectureRouter } from "./techArchitecture";
 import { intakeRouter } from "./intake";
 import { agentRunRouter } from "./agentRun";
 import { agentConversationRouter } from "./agentConversation";
+import { agentConversationShareRouter } from "./agentConversationShare";
 import { workspaceKnowledgeRouter } from "./workspaceKnowledge";
 import { knowledgeDraftRouter } from "./knowledgeDraft";
+import { workspaceAgentSettingsRouter } from "./workspaceAgentSettings";
 import { scheduledAgentTaskRouter } from "./scheduledAgentTask";
 
 export const appRouter = router({
@@ -68,8 +70,10 @@ export const appRouter = router({
   intake: intakeRouter,
   agentRun: agentRunRouter,
   agentConversation: agentConversationRouter,
+  agentConversationShare: agentConversationShareRouter,
   workspaceKnowledge: workspaceKnowledgeRouter,
   knowledgeDraft: knowledgeDraftRouter,
+  workspaceAgentSettings: workspaceAgentSettingsRouter,
   scheduledAgentTask: scheduledAgentTaskRouter,
 });
 

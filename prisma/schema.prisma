@@ -296,6 +296,7 @@ model User {
   ownedTechnologyStandards    TechnologyStandard[]   @relation("TechnologyStandardOwner")
   ownedReferenceArchitectures ReferenceArchitecture[] @relation("ReferenceArchitectureOwner")
   agentConversations          AgentConversation[]
+  agentConversationShares     AgentConversationShare[]
   scheduledAgentTasks         ScheduledAgentTask[]
 
   @@map("users")
@@ -367,6 +368,7 @@ model Workspace {
   workspaceKnowledge     WorkspaceKnowledge[]
   knowledgeDrafts        KnowledgeDraft[]
   scheduledAgentTasks    ScheduledAgentTask[]
+  agentSettings          WorkspaceAgentSettings?
 
   @@map("workspaces")
 }
@@ -2214,6 +2216,7 @@ model AgentConversation {
   user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  AgentConversationMessage[]
   runs      AgentRun[]
+  share     AgentConversationShare?
 
   @@index([workspaceId, updatedAt])
   @@index([userId, updatedAt])
@@ -2261,9 +2264,10 @@ model WorkspaceKnowledge {
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
-  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  sourceRun   AgentRun?        @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
-  draftSource KnowledgeDraft[]
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceRun     AgentRun?        @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  draftSource   KnowledgeDraft[] @relation("KnowledgeDraftCommit")
+  similarDrafts KnowledgeDraft[] @relation("KnowledgeDraftDedup")
 
   @@index([workspaceId, isActive, updatedAt])
   @@index([workspaceId, subject])
@@ -2285,16 +2289,19 @@ model KnowledgeDraft {
   reviewedAt           DateTime?
   rejectionReason      String?
   committedKnowledgeId String?
+  similarKnowledgeId   String?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
-  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  sourceDocument   IntakeDocument?     @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
-  sourceRun        AgentRun?           @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
-  committedKnowledge WorkspaceKnowledge? @relation(fields: [committedKnowledgeId], references: [id], onDelete: SetNull)
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceDocument     IntakeDocument?     @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  sourceRun          AgentRun?           @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  committedKnowledge WorkspaceKnowledge? @relation("KnowledgeDraftCommit", fields: [committedKnowledgeId], references: [id], onDelete: SetNull)
+  similarKnowledge   WorkspaceKnowledge? @relation("KnowledgeDraftDedup", fields: [similarKnowledgeId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, status])
   @@index([sourceDocumentId])
+  @@index([similarKnowledgeId])
   @@map("knowledge_drafts")
 }
 
@@ -2325,3 +2332,41 @@ model ScheduledAgentTask {
   @@map("scheduled_agent_tasks")
 }
 
+
+
+// ============================================================
+// WORKSPACE AGENT SETTINGS — per-workspace tunables
+// ============================================================
+
+model WorkspaceAgentSettings {
+  workspaceId          String   @id
+  maxToolIterations    Int      @default(6)
+  subAgentBudget       Int      @default(3)
+  llmMaxTokens         Int      @default(1500)
+  autoAcceptConfidence Float?
+  criticEnabled        Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("workspace_agent_settings")
+}
+
+
+model AgentConversationShare {
+  id              String    @id @default(cuid())
+  conversationId  String    @unique
+  slug            String    @unique
+  title           String?
+  redactToolCalls Boolean   @default(true)
+  expiresAt       DateTime?
+  createdBy       String
+  revoked         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([slug])
+  @@map("agent_conversation_shares")
+}

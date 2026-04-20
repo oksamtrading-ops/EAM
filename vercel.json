@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/scheduled-agent-tasks",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/sweep-stale-runs",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

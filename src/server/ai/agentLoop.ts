@@ -9,11 +9,13 @@ import {
   type AppCaller,
 } from "./tools";
 import { TOOLS_BY_NAME } from "./tools/definitions";
-
-const SUB_AGENT_BUDGET_PER_TURN = 3;
+import { loadAgentSettings, AGENT_SETTINGS_DEFAULTS } from "./settings";
 import { db } from "@/server/db";
 
-export const MAX_TOOL_ITERATIONS = 6;
+// Legacy exports kept for any callers that imported these constants.
+// The live values come from loadAgentSettings(workspaceId) at run start.
+export const MAX_TOOL_ITERATIONS = AGENT_SETTINGS_DEFAULTS.maxToolIterations;
+const DEFAULT_SUB_AGENT_BUDGET = AGENT_SETTINGS_DEFAULTS.subAgentBudget;
 
 export type AgentEvent =
   | { type: "run_started"; runId: string }
@@ -67,7 +69,7 @@ export async function runAgentLoop(
     userMessage,
     history,
     model = MODEL_REASONER,
-    maxTokens = 1500,
+    maxTokens: maxTokensOverride,
     toolFilter,
     workspaceId,
     userId,
@@ -75,6 +77,14 @@ export async function runAgentLoop(
     parentRunId,
     onEvent,
   } = opts;
+
+  // Per-workspace tunables (falls back to defaults when no row).
+  // Sub-agent calls forward their own maxTokens via opts.maxTokens so
+  // they don't inherit the parent's larger budget.
+  const settings = await loadAgentSettings(workspaceId);
+  const maxTokens = maxTokensOverride ?? settings.llmMaxTokens;
+  const maxToolIterations = settings.maxToolIterations;
+  const subAgentBudget = settings.subAgentBudget;
 
   const inputHash = createHash("sha256")
     .update(`${kind}|${promptVersion}|${userMessage}`)
@@ -134,7 +144,7 @@ export async function runAgentLoop(
   let subAgentCallsSoFar = 0;
 
   try {
-    for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+    for (let iter = 0; iter < maxToolIterations; iter++) {
       const t0 = Date.now();
       const response = await anthropic.messages.create({
         model,
@@ -215,7 +225,7 @@ export async function runAgentLoop(
           userId,
           parentRunId: runId,
           subAgentCallsSoFar,
-          subAgentBudget: SUB_AGENT_BUDGET_PER_TURN,
+          subAgentBudget,
         });
         if (isSubAgentCall) subAgentCallsSoFar += 1;
         const stepLatency = Date.now() - t;

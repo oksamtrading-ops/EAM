@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronRight,
   BookOpen,
+  Replace,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +40,7 @@ type Props = {
     statement?: string;
     kind?: "FACT" | "DECISION" | "PATTERN";
   }) => void;
+  onSupersede?: (existingKnowledgeId: string) => void;
 };
 
 const KIND_META: Record<string, { label: string; color: string }> = {
@@ -58,7 +61,13 @@ function confidenceColor(c: number): string {
   return "bg-amber-50 text-amber-700 border-amber-200";
 }
 
-export function KnowledgeDraftCard({ draft, onAccept, onReject, onModify }: Props) {
+export function KnowledgeDraftCard({
+  draft,
+  onAccept,
+  onReject,
+  onModify,
+  onSupersede,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState(draft.subject);
@@ -224,6 +233,50 @@ export function KnowledgeDraftCard({ draft, onAccept, onReject, onModify }: Prop
           </div>
         )}
       </div>
+
+      {draft.similarKnowledge && isPending && onSupersede && (
+        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50/70 p-2 space-y-1.5">
+          <div className="flex items-start gap-1.5 text-[11px] text-amber-900">
+            <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <span className="font-medium">Similar to existing fact:</span>{" "}
+              <span className="font-medium">
+                {draft.similarKnowledge.subject}
+              </span>
+              <p className="mt-0.5 text-amber-900/80 line-clamp-2">
+                &ldquo;{draft.similarKnowledge.statement}&rdquo;
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] border-amber-300 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+              onClick={() => onSupersede(draft.similarKnowledge!.id)}
+            >
+              <Replace className="h-3 w-3 mr-1" />
+              Supersede
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px]"
+              onClick={() => onAccept()}
+            >
+              Keep both
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] text-red-600 hover:bg-red-50"
+              onClick={onReject}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={() => setExpanded((v) => !v)}

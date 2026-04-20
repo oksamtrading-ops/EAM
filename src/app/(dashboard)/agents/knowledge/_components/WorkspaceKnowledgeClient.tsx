@@ -159,6 +159,14 @@ export function WorkspaceKnowledgeClient() {
     },
     onError: (e) => toast.error(e.message),
   });
+  const supersedeDraft = trpc.knowledgeDraft.supersede.useMutation({
+    onSuccess: () => {
+      toast.success("Fact superseded — old version archived");
+      utils.knowledgeDraft.list.invalidate();
+      utils.workspaceKnowledge.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const bulkAcceptDrafts = trpc.knowledgeDraft.bulkAcceptByConfidence.useMutation(
     {
       onSuccess: (r) => {
@@ -472,6 +480,12 @@ export function WorkspaceKnowledgeClient() {
                         onReject={() => rejectDraft.mutate({ id: d.id })}
                         onModify={(updates) =>
                           modifyDraft.mutate({ id: d.id, ...updates })
+                        }
+                        onSupersede={(existingKnowledgeId) =>
+                          supersedeDraft.mutate({
+                            draftId: d.id,
+                            existingKnowledgeId,
+                          })
                         }
                       />
                     ))}

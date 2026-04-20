@@ -10,6 +10,9 @@ import {
 import { db } from "@/server/db";
 import type { WorkspaceKnowledgeKind } from "@/generated/prisma/client";
 import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
+import { embedKnowledgeRow } from "@/server/ai/embeddings/writeKnowledgeEmbeddings";
+import { findSimilarKnowledge } from "@/server/ai/knowledge/findSimilar";
+import { loadAgentSettings } from "@/server/ai/settings";
 
 const MAX_CHUNK_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 6000;
@@ -300,6 +303,13 @@ async function persistDrafts(opts: {
   ordinalToChunkId: Map<number, string>;
 }): Promise<{ draftsCreated: number }> {
   const { workspaceId, sourceDocumentId, facts, ordinalToChunkId } = opts;
+
+  // Auto-accept threshold is per-workspace. When set, drafts with
+  // confidence at or above the threshold commit directly to
+  // WorkspaceKnowledge and skip the approval queue.
+  const settings = await loadAgentSettings(workspaceId);
+  const autoAccept = settings.autoAcceptConfidence;
+
   let count = 0;
   for (const f of facts) {
     if (!VALID_KINDS.has(f.kind)) continue;
@@ -317,18 +327,67 @@ async function persistDrafts(opts: {
       .filter((e) => e.excerpt.length > 0);
     if (evidence.length === 0) continue;
 
-    await db.knowledgeDraft.create({
-      data: {
+    const subject = f.subject.trim().slice(0, 200);
+    const statement = f.statement.trim().slice(0, 2000);
+    const confidence = clamp01(f.confidence ?? 0.8);
+
+    const shouldAutoAccept =
+      autoAccept != null && confidence >= autoAccept;
+
+    if (shouldAutoAccept) {
+      // Skip the draft entirely and commit straight to
+      // WorkspaceKnowledge. We still record a draft row so the
+      // trace has provenance, but mark it ACCEPTED up front.
+      const committed = await db.workspaceKnowledge.create({
+        data: {
+          workspaceId,
+          kind: f.kind,
+          subject,
+          statement,
+          confidence,
+        },
+        select: { id: true },
+      });
+      await embedKnowledgeRow(committed.id).catch(() => {});
+      await db.knowledgeDraft.create({
+        data: {
+          workspaceId,
+          sourceDocumentId,
+          kind: f.kind,
+          subject,
+          statement,
+          confidence,
+          evidence: JSON.parse(JSON.stringify(evidence)),
+          status: "ACCEPTED",
+          reviewedAt: new Date(),
+          committedKnowledgeId: committed.id,
+        },
+      });
+    } else {
+      // Flag likely duplicates via semantic similarity so the review
+      // UI can surface a Supersede / Keep-both action. Fail-open on
+      // embedding errors — the draft still lands without a dedup
+      // hint.
+      const similarKnowledgeId = await findSimilarKnowledge({
         workspaceId,
-        sourceDocumentId,
-        kind: f.kind,
-        subject: f.subject.trim().slice(0, 200),
-        statement: f.statement.trim().slice(0, 2000),
-        confidence: clamp01(f.confidence ?? 0.8),
-        evidence: JSON.parse(JSON.stringify(evidence)),
-        status: "PENDING",
-      },
-    });
+        subject,
+        statement,
+      }).catch(() => null);
+
+      await db.knowledgeDraft.create({
+        data: {
+          workspaceId,
+          sourceDocumentId,
+          kind: f.kind,
+          subject,
+          statement,
+          confidence,
+          evidence: JSON.parse(JSON.stringify(evidence)),
+          status: "PENDING",
+          similarKnowledgeId,
+        },
+      });
+    }
     count++;
   }
   return { draftsCreated: count };
