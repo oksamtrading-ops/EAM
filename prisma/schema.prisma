@@ -2375,16 +2375,27 @@ model WorkspaceAgentSettings {
 }
 
 
+enum ShareProtectionMode {
+  ANONYMOUS
+  PASSCODE
+  SIGNED_IN
+}
+
 model AgentConversationShare {
-  id              String    @id @default(cuid())
-  conversationId  String    @unique
-  slug            String    @unique
+  id              String              @id @default(cuid())
+  conversationId  String              @unique
+  slug            String              @unique
   title           String?
-  redactToolCalls Boolean   @default(true)
+  redactToolCalls Boolean             @default(true)
   expiresAt       DateTime?
   createdBy       String
-  revoked         Boolean   @default(false)
-  createdAt       DateTime  @default(now())
+  revoked         Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  // Access control. ANONYMOUS = default / existing behavior. PASSCODE
+  // requires a scrypt-hashed short code; passcodeHash is null for all
+  // other modes. SIGNED_IN requires any authenticated Clerk user.
+  protectionMode  ShareProtectionMode @default(ANONYMOUS)
+  passcodeHash    String?
 
   conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)

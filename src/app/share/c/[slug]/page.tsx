@@ -1,7 +1,15 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { renderMarkdown } from "@/lib/utils/markdown";
-import { Sparkles } from "lucide-react";
+import { Sparkles, LogIn, Lock } from "lucide-react";
+import {
+  verifyShareCookie,
+  shareCookieName,
+} from "@/server/share/accessControl";
+import { PasscodeForm } from "./_components/PasscodeForm";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +71,76 @@ export default async function SharedConversationPage({
   const title = share.title ?? share.conversation.title;
   const brandLogoUrl = share.conversation.workspace.logoUrl ?? null;
   const brandColor = share.conversation.workspace.brandColor ?? null;
+
+  // Access control gates. Each renders its own ShareLayout so the
+  // gated pages still surface client branding / eyebrow / footer.
+  if (share.protectionMode === "SIGNED_IN") {
+    const { userId } = await auth();
+    if (!userId) {
+      return (
+        <ShareLayout
+          title={title}
+          subtitle={`${workspaceLabel} · Sign-in required`}
+          brandLogoUrl={brandLogoUrl}
+          brandColor={brandColor}
+          workspaceLabel={workspaceLabel}
+        >
+          <div className="max-w-md mx-auto text-center py-12 space-y-4">
+            <div className="h-12 w-12 rounded-xl bg-violet-100 mx-auto flex items-center justify-center">
+              <LogIn className="h-5 w-5 text-violet-700" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Sign in to view this transcript
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The owner restricted this link to authenticated users.
+              </p>
+            </div>
+            <Link
+              href={`/sign-in?redirect_url=/share/c/${slug}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white px-4 py-2 text-sm font-medium transition-colors"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              Sign in
+            </Link>
+          </div>
+        </ShareLayout>
+      );
+    }
+  }
+
+  if (share.protectionMode === "PASSCODE") {
+    const cookieStore = await cookies();
+    const cookieVal = cookieStore.get(shareCookieName(slug))?.value;
+    if (!verifyShareCookie(slug, cookieVal)) {
+      return (
+        <ShareLayout
+          title={title}
+          subtitle={`${workspaceLabel} · Passcode required`}
+          brandLogoUrl={brandLogoUrl}
+          brandColor={brandColor}
+          workspaceLabel={workspaceLabel}
+        >
+          <div className="max-w-sm mx-auto text-center py-12 space-y-4">
+            <div className="h-12 w-12 rounded-xl bg-amber-100 mx-auto flex items-center justify-center">
+              <Lock className="h-5 w-5 text-amber-700" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Enter the passcode to view
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The owner shared a short code separately — ask them if you
+                don&apos;t have it.
+              </p>
+            </div>
+            <PasscodeForm slug={slug} />
+          </div>
+        </ShareLayout>
+      );
+    }
+  }
 
   return (
     <ShareLayout

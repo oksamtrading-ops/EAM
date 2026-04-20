@@ -53,6 +53,7 @@ export async function GET(
     workspace: workspaceLabel,
     brandLogoUrl: share.conversation.workspace.logoUrl,
     brandColor: share.conversation.workspace.brandColor,
+    protectionMode: share.protectionMode,
     createdAt: share.createdAt.toISOString(),
     redactToolCalls: share.redactToolCalls,
     messages: share.conversation.messages.map((m) => ({
