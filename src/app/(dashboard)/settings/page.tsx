@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import Link from "next/link";
 import {
   Save,
   AlertTriangle,
@@ -22,6 +23,9 @@ import {
   PowerOff,
   Trash2,
   Star,
+  Sparkles as SparklesIcon,
+  Palette,
+  ChevronRight,
 } from "lucide-react";
 
 const INDUSTRIES = [
@@ -128,6 +132,45 @@ export default function SettingsPage() {
             Configure your workspace details and industry context.
           </p>
         </div>
+      </div>
+
+      {/* Quick-nav to other settings pages */}
+      <div className="bg-card rounded-xl border divide-y overflow-hidden">
+        <Link
+          href="/settings/agent"
+          className="flex items-center gap-3 px-5 py-3 hover:bg-muted/50 transition-colors"
+        >
+          <span className="h-8 w-8 rounded-md bg-[var(--ai)]/10 flex items-center justify-center">
+            <SparklesIcon className="h-4 w-4 text-[var(--ai)]" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              Agent settings
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Max iterations, sub-agent budget, auto-accept threshold, stale
+              days, critic toggle.
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href="/settings/branding"
+          className="flex items-center gap-3 px-5 py-3 hover:bg-muted/50 transition-colors"
+        >
+          <span className="h-8 w-8 rounded-md bg-[var(--ai)]/10 flex items-center justify-center">
+            <Palette className="h-4 w-4 text-[var(--ai)]" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              Client branding
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Logo + accent color shown on shared-conversation links.
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
       </div>
 
       {/* General settings */}

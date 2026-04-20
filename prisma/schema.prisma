@@ -320,6 +320,9 @@ model Workspace {
   itVision          String?
   missionStatement  String?
   logoUrl           String?
+  // Hex accent color used on shared/share pages. null = fall back to
+  // the default EAM purple (var(--ai)). Validated at the router.
+  brandColor        String?
   isDefault         Boolean      @default(false)
   isActive          Boolean      @default(true)
   userId            String

@@ -25,7 +25,14 @@ export default async function SharedConversationPage({
     include: {
       conversation: {
         include: {
-          workspace: { select: { name: true, clientName: true } },
+          workspace: {
+          select: {
+            name: true,
+            clientName: true,
+            logoUrl: true,
+            brandColor: true,
+          },
+        },
           messages: { orderBy: { ordinal: "asc" } },
         },
       },
@@ -35,7 +42,13 @@ export default async function SharedConversationPage({
   if (!share || share.revoked) notFound();
   if (share.expiresAt && share.expiresAt.getTime() < Date.now()) {
     return (
-      <ShareLayout title="Link expired" subtitle={null}>
+      <ShareLayout
+        title="Link expired"
+        subtitle={null}
+        brandLogoUrl={null}
+        brandColor={null}
+        workspaceLabel={null}
+      >
         <p className="text-sm text-muted-foreground text-center py-12">
           This shared transcript has expired. Ask the original author for a
           fresh link.
@@ -48,11 +61,16 @@ export default async function SharedConversationPage({
     share.conversation.workspace.clientName?.trim() ||
     share.conversation.workspace.name;
   const title = share.title ?? share.conversation.title;
+  const brandLogoUrl = share.conversation.workspace.logoUrl ?? null;
+  const brandColor = share.conversation.workspace.brandColor ?? null;
 
   return (
     <ShareLayout
       title={title}
       subtitle={`${workspaceLabel} · Shared ${share.createdAt.toLocaleDateString()}`}
+      brandLogoUrl={brandLogoUrl}
+      brandColor={brandColor}
+      workspaceLabel={workspaceLabel}
     >
       <div className="space-y-6">
         {share.conversation.messages.map((m) => {
@@ -98,36 +116,101 @@ function ShareLayout({
   title,
   subtitle,
   children,
+  brandLogoUrl,
+  brandColor,
+  workspaceLabel,
 }: {
   title: string;
   subtitle: string | null;
   children: React.ReactNode;
+  brandLogoUrl: string | null;
+  brandColor: string | null;
+  workspaceLabel: string | null;
 }) {
+  // Fall back to the default EAM purple when the workspace hasn't set
+  // a brand color. The eyebrow + gradient + link hover all share the
+  // same accent so swapping one token re-themes the page.
+  const accent = brandColor ?? undefined; // undefined → CSS uses var(--ai) via className
+  const hasAccent = brandColor != null;
+  const branded = brandLogoUrl != null || hasAccent;
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-gradient-to-r from-[var(--ai)]/5 to-transparent">
-        <div className="max-w-3xl mx-auto px-5 py-6">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--ai)]/80">
-            <Sparkles className="h-3.5 w-3.5" />
-            Shared agent transcript
+      <header
+        className="border-b"
+        style={
+          hasAccent
+            ? { background: `linear-gradient(to right, ${accent}15, transparent)` }
+            : undefined
+        }
+      >
+        <div
+          className={
+            hasAccent
+              ? "max-w-3xl mx-auto px-5 py-6"
+              : "max-w-3xl mx-auto px-5 py-6 bg-gradient-to-r from-[var(--ai)]/5 to-transparent"
+          }
+        >
+          <div className="flex items-center gap-3">
+            {brandLogoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brandLogoUrl}
+                alt={workspaceLabel ?? "Client logo"}
+                className="max-h-10 w-auto rounded"
+              />
+            )}
+            <div className="min-w-0">
+              <div
+                className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider"
+                style={
+                  hasAccent
+                    ? { color: accent }
+                    : undefined
+                }
+              >
+                {!hasAccent && (
+                  <span className="text-[var(--ai)]/80 flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Shared agent transcript
+                  </span>
+                )}
+                {hasAccent && (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Shared agent transcript
+                  </>
+                )}
+              </div>
+              <h1 className="mt-1 text-2xl font-bold text-foreground">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {subtitle}
+                </p>
+              )}
+            </div>
           </div>
-          <h1 className="mt-1 text-2xl font-bold text-foreground">{title}</h1>
-          {subtitle && (
-            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-          )}
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-5 py-8">{children}</main>
 
       <footer className="max-w-3xl mx-auto px-5 py-8 text-center text-[11px] text-muted-foreground">
-        Generated by EAM ·{" "}
-        <a
-          href="https://eampoc.vercel.app"
-          className="hover:text-[var(--ai)] transition-colors"
-        >
-          eampoc.vercel.app
-        </a>
+        {branded && workspaceLabel ? (
+          <>Prepared by {workspaceLabel}</>
+        ) : (
+          <>
+            Generated by EAM ·{" "}
+            <a
+              href="https://eampoc.vercel.app"
+              className="hover:text-[var(--ai)] transition-colors"
+            >
+              eampoc.vercel.app
+            </a>
+          </>
+        )}
       </footer>
     </div>
   );

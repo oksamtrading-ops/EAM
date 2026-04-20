@@ -20,6 +20,23 @@ export const workspaceRouter = router({
   }),
 
   /**
+   * Return the active workspace for branding/settings pages. Scoped
+   * via workspaceProcedure so it honors the selected workspace.
+   */
+  getCurrent: workspaceProcedure.query(async ({ ctx }) => {
+    return ctx.db.workspace.findUnique({
+      where: { id: ctx.workspaceId },
+      select: {
+        id: true,
+        name: true,
+        clientName: true,
+        logoUrl: true,
+        brandColor: true,
+      },
+    });
+  }),
+
+  /**
    * List users with any footprint in this workspace.
    */
   listUsers: workspaceProcedure.query(async ({ ctx }) => {
@@ -155,6 +172,21 @@ export const workspaceRouter = router({
         businessModelHint: z.string().max(800).nullable().optional(),
         itVision: z.string().max(2000).nullable().optional(),
         missionStatement: z.string().max(2000).nullable().optional(),
+        // Branding applied to shared-conversation pages. Logo is a
+        // plain URL (no upload flow yet — paste a hosted URL). Color
+        // must be a 6-digit hex so downstream CSS can treat it as a
+        // literal.
+        logoUrl: z
+          .string()
+          .url()
+          .max(2000)
+          .nullable()
+          .optional(),
+        brandColor: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/, "Must be a 6-digit hex like #1e40af")
+          .nullable()
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -20,7 +20,14 @@ export async function GET(
     include: {
       conversation: {
         include: {
-          workspace: { select: { name: true, clientName: true } },
+          workspace: {
+          select: {
+            name: true,
+            clientName: true,
+            logoUrl: true,
+            brandColor: true,
+          },
+        },
           messages: { orderBy: { ordinal: "asc" } },
         },
       },
@@ -44,6 +51,8 @@ export async function GET(
   return NextResponse.json({
     title: share.title ?? share.conversation.title,
     workspace: workspaceLabel,
+    brandLogoUrl: share.conversation.workspace.logoUrl,
+    brandColor: share.conversation.workspace.brandColor,
     createdAt: share.createdAt.toISOString(),
     redactToolCalls: share.redactToolCalls,
     messages: share.conversation.messages.map((m) => ({
