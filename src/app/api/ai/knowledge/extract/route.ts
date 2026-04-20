@@ -10,12 +10,16 @@ import { classifyAnthropicError } from "@/server/ai/client";
 const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const DOCX_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const ACCEPTED_MIME = new Set([
   "application/pdf",
   "text/plain",
   "text/markdown",
   XLSX_MIME,
   "application/vnd.ms-excel",
+  DOCX_MIME,
+  "application/msword",
 ]);
 
 export const runtime = "nodejs";
@@ -140,10 +144,12 @@ function normalizeMime(mime: string | undefined, filename: string): string {
   if (mime === "application/pdf") return "application/pdf";
   if (mime === "text/plain" || mime === "text/markdown") return mime;
   if (mime === XLSX_MIME || mime === "application/vnd.ms-excel") return XLSX_MIME;
+  if (mime === DOCX_MIME || mime === "application/msword") return DOCX_MIME;
   const lower = filename.toLowerCase();
   if (lower.endsWith(".pdf")) return "application/pdf";
   if (lower.endsWith(".md") || lower.endsWith(".markdown")) return "text/markdown";
   if (lower.endsWith(".txt")) return "text/plain";
   if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return XLSX_MIME;
+  if (lower.endsWith(".docx") || lower.endsWith(".doc")) return DOCX_MIME;
   return mime ?? "application/octet-stream";
 }

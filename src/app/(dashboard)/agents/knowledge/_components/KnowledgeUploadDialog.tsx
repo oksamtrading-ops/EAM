@@ -201,7 +201,7 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
             <input
               ref={fileRef}
               type="file"
-              accept=".pdf,.txt,.md,.xlsx,.xls,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              accept=".pdf,.txt,.md,.xlsx,.xls,.docx,.doc,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -230,7 +230,7 @@ export function KnowledgeUploadDialog({ open, onClose, onExtracted }: Props) {
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <p className="text-sm font-medium">Upload a document</p>
                 <p className="text-xs text-muted-foreground">
-                  PDF, Excel, TXT, or Markdown (up to 15 MB)
+                  PDF, Word, Excel, TXT, or Markdown (up to 15 MB)
                 </p>
               </div>
             )}

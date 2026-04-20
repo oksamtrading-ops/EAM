@@ -1,5 +1,6 @@
 import "server-only";
 import * as XLSX from "xlsx";
+import mammoth from "mammoth";
 import { anthropic } from "@/server/ai/client";
 import { MODEL_REASONER } from "@/server/ai/models";
 import {
@@ -154,6 +155,13 @@ export async function extractKnowledgeFromNewUpload(opts: {
       mimeType === "application/vnd.ms-excel"
     ) {
       extractor = await extractFromXlsx(bytes, filename);
+    } else if (
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      mimeType === "application/msword"
+    ) {
+      const text = (await mammoth.extractRawText({ buffer: bytes })).value ?? "";
+      extractor = await extractFromText(text, filename);
     } else {
       extractor = await extractFromText(bytes.toString("utf-8"), filename);
     }
@@ -259,6 +267,15 @@ async function parseAndChunk(
 
   if (mimeType === "text/plain" || mimeType === "text/markdown") {
     return chunkPlainText(bytes.toString("utf-8"));
+  }
+
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimeType === "application/msword"
+  ) {
+    const text = (await mammoth.extractRawText({ buffer: bytes })).value ?? "";
+    return chunkPlainText(text);
   }
 
   if (mimeType === "application/pdf") {

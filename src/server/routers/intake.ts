@@ -29,10 +29,26 @@ export const intakeRouter = router({
         status: true,
         errorMessage: true,
         uploadedAt: true,
-        _count: { select: { drafts: true } },
+        _count: {
+          select: { drafts: true, chunks: true, knowledgeDrafts: true },
+        },
       },
     });
   }),
+
+  deleteDocument: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const doc = await ctx.db.intakeDocument.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+        select: { id: true },
+      });
+      if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+      // IntakeChunk cascades; IntakeDraft + KnowledgeDraft have
+      // onDelete: SetNull, so their rows survive with a null source.
+      await ctx.db.intakeDocument.delete({ where: { id: doc.id } });
+      return { success: true };
+    }),
 
   getDocument: workspaceProcedure
     .input(z.object({ id: z.string() }))

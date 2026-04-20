@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
+import { embedKnowledgeRow } from "@/server/ai/embeddings/writeKnowledgeEmbeddings";
 
 const KindEnum = z.enum(["FACT", "DECISION", "PATTERN"]);
 const StatusEnum = z.enum(["PENDING", "ACCEPTED", "REJECTED", "MODIFIED"]);
@@ -78,6 +79,7 @@ export const knowledgeDraftRouter = router({
         },
         select: { id: true },
       });
+      await embedKnowledgeRow(committed.id).catch(() => {});
 
       const updated = await ctx.db.knowledgeDraft.update({
         where: { id: input.id },
@@ -169,6 +171,7 @@ export const knowledgeDraftRouter = router({
             },
             select: { id: true },
           });
+          await embedKnowledgeRow(committed.id).catch(() => {});
           await ctx.db.knowledgeDraft.update({
             where: { id: draft.id },
             data: {

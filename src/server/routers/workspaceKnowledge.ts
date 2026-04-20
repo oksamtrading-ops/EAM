@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
+import { embedKnowledgeRow } from "@/server/ai/embeddings/writeKnowledgeEmbeddings";
 
 const KnowledgeKindEnum = z.enum(["FACT", "DECISION", "PATTERN"]);
 
@@ -48,7 +49,7 @@ export const workspaceKnowledgeRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.workspaceKnowledge.create({
+      const created = await ctx.db.workspaceKnowledge.create({
         data: {
           workspaceId: ctx.workspaceId,
           kind: input.kind,
@@ -59,6 +60,11 @@ export const workspaceKnowledgeRouter = router({
           createdBy: ctx.dbUserId,
         },
       });
+      // Fire-and-forget embed so the new fact is immediately semantically
+      // retrievable. Failure leaves it keyword-only until the next write
+      // or an explicit backfill run.
+      await embedKnowledgeRow(created.id).catch(() => {});
+      return created;
     }),
 
   update: workspaceProcedure
@@ -79,7 +85,19 @@ export const workspaceKnowledgeRouter = router({
         select: { id: true },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.workspaceKnowledge.update({ where: { id }, data });
+      const updated = await ctx.db.workspaceKnowledge.update({
+        where: { id },
+        data,
+      });
+      // Re-embed if the semantically meaningful fields changed.
+      if (input.subject != null || input.statement != null) {
+        // Null the stored embedding first — the helper only fills NULL
+        // rows. This way the next retrieval after an edit is fresh.
+        await ctx.db
+          .$executeRaw`UPDATE workspace_knowledge SET embedding = NULL WHERE id = ${id}`;
+        await embedKnowledgeRow(id).catch(() => {});
+      }
+      return updated;
     }),
 
   delete: workspaceProcedure

@@ -2254,6 +2254,7 @@ model WorkspaceKnowledge {
   subject     String                 // e.g. "Salesforce Sales Cloud" or "Core banking stack"
   statement   String                 // the fact itself
   confidence  Float                  @default(0.8)
+  embedding   Unsupported("vector(1536)")?
   sourceRunId String?
   createdBy   String?                // User.id of author (null = agent)
   isActive    Boolean                @default(true)

@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
+import { embedOne, pgvectorLiteral } from "@/server/ai/embeddings/openai";
 
 export type KnowledgeItem = {
   id: string;
@@ -10,10 +11,9 @@ export type KnowledgeItem = {
 };
 
 /**
- * Keyword retrieval over WorkspaceKnowledge, workspace-scoped.
- * Returns the top-N active items ranked by hit count across subject +
- * statement. Used to inject relevant facts into the agent prompt so
- * the agent doesn't re-derive them every turn.
+ * Hybrid retrieval over WorkspaceKnowledge, workspace-scoped.
+ * Keyword (token-hit) + semantic (cosine distance) with merge-by-id.
+ * Graceful fallback to keyword-only when OPENAI_API_KEY isn't set.
  */
 export async function retrieveKnowledge(opts: {
   workspaceId: string;
@@ -22,6 +22,37 @@ export async function retrieveKnowledge(opts: {
 }): Promise<KnowledgeItem[]> {
   const { workspaceId, query, limit = 5 } = opts;
   const tokens = tokenize(query);
+
+  const keywordHits = await keywordSearch(workspaceId, tokens, limit * 2);
+  const semanticHits = await semanticSearch(workspaceId, query, limit * 2);
+
+  // Merge by id. A fact found by both ranks higher than one in either
+  // alone; rank is blended sum so semantic precision lifts keyword recall.
+  const merged = new Map<
+    string,
+    { item: KnowledgeItem; rank: number }
+  >();
+  for (const r of keywordHits) merged.set(r.item.id, r);
+  for (const r of semanticHits) {
+    const existing = merged.get(r.item.id);
+    if (existing) {
+      existing.rank += r.rank;
+    } else {
+      merged.set(r.item.id, r);
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, limit)
+    .map((r) => r.item);
+}
+
+async function keywordSearch(
+  workspaceId: string,
+  tokens: string[],
+  limit: number
+): Promise<{ item: KnowledgeItem; rank: number }[]> {
   if (tokens.length === 0) return [];
 
   const firstToken = tokens[0]!;
@@ -45,20 +76,65 @@ export async function retrieveKnowledge(opts: {
     },
   });
 
-  const scored = candidates
+  return candidates
     .map((item) => {
       const lower = `${item.subject} ${item.statement}`.toLowerCase();
       const hits = tokens.reduce(
         (n, t) => (lower.includes(t.toLowerCase()) ? n + 1 : n),
         0
       );
-      return { item, hits };
+      return { item, rank: hits };
     })
-    .filter((s) => s.hits > 0)
-    .sort((a, b) => b.hits - a.hits || b.item.confidence - a.item.confidence)
+    .filter((r) => r.rank > 0)
+    .sort((a, b) => b.rank - a.rank || b.item.confidence - a.item.confidence)
     .slice(0, limit);
+}
 
-  return scored.map((s) => s.item);
+type SemanticRow = {
+  id: string;
+  kind: string;
+  subject: string;
+  statement: string;
+  confidence: number;
+  distance: number;
+};
+
+async function semanticSearch(
+  workspaceId: string,
+  query: string,
+  limit: number
+): Promise<{ item: KnowledgeItem; rank: number }[]> {
+  const vec = await embedOne(query).catch(() => null);
+  if (!vec) return [];
+
+  const literal = pgvectorLiteral(vec);
+  const rows = await db.$queryRaw<SemanticRow[]>`
+    SELECT
+      id,
+      kind::text AS kind,
+      subject,
+      statement,
+      confidence,
+      (embedding <=> ${literal}::vector) AS distance
+    FROM workspace_knowledge
+    WHERE "workspaceId" = ${workspaceId}
+      AND "isActive" = true
+      AND embedding IS NOT NULL
+    ORDER BY embedding <=> ${literal}::vector
+    LIMIT ${limit}
+  `;
+
+  // cosine distance 0 = identical → rank 5; distance ≥ 1 → rank 0.
+  return rows.map((r) => ({
+    item: {
+      id: r.id,
+      kind: r.kind,
+      subject: r.subject,
+      statement: r.statement,
+      confidence: r.confidence,
+    },
+    rank: Math.max(0, 5 * (1 - Math.min(1, r.distance))),
+  }));
 }
 
 export function formatKnowledgeForPrompt(items: KnowledgeItem[]): string {

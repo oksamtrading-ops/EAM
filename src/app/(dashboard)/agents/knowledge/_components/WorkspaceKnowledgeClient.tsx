@@ -11,6 +11,10 @@ import {
   ArchiveRestore,
   Upload,
   Sparkles,
+  FileText,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +37,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
 import { trpc } from "@/lib/trpc/client";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { KnowledgeUploadDialog } from "./KnowledgeUploadDialog";
@@ -68,7 +73,7 @@ const EMPTY: EditingState = {
   confidence: 0.9,
 };
 
-type Tab = "knowledge" | "drafts";
+type Tab = "knowledge" | "drafts" | "documents";
 
 export function WorkspaceKnowledgeClient() {
   const [tab, setTab] = useState<Tab>("knowledge");
@@ -85,6 +90,46 @@ export function WorkspaceKnowledgeClient() {
   });
   const { data: drafts, isLoading: draftsLoading } =
     trpc.knowledgeDraft.list.useQuery({ status: undefined });
+  const { data: documents, isLoading: documentsLoading } =
+    trpc.intake.listDocuments.useQuery(undefined, {
+      enabled: tab === "documents",
+    });
+  const { workspaceId } = useWorkspace();
+  const [distillingId, setDistillingId] = useState<string | null>(null);
+
+  const deleteDocument = trpc.intake.deleteDocument.useMutation({
+    onSuccess: () => {
+      toast.success("Document deleted");
+      utils.intake.listDocuments.invalidate();
+      utils.knowledgeDraft.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  async function distillNow(documentId: string, filename: string) {
+    setDistillingId(documentId);
+    try {
+      const res = await fetch("/api/ai/knowledge/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, documentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Distillation failed");
+        return;
+      }
+      toast.success(
+        `Extracted ${data.draftsCreated} fact${data.draftsCreated === 1 ? "" : "s"} from ${filename}`
+      );
+      utils.knowledgeDraft.list.invalidate();
+      setTab("drafts");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Distillation failed");
+    } finally {
+      setDistillingId(null);
+    }
+  }
   const pendingDrafts = useMemo(
     () =>
       (drafts ?? []).filter(
@@ -268,6 +313,7 @@ export function WorkspaceKnowledgeClient() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
           </TabsList>
         </Tabs>
         {tab === "knowledge" && (
@@ -295,7 +341,110 @@ export function WorkspaceKnowledgeClient() {
       </div>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {tab === "drafts" ? (
+        {tab === "documents" ? (
+          documentsLoading ? (
+            <p className="text-sm text-muted-foreground text-center pt-8">
+              Loading documents…
+            </p>
+          ) : !documents || documents.length === 0 ? (
+            <DocumentsEmpty onUpload={() => setShowUpload(true)} />
+          ) : (
+            <div className="max-w-4xl mx-auto">
+              <div className="rounded-lg border bg-card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">File</th>
+                      <th className="text-left px-3 py-2 font-medium">Status</th>
+                      <th className="text-right px-3 py-2 font-medium">Chunks</th>
+                      <th className="text-right px-3 py-2 font-medium">
+                        Drafts
+                      </th>
+                      <th className="text-right px-3 py-2 font-medium">
+                        Uploaded
+                      </th>
+                      <th className="text-right px-3 py-2 font-medium">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {documents.map((d) => {
+                      const totalDrafts =
+                        d._count.drafts + d._count.knowledgeDrafts;
+                      const isDistilling = distillingId === d.id;
+                      return (
+                        <tr
+                          key={d.id}
+                          className="hover:bg-muted/30 transition-colors"
+                        >
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-[var(--ai)] shrink-0" />
+                              <span className="truncate font-medium text-foreground">
+                                {d.filename}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <StatusBadge status={d.status} />
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {d._count.chunks}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {totalDrafts > 0 ? totalDrafts : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-right text-[11px] text-muted-foreground tabular-nums">
+                            {formatRelative(d.uploadedAt)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 gap-1 text-[11px]"
+                                disabled={
+                                  isDistilling ||
+                                  d.status === "PROCESSING"
+                                }
+                                onClick={() => distillNow(d.id, d.filename)}
+                              >
+                                {isDistilling ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Sparkles className="h-3 w-3" />
+                                )}
+                                {d._count.knowledgeDrafts > 0
+                                  ? "Re-distill"
+                                  : "Distill"}
+                              </Button>
+                              <button
+                                onClick={() => {
+                                  if (
+                                    !window.confirm(
+                                      `Delete "${d.filename}"? Any accepted entities or knowledge already committed will remain.`
+                                    )
+                                  )
+                                    return;
+                                  deleteDocument.mutate({ id: d.id });
+                                }}
+                                className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                aria-label="Delete document"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        ) : tab === "drafts" ? (
           draftsLoading ? (
             <p className="text-sm text-muted-foreground text-center pt-8">
               Loading drafts…
@@ -542,6 +691,76 @@ function DraftsEmpty({ onUpload }: { onUpload: () => void }) {
       </Button>
     </div>
   );
+}
+
+function DocumentsEmpty({ onUpload }: { onUpload: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center">
+      <div className="h-12 w-12 rounded-xl bg-[var(--ai)]/15 flex items-center justify-center mb-3">
+        <FileText className="h-6 w-6 text-[var(--ai)]" />
+      </div>
+      <p className="text-sm font-medium mb-1">No documents uploaded yet</p>
+      <p className="text-xs text-muted-foreground mb-4 max-w-md">
+        Uploaded documents are stored with chunked text and, when distilled,
+        produce fact drafts for your review.
+      </p>
+      <Button onClick={onUpload} size="sm" className="gap-1.5">
+        <Upload className="h-3.5 w-3.5" />
+        Upload document
+      </Button>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "EXTRACTED") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"
+      >
+        <CheckCircle2 className="h-2.5 w-2.5" />
+        Ready
+      </Badge>
+    );
+  }
+  if (status === "PROCESSING") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 gap-1"
+      >
+        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+        Processing
+      </Badge>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] bg-red-50 text-red-700 border-red-200 gap-1"
+      >
+        <AlertCircle className="h-2.5 w-2.5" />
+        Failed
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-[10px]">
+      {status}
+    </Badge>
+  );
+}
+
+function formatRelative(d: Date | string): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const diff = Date.now() - date.getTime();
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  return date.toLocaleDateString();
 }
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {

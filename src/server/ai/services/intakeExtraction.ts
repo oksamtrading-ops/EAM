@@ -1,5 +1,6 @@
 import "server-only";
 import * as XLSX from "xlsx";
+import mammoth from "mammoth";
 import { anthropic } from "@/server/ai/client";
 import { MODEL_REASONER } from "@/server/ai/models";
 import {
@@ -80,6 +81,13 @@ export async function extractFromDocument(opts: {
       mimeType === "application/vnd.ms-excel"
     ) {
       extractor = await extractFromXlsx(bytes, filename);
+    } else if (
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      mimeType === "application/msword"
+    ) {
+      const text = await extractDocxText(bytes);
+      extractor = await extractFromText(text, filename);
     } else {
       const text = bytes.toString("utf-8");
       extractor = await extractFromText(text, filename);
@@ -278,6 +286,11 @@ async function extractFromText(
   // Prefer caller-provided chunks if the model echoes different ones
   if (!parsed.chunks.length) parsed.chunks = chunks;
   return parsed;
+}
+
+async function extractDocxText(bytes: Buffer): Promise<string> {
+  const result = await mammoth.extractRawText({ buffer: bytes });
+  return result.value ?? "";
 }
 
 function parseExtractorResponse(response: {
