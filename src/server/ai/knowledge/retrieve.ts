@@ -1,6 +1,11 @@
 import "server-only";
 import { db } from "@/server/db";
 import { embedOne, pgvectorLiteral } from "@/server/ai/embeddings/openai";
+import { loadAgentSettings } from "@/server/ai/settings";
+import {
+  knowledgeAgeDays,
+  freshnessWeight,
+} from "@/lib/utils/knowledgeFreshness";
 
 export type KnowledgeItem = {
   id: string;
@@ -8,6 +13,14 @@ export type KnowledgeItem = {
   subject: string;
   statement: string;
   confidence: number;
+};
+
+// Internal rank carrier. Keeps the freshness anchor alongside the item
+// without leaking it to callers of retrieveKnowledge.
+type Ranked = {
+  item: KnowledgeItem;
+  rank: number;
+  freshness?: { updatedAt: Date | string; lastReviewedAt: Date | string | null };
 };
 
 /**
@@ -23,22 +36,38 @@ export async function retrieveKnowledge(opts: {
   const { workspaceId, query, limit = 5 } = opts;
   const tokens = tokenize(query);
 
-  const keywordHits = await keywordSearch(workspaceId, tokens, limit * 2);
-  const semanticHits = await semanticSearch(workspaceId, query, limit * 2);
+  // Load the freshness window so we can decay older facts. Parallelize
+  // with the actual search — these are independent queries.
+  const [settings, keywordHits, semanticHits] = await Promise.all([
+    loadAgentSettings(workspaceId),
+    keywordSearch(workspaceId, tokens, limit * 2),
+    semanticSearch(workspaceId, query, limit * 2),
+  ]);
+  const staleWindow = settings.staleKnowledgeDays;
 
   // Merge by id. A fact found by both ranks higher than one in either
   // alone; rank is blended sum so semantic precision lifts keyword recall.
-  const merged = new Map<
-    string,
-    { item: KnowledgeItem; rank: number }
-  >();
+  // Preserve whichever freshness anchor arrived first — both searches
+  // fetch the same columns so they agree.
+  const merged = new Map<string, Ranked>();
   for (const r of keywordHits) merged.set(r.item.id, r);
   for (const r of semanticHits) {
     const existing = merged.get(r.item.id);
     if (existing) {
       existing.rank += r.rank;
+      existing.freshness ??= r.freshness;
     } else {
       merged.set(r.item.id, r);
+    }
+  }
+
+  // Age decay: multiply each blended rank by a freshness factor so
+  // older facts drop below fresher ones of equal lexical/semantic
+  // strength. Continuous — never zeroes a fact out.
+  for (const entry of merged.values()) {
+    if (entry.freshness) {
+      const age = knowledgeAgeDays(entry.freshness);
+      entry.rank *= freshnessWeight(age, staleWindow);
     }
   }
 
@@ -52,7 +81,7 @@ async function keywordSearch(
   workspaceId: string,
   tokens: string[],
   limit: number
-): Promise<{ item: KnowledgeItem; rank: number }[]> {
+): Promise<Ranked[]> {
   if (tokens.length === 0) return [];
 
   const firstToken = tokens[0]!;
@@ -73,17 +102,32 @@ async function keywordSearch(
       subject: true,
       statement: true,
       confidence: true,
+      updatedAt: true,
+      lastReviewedAt: true,
     },
   });
 
   return candidates
-    .map((item) => {
-      const lower = `${item.subject} ${item.statement}`.toLowerCase();
+    .map((row): Ranked => {
+      const lower = `${row.subject} ${row.statement}`.toLowerCase();
       const hits = tokens.reduce(
         (n, t) => (lower.includes(t.toLowerCase()) ? n + 1 : n),
         0
       );
-      return { item, rank: hits };
+      return {
+        item: {
+          id: row.id,
+          kind: row.kind,
+          subject: row.subject,
+          statement: row.statement,
+          confidence: row.confidence,
+        },
+        rank: hits,
+        freshness: {
+          updatedAt: row.updatedAt,
+          lastReviewedAt: row.lastReviewedAt,
+        },
+      };
     })
     .filter((r) => r.rank > 0)
     .sort((a, b) => b.rank - a.rank || b.item.confidence - a.item.confidence)
@@ -97,13 +141,15 @@ type SemanticRow = {
   statement: string;
   confidence: number;
   distance: number;
+  updatedAt: Date;
+  lastReviewedAt: Date | null;
 };
 
 async function semanticSearch(
   workspaceId: string,
   query: string,
   limit: number
-): Promise<{ item: KnowledgeItem; rank: number }[]> {
+): Promise<Ranked[]> {
   const vec = await embedOne(query).catch(() => null);
   if (!vec) return [];
 
@@ -115,6 +161,8 @@ async function semanticSearch(
       subject,
       statement,
       confidence,
+      "updatedAt",
+      "lastReviewedAt",
       (embedding <=> ${literal}::vector) AS distance
     FROM workspace_knowledge
     WHERE "workspaceId" = ${workspaceId}
@@ -125,7 +173,7 @@ async function semanticSearch(
   `;
 
   // cosine distance 0 = identical → rank 5; distance ≥ 1 → rank 0.
-  return rows.map((r) => ({
+  return rows.map((r): Ranked => ({
     item: {
       id: r.id,
       kind: r.kind,
@@ -134,6 +182,10 @@ async function semanticSearch(
       confidence: r.confidence,
     },
     rank: Math.max(0, 5 * (1 - Math.min(1, r.distance))),
+    freshness: {
+      updatedAt: r.updatedAt,
+      lastReviewedAt: r.lastReviewedAt,
+    },
   }));
 }
 

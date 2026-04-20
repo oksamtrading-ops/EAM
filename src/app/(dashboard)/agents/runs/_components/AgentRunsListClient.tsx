@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -45,10 +45,22 @@ const STATUS_META: Record<
 
 const PAGE_SIZE = 50;
 
+const ORPHAN_PREF_KEY = "agentRuns.hideOrphans";
+
 export function AgentRunsListClient() {
   const [kind, setKind] = useState<string>("ALL");
   const [hideSubRuns, setHideSubRuns] = useState<boolean>(true);
+  const [hideOrphans, setHideOrphans] = useState<boolean>(true);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
+
+  // Restore orphan-filter preference (deliverable wizard ships with it on
+  // too — match that default). Sub-runs toggle is less controversial; we
+  // don't bother persisting it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(ORPHAN_PREF_KEY);
+    if (stored === "false") setHideOrphans(false);
+  }, []);
 
   const cursor = cursorStack[cursorStack.length - 1];
   const { data: kindRows } = trpc.agentRun.listKinds.useQuery();
@@ -57,6 +69,7 @@ export function AgentRunsListClient() {
     cursor,
     ...(kind === "ALL" ? {} : { kind }),
     hideSubRuns,
+    hideOrphanConsole: hideOrphans,
   });
 
   const runs = data?.items ?? [];
@@ -90,6 +103,28 @@ export function AgentRunsListClient() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <label
+              className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer"
+              title="Orphans are console runs whose conversation was deleted — kept for audit, but usually noise."
+            >
+              <input
+                type="checkbox"
+                checked={hideOrphans}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setHideOrphans(next);
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem(
+                      ORPHAN_PREF_KEY,
+                      String(next)
+                    );
+                  }
+                  resetPagination();
+                }}
+                className="h-3 w-3 accent-[var(--ai)]"
+              />
+              Hide orphans
+            </label>
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
               <input
                 type="checkbox"

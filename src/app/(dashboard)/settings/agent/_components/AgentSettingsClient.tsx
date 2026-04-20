@@ -15,6 +15,7 @@ type FormState = {
   autoAcceptEnabled: boolean;
   autoAcceptConfidence: number;
   criticEnabled: boolean;
+  staleKnowledgeDays: number;
 };
 
 const DEFAULTS: FormState = {
@@ -24,6 +25,7 @@ const DEFAULTS: FormState = {
   autoAcceptEnabled: false,
   autoAcceptConfidence: 0.9,
   criticEnabled: true,
+  staleKnowledgeDays: 90,
 };
 
 export function AgentSettingsClient() {
@@ -40,6 +42,7 @@ export function AgentSettingsClient() {
       autoAcceptEnabled: data.autoAcceptConfidence != null,
       autoAcceptConfidence: data.autoAcceptConfidence ?? 0.9,
       criticEnabled: data.criticEnabled,
+      staleKnowledgeDays: data.staleKnowledgeDays ?? 90,
     });
   }, [data]);
 
@@ -68,6 +71,7 @@ export function AgentSettingsClient() {
         ? form.autoAcceptConfidence
         : null,
       criticEnabled: form.criticEnabled,
+      staleKnowledgeDays: form.staleKnowledgeDays,
     });
   }
 
@@ -207,6 +211,29 @@ export function AgentSettingsClient() {
                     </div>
                   )}
                 </div>
+
+                <SettingRow
+                  label="Stale knowledge threshold (days)"
+                  help="Workspace facts older than this get a Stale badge in the UI and their retrieval rank decays. Review flow: click Mark reviewed on the fact to re-anchor. Default 90 days."
+                >
+                  <Input
+                    type="number"
+                    min={7}
+                    max={365}
+                    step={1}
+                    value={form.staleKnowledgeDays}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        staleKnowledgeDays: Math.max(
+                          7,
+                          Math.min(365, parseInt(e.target.value) || 90)
+                        ),
+                      })
+                    }
+                    className="w-24"
+                  />
+                </SettingRow>
 
                 <div className="border-t pt-5">
                   <div className="flex items-start justify-between gap-4">

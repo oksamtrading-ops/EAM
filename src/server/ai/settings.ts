@@ -7,6 +7,7 @@ export type ResolvedAgentSettings = {
   llmMaxTokens: number;
   autoAcceptConfidence: number | null;
   criticEnabled: boolean;
+  staleKnowledgeDays: number;
 };
 
 /**
@@ -20,6 +21,7 @@ export const AGENT_SETTINGS_DEFAULTS: ResolvedAgentSettings = {
   llmMaxTokens: 1500,
   autoAcceptConfidence: null,
   criticEnabled: true,
+  staleKnowledgeDays: 90,
 };
 
 /**
@@ -40,5 +42,7 @@ export async function loadAgentSettings(
     llmMaxTokens: row.llmMaxTokens,
     autoAcceptConfidence: row.autoAcceptConfidence,
     criticEnabled: row.criticEnabled,
+    staleKnowledgeDays: row.staleKnowledgeDays,
   };
 }
+

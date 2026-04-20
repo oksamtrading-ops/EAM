@@ -15,7 +15,10 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Clock,
+  RefreshCw,
 } from "lucide-react";
+import { isKnowledgeStale } from "@/lib/utils/knowledgeFreshness";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,15 +82,23 @@ export function WorkspaceKnowledgeClient() {
   const [tab, setTab] = useState<Tab>("knowledge");
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [showStaleOnly, setShowStaleOnly] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [showUpload, setShowUpload] = useState(false);
 
   const utils = trpc.useUtils();
-  const { data: items, isLoading } = trpc.workspaceKnowledge.list.useQuery({
+  const { data: agentSettings } = trpc.workspaceAgentSettings.get.useQuery();
+  const staleDays = agentSettings?.staleKnowledgeDays ?? 90;
+  const { data: rawItems, isLoading } = trpc.workspaceKnowledge.list.useQuery({
     search: search.trim() || undefined,
     includeArchived,
     limit: 200,
   });
+  const items = useMemo(() => {
+    if (!rawItems) return rawItems;
+    if (!showStaleOnly) return rawItems;
+    return rawItems.filter((r) => isKnowledgeStale(r, staleDays));
+  }, [rawItems, showStaleOnly, staleDays]);
   const { data: drafts, isLoading: draftsLoading } =
     trpc.knowledgeDraft.list.useQuery({ status: undefined });
   const { data: documents, isLoading: documentsLoading } =
@@ -244,6 +255,13 @@ export function WorkspaceKnowledgeClient() {
     },
     onError: (e) => toast.error(e.message),
   });
+  const markReviewed = trpc.workspaceKnowledge.markReviewed.useMutation({
+    onSuccess: () => {
+      toast.success("Marked reviewed");
+      utils.workspaceKnowledge.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   function save() {
     if (!editing) return;
@@ -280,7 +298,7 @@ export function WorkspaceKnowledgeClient() {
             Workspace Knowledge
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {items?.length ?? 0} active · {pendingDrafts.length} draft
+            {rawItems?.length ?? 0} active · {pendingDrafts.length} draft
             {pendingDrafts.length === 1 ? "" : "s"} pending review
           </p>
         </div>
@@ -335,6 +353,18 @@ export function WorkspaceKnowledgeClient() {
                 className="pl-8 h-8 text-sm"
               />
             </div>
+            <label
+              className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer"
+              title={`Facts older than ${staleDays} days with no recent review.`}
+            >
+              <input
+                type="checkbox"
+                checked={showStaleOnly}
+                onChange={(e) => setShowStaleOnly(e.target.checked)}
+                className="h-3 w-3 accent-amber-500"
+              />
+              Stale only
+            </label>
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
               <input
                 type="checkbox"
@@ -504,6 +534,7 @@ export function WorkspaceKnowledgeClient() {
           <div className="max-w-3xl mx-auto space-y-2">
             {items.map((item) => {
               const meta = KIND_META[item.kind] ?? KIND_META.FACT;
+              const stale = isKnowledgeStale(item, staleDays);
               return (
                 <div
                   key={item.id}
@@ -519,18 +550,47 @@ export function WorkspaceKnowledgeClient() {
                     {meta.label}
                   </Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {item.subject}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-medium text-foreground">
+                        {item.subject}
+                      </p>
+                      {stale && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 gap-1"
+                          title={`Last touched more than ${staleDays} days ago — confirm it still holds.`}
+                        >
+                          <Clock className="h-2.5 w-2.5" />
+                          Stale
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-[13px] text-muted-foreground leading-relaxed mt-0.5">
                       {item.statement}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
                       Confidence {Math.round(item.confidence * 100)}% · Updated{" "}
                       {new Date(item.updatedAt).toLocaleDateString()}
+                      {item.lastReviewedAt && (
+                        <>
+                          {" · Reviewed "}
+                          {new Date(item.lastReviewedAt).toLocaleDateString()}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {stale && (
+                      <button
+                        onClick={() => markReviewed.mutate({ id: item.id })}
+                        disabled={markReviewed.isPending}
+                        className="p-1 rounded text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                        aria-label="Mark reviewed"
+                        title="Mark reviewed — resets the freshness clock."
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </button>
+                    )}
                     <button
                       onClick={() =>
                         setEditing({

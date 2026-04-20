@@ -8,6 +8,7 @@ const UpdateInput = z.object({
   llmMaxTokens: z.number().int().min(256).max(8000).optional(),
   autoAcceptConfidence: z.number().min(0).max(1).nullable().optional(),
   criticEnabled: z.boolean().optional(),
+  staleKnowledgeDays: z.number().int().min(7).max(365).optional(),
 });
 
 export const workspaceAgentSettingsRouter = router({

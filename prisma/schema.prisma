@@ -2264,6 +2264,11 @@ model WorkspaceKnowledge {
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
+  // Null = never re-confirmed since initial commit. Used with
+  // WorkspaceAgentSettings.staleKnowledgeDays to flag aging facts in
+  // the UI and decay retrieval rank (see retrieveKnowledge).
+  lastReviewedAt DateTime?
+
   workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   sourceRun     AgentRun?        @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
   draftSource   KnowledgeDraft[] @relation("KnowledgeDraftCommit")
@@ -2345,6 +2350,9 @@ model WorkspaceAgentSettings {
   llmMaxTokens         Int      @default(1500)
   autoAcceptConfidence Float?
   criticEnabled        Boolean  @default(true)
+  // Facts with updatedAt older than this many days are flagged "stale"
+  // in the UI and have their retrieval rank decayed. Default 90 days.
+  staleKnowledgeDays   Int      @default(90)
   updatedAt            DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

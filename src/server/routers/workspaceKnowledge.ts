@@ -111,4 +111,23 @@ export const workspaceKnowledgeRouter = router({
       await ctx.db.workspaceKnowledge.delete({ where: { id: input.id } });
       return { success: true };
     }),
+
+  /**
+   * User re-confirmed a fact still applies. Stamps lastReviewedAt to
+   * now, which both clears the Stale badge in the UI and resets the
+   * retrieval freshness anchor.
+   */
+  markReviewed: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.workspaceKnowledge.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspaceId },
+        select: { id: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.workspaceKnowledge.update({
+        where: { id: input.id },
+        data: { lastReviewedAt: new Date() },
+      });
+    }),
 });
