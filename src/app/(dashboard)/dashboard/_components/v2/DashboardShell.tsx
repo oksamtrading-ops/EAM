@@ -57,9 +57,6 @@ export function DashboardShell({
         <div className="flex items-center justify-between gap-3 w-full">
           {/* Left — workspace pill */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-7 w-7 rounded-lg bg-[var(--ai)]/15 flex items-center justify-center shrink-0">
-              <Sparkles className="h-3.5 w-3.5 text-[var(--ai)]" />
-            </div>
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-semibold truncate">
                 {workspaceName}
