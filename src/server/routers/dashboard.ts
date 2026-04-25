@@ -496,18 +496,47 @@ export const dashboardRouter = router({
         return null;
       }
 
-      // Aggregate cost per L1 domain
-      const domainMap = new Map<string, { totalCost: number; appIds: Set<string> }>();
+      // Aggregate cost per L1 domain. Each app's cost attributes to
+      // exactly one bucket so the rollup reconciles to
+      // `getSummary.totalAnnualCost`. Apps with no capability mapping
+      // — or mapped only to caps that don't resolve to an L1 — land
+      // in a synthetic "Unmapped" bucket so the breakdown is always
+      // a complete picture of where cost lives.
+      const domainMap = new Map<
+        string,
+        { totalCost: number; appIds: Set<string> }
+      >();
+      let unmappedCost = 0;
+      const unmappedAppIds = new Set<string>();
+
       for (const app of apps) {
         const cost = Number(app.annualCostUsd ?? 0);
+        if (cost <= 0) continue;
+
+        // Find the first L1 ancestor among the app's mapped caps.
+        // First-match keeps rollup deterministic and avoids the
+        // double-counting bug where multi-mapped apps inflated
+        // every domain they touched.
+        let resolvedL1: string | null = null;
         for (const mapping of app.capabilities) {
-          const l1Id = findL1(mapping.capabilityId);
-          if (l1Id) {
-            if (!domainMap.has(l1Id)) domainMap.set(l1Id, { totalCost: 0, appIds: new Set() });
-            const entry = domainMap.get(l1Id)!;
-            entry.totalCost += cost;
-            entry.appIds.add(app.id);
+          const l1 = findL1(mapping.capabilityId);
+          if (l1) {
+            resolvedL1 = l1;
+            break;
           }
+        }
+
+        if (resolvedL1) {
+          if (!domainMap.has(resolvedL1)) {
+            domainMap.set(resolvedL1, { totalCost: 0, appIds: new Set() });
+          }
+          const entry = domainMap.get(resolvedL1)!;
+          entry.totalCost += cost;
+          entry.appIds.add(app.id);
+        } else {
+          // No mapping, or no mapping reached an L1 → unmapped.
+          unmappedCost += cost;
+          unmappedAppIds.add(app.id);
         }
       }
 
@@ -522,6 +551,18 @@ export const dashboardRouter = router({
             appCount: appIds.size,
           });
         }
+      }
+
+      // Append the synthetic Unmapped bucket last so consumers can
+      // pattern-match the reserved `__unmapped__` ID for special
+      // styling (e.g. neutral zinc instead of an AI-fade color).
+      if (unmappedCost > 0) {
+        domains.push({
+          domainId: "__unmapped__",
+          domain: "Unmapped",
+          totalCost: Math.round(unmappedCost),
+          appCount: unmappedAppIds.size,
+        });
       }
 
       return domains.sort((a, b) => b.totalCost - a.totalCost);
