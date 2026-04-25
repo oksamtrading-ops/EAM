@@ -80,6 +80,7 @@
   --ai: #7c3aed;
   --ai-hover: #6d28d9;
   --ai-subtle: rgba(124, 58, 237, 0.08);
+  --ai-glow: rgba(124, 58, 237, 0.18);
   /* Link accent — for "View all" and interactive text links */
   --link: #0076A8;
   /* Glass surfaces */
@@ -182,6 +183,7 @@
   --ai: #a78bfa;
   --ai-hover: #8b5cf6;
   --ai-subtle: rgba(167, 139, 250, 0.12);
+  --ai-glow: rgba(167, 139, 250, 0.25);
   --link: #5eb8d4;
   /* Glass surfaces — dark */
   --surface-glass: rgba(20, 26, 40, 0.72);
@@ -622,4 +624,30 @@ tr {
 button:not([data-slot="button"]) {
   min-width: 28px;
   min-height: 28px;
+}
+
+/* ───────────────────────────────────────────────────────────
+   Hero card — radial glow background. Used by HealthHero
+   on the dashboard (Plan F wave 2). Stacks on top of glass.
+   ─────────────────────────────────────────────────────────── */
+.hero-glow {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, var(--ai-glow), transparent),
+    var(--surface-glass-strong);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--border-glass-strong);
+}
+
+/* Subtle AI ring shadow — used as a soft outline + glow on hero
+   surfaces. Pairs with .hero-glow but works on any rounded card. */
+.ring-glow-soft {
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.12),
+    0 8px 32px -12px rgba(124, 58, 237, 0.18);
+}
+.dark .ring-glow-soft {
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.18),
+    0 8px 32px -12px rgba(167, 139, 250, 0.25);
 }

@@ -17,10 +17,10 @@ export function HealthHero() {
   });
 
   // Loading skeleton — keep the same height so the layout doesn't
-  // jump when data arrives. Hero stat tile is ~12rem tall.
+  // jump when data arrives. Hero stat tile is ~14rem tall.
   if (isLoading || !data) {
     return (
-      <div className="rounded-2xl glass-strong ring-glow-soft p-7 min-h-[14rem] animate-pulse" />
+      <div className="rounded-2xl hero-glow ring-glow-soft p-7 min-h-[14rem] animate-pulse" />
     );
   }
 
@@ -33,13 +33,7 @@ export function HealthHero() {
         : Minus;
 
   return (
-    <div
-      className="rounded-2xl glass-strong p-5 sm:p-7 ring-1 ring-[var(--ai)]/10"
-      style={{
-        boxShadow:
-          "0 0 0 1px rgba(124, 58, 237, 0.06), 0 8px 32px -12px rgba(124, 58, 237, 0.12)",
-      }}
-    >
+    <div className="rounded-2xl hero-glow ring-glow-soft p-5 sm:p-7">
       <StatTile
         layout="hero"
         label="Engagement Health"

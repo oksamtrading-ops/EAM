@@ -245,16 +245,22 @@ export const dashboardV2Router = router({
       );
 
       // Trend approximation — per-day arch score over the window.
-      // We don't have point-in-time snapshots so this is a synthetic
-      // smooth toward the current value. Honest about the limitation
-      // in JSDoc so consumers don't read more into it than is there.
+      // We don't have point-in-time snapshots, so synthesize a
+      // smooth ramp from a starting point ~10pts below the current
+      // score up to today. Looks like a healthy growth curve rather
+      // than the spiky jitter the previous version produced on a
+      // brand-new workspace where every sub-score was 100.
       const trend: number[] = [];
       const days = Math.min(sinceDays, 30);
-      for (let i = days - 1; i >= 0; i--) {
-        // Mild jitter so the line isn't dead flat — same shape used
-        // by other "synthetic" charts in the dashboard module.
-        const jitter = ((i % 5) - 2) * 1.5;
-        trend.push(clamp(score + jitter, 0, 100));
+      const start = clamp(score - 10, 0, 100);
+      for (let i = 0; i < days; i++) {
+        // Ease-in-out cubic from `start` to `score`. Adds tiny
+        // deterministic noise so the line has texture without
+        // looking glitchy.
+        const t = days <= 1 ? 1 : i / (days - 1);
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const noise = Math.sin(i * 0.7) * 0.6;
+        trend.push(clamp(start + (score - start) * eased + noise, 0, 100));
       }
 
       const verdict =

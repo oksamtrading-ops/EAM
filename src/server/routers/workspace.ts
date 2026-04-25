@@ -32,6 +32,8 @@ export const workspaceRouter = router({
         clientName: true,
         logoUrl: true,
         brandColor: true,
+        industry: true,
+        region: true,
       },
     });
   }),
