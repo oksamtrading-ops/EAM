@@ -113,6 +113,84 @@ type Shipped = {
 
 export const dashboardV2Router = router({
   /**
+   * One-shot rollup for the dense KPI strip on the dashboard.
+   * Returns total + secondary metadata for each cell so the strip
+   * can render mockup-fidelity ("47 +2", "89 3 levels", etc.) in
+   * a single round trip.
+   */
+  kpiStrip: workspaceProcedure.query(async ({ ctx }) => {
+    const wid = ctx.workspaceId;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000);
+
+    const [
+      totalApplications,
+      applicationsAddedRecently,
+      totalCapabilities,
+      capabilityLevels,
+      totalRisks,
+      criticalRisks,
+      totalInitiatives,
+      overdueInitiatives,
+    ] = await Promise.all([
+      ctx.db.application.count({
+        where: { workspaceId: wid, isActive: true },
+      }),
+      ctx.db.application.count({
+        where: {
+          workspaceId: wid,
+          isActive: true,
+          createdAt: { gte: sevenDaysAgo },
+        },
+      }),
+      ctx.db.businessCapability.count({
+        where: { workspaceId: wid, isActive: true },
+      }),
+      ctx.db.businessCapability.groupBy({
+        by: ["level"],
+        where: { workspaceId: wid, isActive: true },
+        _count: { _all: true },
+      }),
+      ctx.db.techRisk.count({
+        where: { workspaceId: wid, status: "OPEN" },
+      }),
+      ctx.db.techRisk.count({
+        where: { workspaceId: wid, status: "OPEN", riskScore: { gte: 16 } },
+      }),
+      ctx.db.initiative.count({
+        where: { workspaceId: wid, isActive: true },
+      }),
+      ctx.db.initiative.count({
+        where: {
+          workspaceId: wid,
+          isActive: true,
+          status: { notIn: ["COMPLETE", "CANCELLED"] },
+          endDate: { lt: new Date() },
+        },
+      }),
+    ]);
+
+    return {
+      applications: {
+        total: totalApplications,
+        addedRecently: applicationsAddedRecently,
+      },
+      capabilities: {
+        total: totalCapabilities,
+        // Distinct level depth — L1 only = 1, L1+L2 = 2, full = 3.
+        levelDepth: capabilityLevels.length,
+      },
+      risks: {
+        total: totalRisks,
+        critical: criticalRisks,
+      },
+      initiatives: {
+        total: totalInitiatives,
+        overdue: overdueInitiatives,
+      },
+    };
+  }),
+
+  /**
    * Composite engagement health (0-100) from four weighted sub-scores.
    * Returns components for the hero card breakdown plus a 30-day
    * trend so the sparkline has data. Trend is approximated via the

@@ -8,24 +8,24 @@ import { formatUsd } from "@/lib/utils/agentPricing";
 import { cn } from "@/lib/utils";
 
 /**
- * Six-cell dense KPI strip. The last two cells (Pending reviews,
- * Weekly spend) get the AI-tinted background to mark them as
- * action-tier; the first four are muted "context" cells.
+ * Six-cell dense KPI strip. Each cell renders a primary value with
+ * an optional secondary metadata phrase ("+2", "3 levels", "2
+ * critical", "3 overdue", etc.) sourced from the kpiStrip aggregator
+ * so the strip matches the mockup exactly.
  *
- * Each cell is a click-through Link — not a button — so the entire
- * row reads as navigable.
+ * The last two cells (Pending reviews, Weekly spend) get the AI-
+ * tinted background to mark them as action-tier; the first four are
+ * muted "context" cells.
  */
 export function KpiStripDense() {
-  const summary = trpc.dashboard.getSummary.useQuery();
+  const strip = trpc.dashboardV2.kpiStrip.useQuery();
   const pending = trpc.dashboardV2.pendingReviews.useQuery();
   const cost = trpc.agentRun.costSummary.useQuery({ sinceDays: 7 });
   const costPrev = trpc.agentRun.costSummary.useQuery({ sinceDays: 14 });
 
-  const k = summary.data;
-  const isLoading = summary.isLoading || pending.isLoading || cost.isLoading;
+  const isLoading = strip.isLoading || pending.isLoading || cost.isLoading;
 
-  // Weekly delta: this-week minus prior-week (sinceDays 7 vs the
-  // 7 days before that, i.e. 14d total minus this 7d).
+  // Weekly delta: this-week minus prior-week.
   const weeklyDelta = (() => {
     if (!cost.data || !costPrev.data) return null;
     const thisWeek = cost.data.totalUsd;
@@ -45,31 +45,55 @@ export function KpiStripDense() {
     >
       <KpiCell
         label="Applications"
-        value={isLoading ? "—" : String(k?.totalApplications ?? 0)}
+        value={isLoading ? "—" : String(strip.data?.applications.total ?? 0)}
+        meta={
+          (strip.data?.applications.addedRecently ?? 0) > 0
+            ? {
+                text: `+${strip.data!.applications.addedRecently}`,
+                tone: "muted",
+              }
+            : undefined
+        }
         href="/applications"
       />
       <KpiCell
         label="Capabilities"
-        value={isLoading ? "—" : String(k?.totalCapabilities ?? 0)}
+        value={isLoading ? "—" : String(strip.data?.capabilities.total ?? 0)}
+        meta={
+          (strip.data?.capabilities.levelDepth ?? 0) > 0
+            ? {
+                text: `${strip.data!.capabilities.levelDepth} level${
+                  strip.data!.capabilities.levelDepth === 1 ? "" : "s"
+                }`,
+                tone: "muted",
+              }
+            : undefined
+        }
         href="/capabilities"
       />
       <KpiCell
         label="Open risks"
-        value={isLoading ? "—" : String(k?.openRisks ?? 0)}
+        value={isLoading ? "—" : String(strip.data?.risks.total ?? 0)}
         meta={
-          (k?.criticalRisks ?? 0) > 0
-            ? { text: `${k!.criticalRisks} critical`, tone: "danger" }
+          (strip.data?.risks.critical ?? 0) > 0
+            ? {
+                text: `${strip.data!.risks.critical} critical`,
+                tone: "danger",
+              }
             : undefined
         }
-        showPulse={(k?.criticalRisks ?? 0) > 0}
+        showPulse={(strip.data?.risks.critical ?? 0) > 0}
         href="/risk"
       />
       <KpiCell
         label="Initiatives"
-        value={isLoading ? "—" : String(k?.overdueInitiatives ?? 0)}
+        value={isLoading ? "—" : String(strip.data?.initiatives.total ?? 0)}
         meta={
-          (k?.overdueInitiatives ?? 0) > 0
-            ? { text: "overdue", tone: "warn" }
+          (strip.data?.initiatives.overdue ?? 0) > 0
+            ? {
+                text: `${strip.data!.initiatives.overdue} overdue`,
+                tone: "warn",
+              }
             : undefined
         }
         href="/roadmap"
@@ -79,8 +103,8 @@ export function KpiStripDense() {
         accent
         value={isLoading ? "—" : String(pending.data?.total ?? 0)}
         sparkline={
-          // Static placeholder series — true daily count needs schema
-          // change. Conveys "trend" without implying precision.
+          // Static placeholder series until we track per-day counts —
+          // conveys trend shape without implying precision.
           <Sparkline
             data={[3, 5, 4, 7, 6, 8, pending.data?.total ?? 0]}
             variant="line"
@@ -94,9 +118,7 @@ export function KpiStripDense() {
         label="Weekly spend"
         accent
         value={
-          cost.isLoading
-            ? "—"
-            : formatUsd(cost.data?.totalUsd ?? 0)
+          cost.isLoading ? "—" : formatUsd(cost.data?.totalUsd ?? 0)
         }
         meta={
           weeklyDelta != null
@@ -118,7 +140,7 @@ type KpiCellProps = {
   value: string;
   meta?: {
     text: string;
-    tone: "success" | "warn" | "danger";
+    tone: "success" | "warn" | "danger" | "muted";
     icon?: React.ComponentType<{ className?: string }>;
   };
   sparkline?: React.ReactNode;
@@ -131,6 +153,7 @@ const metaToneClass: Record<NonNullable<KpiCellProps["meta"]>["tone"], string> =
   success: "text-emerald-600 dark:text-emerald-400",
   warn: "text-amber-600 dark:text-amber-400",
   danger: "text-red-600 dark:text-red-400",
+  muted: "text-zinc-400 dark:text-zinc-500",
 };
 
 function KpiCell({
