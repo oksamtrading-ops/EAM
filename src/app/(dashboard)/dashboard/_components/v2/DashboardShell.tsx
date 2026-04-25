@@ -53,7 +53,7 @@ export function DashboardShell({
 
   return (
     <>
-      <div className="glass-toolbar sticky top-0 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 h-14 mb-4 sm:mb-6 border-b flex items-center">
+      <div className="glass-toolbar sticky top-0 z-30 h-14 px-3 sm:px-6 border-b flex items-center">
         <div className="flex items-center justify-between gap-3 w-full">
           {/* Left — workspace pill */}
           <div className="flex items-center gap-3 min-w-0">
@@ -99,7 +99,7 @@ export function DashboardShell({
         </div>
       </div>
 
-      <div className="space-y-4 sm:space-y-6">{children}</div>
+      {children}
     </>
   );
 }

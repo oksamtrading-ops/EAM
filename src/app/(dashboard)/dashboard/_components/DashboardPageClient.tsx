@@ -30,27 +30,29 @@ export function DashboardPageClient() {
 
   return (
     <>
-      <div className="dashboard-surface px-3 sm:px-6 py-3 sm:py-6">
+      <div className="dashboard-surface min-h-full">
         <DashboardShell
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           onAIBrief={() => setShowAI((v) => !v)}
         >
-          {/* ─── Zone 1 — Engagement health ─────────────────────── */}
-          <HealthHero />
-          <KpiStripDense />
+          <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+            {/* ─── Zone 1 — Engagement health ─────────────────── */}
+            <HealthHero />
+            <KpiStripDense />
 
-          {/* ─── Zone 2 — Today ─────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <BlockingColumn />
-            <InboxColumn />
-          </div>
+            {/* ─── Zone 2 — Today ─────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <BlockingColumn />
+              <InboxColumn />
+            </div>
 
-          {/* ─── Zone 3 — Activity & Spend ──────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            <AgentActivityCard dateRange={dateRange} />
-            <ShippedCard dateRange={dateRange} />
-            <PinnedAndActivityCard />
+            {/* ─── Zone 3 — Activity & Spend ──────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+              <AgentActivityCard dateRange={dateRange} />
+              <ShippedCard dateRange={dateRange} />
+              <PinnedAndActivityCard />
+            </div>
           </div>
         </DashboardShell>
       </div>
