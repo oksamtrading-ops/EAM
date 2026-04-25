@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
     "@prisma/adapter-pg",
     "pg",
     "@prisma/engines",
+    // pdf-parse v2 wraps pdfjs-dist which uses @napi-rs/canvas.
+    // Native binaries can't be bundled — must be require()'d at
+    // runtime. Combined with the lazy import in pdfExtract.ts so
+    // these only load when a PDF is actually uploaded.
+    "pdf-parse",
+    "pdfjs-dist",
+    "@napi-rs/canvas",
   ],
 };
 

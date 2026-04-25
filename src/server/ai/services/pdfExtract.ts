@@ -1,5 +1,4 @@
 import "server-only";
-import { PDFParse } from "pdf-parse";
 
 const MAX_PAGES = 500;
 
@@ -13,13 +12,22 @@ const MAX_PAGES = 500;
  * when extraction throws or yields no text. Callers treat null as
  * "fall back to the placeholder chunk" — malformed or image-only
  * PDFs still upload successfully.
+ *
+ * IMPORTANT: pdf-parse is dynamically imported inside the function
+ * body. Eager top-level imports pull in pdfjs-dist → @napi-rs/canvas
+ * which has native binaries that fail to load on Vercel lambdas
+ * unless the linux-x64 binary is on disk. Since this module is
+ * reachable from the tRPC root via knowledgeExtraction →
+ * workspaceKnowledge router, an eager import would crash every
+ * tRPC route, not just PDF uploads. Lazy import keeps the canvas
+ * dependency confined to the one code path that actually needs it.
  */
 export async function extractPdfText(bytes: Buffer): Promise<string | null> {
-  let parser: PDFParse | null = null;
+  // Dynamic import — see comment above.
+  const { PDFParse } = await import("pdf-parse");
+
+  let parser: InstanceType<typeof PDFParse> | null = null;
   try {
-    // PDFParse wraps pdfjs-dist; it converts Node Buffer → Uint8Array
-    // on its own via the `data` option. MAX_PAGES bounds lambda cost
-    // on pathological 2000-page decks.
     parser = new PDFParse({ data: bytes });
     const result = await parser.getText({ last: MAX_PAGES });
     const text = (result.text ?? "").trim();
