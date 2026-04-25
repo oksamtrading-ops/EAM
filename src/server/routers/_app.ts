@@ -14,6 +14,7 @@ import { complianceRouter } from "./compliance";
 import { eolRouter } from "./eol";
 import { organizationRouter } from "./organization";
 import { dashboardRouter } from "./dashboard";
+import { dashboardV2Router } from "./dashboardV2";
 import { searchRouter } from "./search";
 import { paletteQueryRouter } from "./paletteQuery";
 import { dataDomainRouter } from "./dataDomain";
@@ -39,6 +40,7 @@ import { scheduledAgentTaskRouter } from "./scheduledAgentTask";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
+  dashboardV2: dashboardV2Router,
   search: searchRouter,
   paletteQuery: paletteQueryRouter,
   capability: capabilityRouter,
