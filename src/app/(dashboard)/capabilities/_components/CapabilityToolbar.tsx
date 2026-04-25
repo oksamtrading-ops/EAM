@@ -152,7 +152,7 @@ export function CapabilityToolbar({
             className={cn(
               "flex items-center justify-center w-8 h-7 rounded-md transition-all relative group",
               view === value
-                ? "bg-white shadow-sm text-foreground"
+                ? "bg-background dark:bg-zinc-700/80 shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >

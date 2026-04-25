@@ -57,7 +57,7 @@ export function RoadmapToolbar({
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-all",
                 view === value
-                  ? "bg-white shadow-sm text-foreground"
+                  ? "bg-background dark:bg-zinc-700/80 shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >

@@ -145,7 +145,7 @@ function ViewBtn({ active, onClick, icon, label }: { active: boolean; onClick: (
     <button
       onClick={onClick}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-        active ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+        active ? "bg-background dark:bg-zinc-700/80 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}

@@ -122,7 +122,7 @@ function DashboardDateRange({
       <DateRangeSelect
         value={value}
         onChange={onChange}
-        triggerClassName="w-44 sm:w-48 gap-2 text-sm font-medium"
+        triggerClassName="w-[200px] gap-2 text-sm font-medium"
       />
     </div>
   );
