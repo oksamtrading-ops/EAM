@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, Crown, Database, Wand2, Check } from "lucide-react";
+import { useMemo, useState } from "react";
+import { X, Trash2, Sparkles, ArrowRight, ArrowLeft, ArrowLeftRight, Plus, Unlink, Crown, Database, Wand2, Check, Search as SearchIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import Link from "next/link";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
@@ -37,13 +38,81 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showAddInterface, setShowAddInterface] = useState(false);
   const [newIface, setNewIface] = useState({ targetAppId: "", name: "", protocol: "REST_API", direction: "OUTBOUND", criticality: "INT_MEDIUM" });
+  const [showCapPicker, setShowCapPicker] = useState(false);
+  const [capQuery, setCapQuery] = useState("");
   const utils = trpc.useUtils();
   const { data: app, isLoading } = trpc.application.getById.useQuery({ id: applicationId });
   const { data: allApps } = trpc.application.listForMapping.useQuery();
   const { data: radarData } = trpc.techRadar.getRadar.useQuery();
   const { data: workspaceUsers } = trpc.workspace.listUsers.useQuery();
   const { data: dataUsages = [] } = trpc.appEntityUsage.list.useQuery({ appId: applicationId });
+  const { data: capTree } = trpc.capability.getTree.useQuery();
   const radarEntries = radarData?.entries ?? [];
+
+  // Flatten the capability tree once so the picker can search across
+  // all levels. Tree node shape: { id, name, level, children: [...] }.
+  type FlatCap = { id: string; name: string; level: string; path: string };
+  const flatCapabilities = useMemo<FlatCap[]>(() => {
+    const out: FlatCap[] = [];
+    function walk(nodes: unknown[], parents: string[]) {
+      for (const n of nodes as Array<Record<string, unknown>>) {
+        const id = n.id as string;
+        const name = n.name as string;
+        const level = n.level as string;
+        out.push({
+          id,
+          name,
+          level,
+          path: parents.length > 0 ? parents.join(" › ") : "",
+        });
+        const kids = n.children as unknown[] | undefined;
+        if (Array.isArray(kids) && kids.length > 0) {
+          walk(kids, [...parents, name]);
+        }
+      }
+    }
+    if (Array.isArray(capTree)) walk(capTree as unknown[], []);
+    return out;
+  }, [capTree]);
+
+  // Filter the flat list against search + already-linked exclusion.
+  const linkedCapIds = useMemo(
+    () => new Set((app?.capabilities ?? []).map((m: { capabilityId: string }) => m.capabilityId)),
+    [app]
+  );
+  const capPickerResults = useMemo(() => {
+    const q = capQuery.trim().toLowerCase();
+    return flatCapabilities
+      .filter((c) => !linkedCapIds.has(c.id))
+      .filter(
+        (c) =>
+          q === "" ||
+          c.name.toLowerCase().includes(q) ||
+          c.path.toLowerCase().includes(q)
+      )
+      .slice(0, 50);
+  }, [flatCapabilities, linkedCapIds, capQuery]);
+
+  const linkCapMutation = trpc.application.linkCapability.useMutation({
+    onSuccess: () => {
+      utils.application.getById.invalidate({ id: applicationId });
+      utils.application.list.invalidate();
+      utils.dashboard.getCostByDomain.invalidate();
+      setCapQuery("");
+      setShowCapPicker(false);
+      toast.success("Capability linked");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const unlinkCapMutation = trpc.application.unlinkCapability.useMutation({
+    onSuccess: () => {
+      utils.application.getById.invalidate({ id: applicationId });
+      utils.application.list.invalidate();
+      utils.dashboard.getCostByDomain.invalidate();
+      toast.success("Capability unlinked");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const updateMutation = trpc.application.update.useMutation({
     onSuccess: () => {
@@ -451,20 +520,130 @@ export function ApplicationDetailPanel({ applicationId, onClose, onAutoMap }: Pr
 
           {/* Capability mappings */}
           <CollapsibleSection id="capabilities" title="Linked Capabilities" count={app.capabilities?.length ?? 0}>
-            {app.capabilities && app.capabilities.length > 0 ? (
-              <div className="space-y-1">
-                {app.capabilities.map((m: any) => (
-                  <div key={m.capabilityId} className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2">
-                    <Badge variant="outline" className="text-[9px]">{m.capability?.level}</Badge>
-                    <span className="text-foreground">{m.capability?.name}</span>
+            <div className="space-y-1">
+              {/* Existing mappings — hover to reveal an unlink button. */}
+              {app.capabilities && app.capabilities.length > 0 ? (
+                app.capabilities.map((m: any) => (
+                  <div
+                    key={m.capabilityId}
+                    className="text-xs p-2 bg-muted/20 rounded flex items-center gap-2 group"
+                  >
+                    <Badge variant="outline" className="text-[9px] shrink-0">
+                      {m.capability?.level}
+                    </Badge>
+                    <span className="text-foreground flex-1 truncate">
+                      {m.capability?.name}
+                    </span>
+                    {m.source === "MANUAL" ? null : (
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] shrink-0 opacity-60"
+                        title={`Source: ${m.source}`}
+                      >
+                        {m.source === "AI_ACCEPTED" || m.source === "AI_SUGGESTED"
+                          ? "AI"
+                          : m.source}
+                      </Badge>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        unlinkCapMutation.mutate({
+                          applicationId,
+                          capabilityId: m.capabilityId,
+                        })
+                      }
+                      disabled={unlinkCapMutation.isPending}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition-opacity shrink-0"
+                      aria-label={`Unlink ${m.capability?.name}`}
+                      title="Remove this capability"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                No capabilities linked. Edit this app to assign capabilities.
-              </p>
-            )}
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground py-1">
+                  No capabilities linked yet.
+                </p>
+              )}
+
+              {/* Add-capability picker — searchable popover. */}
+              <Popover open={showCapPicker} onOpenChange={setShowCapPicker}>
+                <PopoverTrigger
+                  render={(triggerProps) => (
+                    <button
+                      {...triggerProps}
+                      type="button"
+                      className="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 text-xs font-medium px-2.5 h-7 rounded-md border border-dashed border-border hover:border-[var(--ai)]/40 hover:bg-[var(--ai)]/5 hover:text-[var(--ai)] text-muted-foreground transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add capability
+                    </button>
+                  )}
+                />
+                <PopoverContent
+                  align="start"
+                  sideOffset={6}
+                  className="w-[300px] p-0 overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 px-2.5 py-2 border-b">
+                    <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <Input
+                      autoFocus
+                      value={capQuery}
+                      onChange={(e) => setCapQuery(e.target.value)}
+                      placeholder="Search capabilities…"
+                      className="h-7 border-0 px-0 focus-visible:ring-0 text-xs"
+                    />
+                  </div>
+                  <div className="max-h-[280px] overflow-y-auto py-1">
+                    {capPickerResults.length === 0 ? (
+                      <p className="text-xs text-muted-foreground px-3 py-3 text-center">
+                        {flatCapabilities.length === 0
+                          ? "No capabilities defined yet."
+                          : capQuery
+                            ? "No matches."
+                            : "Every capability is already linked."}
+                      </p>
+                    ) : (
+                      capPickerResults.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() =>
+                            linkCapMutation.mutate({
+                              applicationId,
+                              capabilityId: c.id,
+                            })
+                          }
+                          disabled={linkCapMutation.isPending}
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted/60 text-left transition-colors"
+                        >
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] shrink-0"
+                          >
+                            {c.level}
+                          </Badge>
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate text-foreground">
+                              {c.name}
+                            </div>
+                            {c.path && (
+                              <div className="truncate text-[10px] text-muted-foreground">
+                                {c.path}
+                              </div>
+                            )}
+                          </div>
+                          <Plus className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </CollapsibleSection>
 
           <Separator />

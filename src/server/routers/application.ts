@@ -464,6 +464,85 @@ export const applicationRouter = router({
     });
   }),
 
+  // ─── Manual capability linking (used by ApplicationDetailPanel) ───
+  // Inline add/delete that lets users manage capability mappings
+  // without going through the full edit dialog or AI auto-map flow.
+  // Mappings created here are stamped `source: MANUAL` so they're
+  // distinguishable from AI-suggested ones in audit + rollups.
+  linkCapability: workspaceProcedure
+    .input(
+      z.object({
+        applicationId: z.string(),
+        capabilityId: z.string(),
+        relationshipType: z
+          .enum(["PRIMARY", "SUPPORTING", "ENABLING"])
+          .default("SUPPORTING"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify both ends belong to this workspace before joining them.
+      const [app, cap] = await Promise.all([
+        ctx.db.application.findFirst({
+          where: { id: input.applicationId, workspaceId: ctx.workspaceId },
+          select: { id: true },
+        }),
+        ctx.db.businessCapability.findFirst({
+          where: { id: input.capabilityId, workspaceId: ctx.workspaceId },
+          select: { id: true },
+        }),
+      ]);
+      if (!app || !cap) {
+        throw new Error("Application or capability not found in workspace");
+      }
+      // Upsert so re-clicking the same row is idempotent and doesn't
+      // 409 on the unique (applicationId, capabilityId) pair.
+      await ctx.db.applicationCapabilityMap.upsert({
+        where: {
+          applicationId_capabilityId: {
+            applicationId: input.applicationId,
+            capabilityId: input.capabilityId,
+          },
+        },
+        create: {
+          applicationId: input.applicationId,
+          capabilityId: input.capabilityId,
+          workspaceId: ctx.workspaceId,
+          source: "MANUAL",
+          relationshipType: input.relationshipType,
+          createdById: ctx.dbUserId,
+        },
+        update: {
+          // If a previous AI-suggested mapping is being re-confirmed
+          // by hand, promote it to MANUAL so the audit trail reads
+          // "user owns this now."
+          source: "MANUAL",
+          relationshipType: input.relationshipType,
+        },
+      });
+      return { success: true };
+    }),
+
+  unlinkCapability: workspaceProcedure
+    .input(
+      z.object({
+        applicationId: z.string(),
+        capabilityId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Workspace check: re-fetch the join row to confirm it belongs
+      // to this workspace before deleting (deleteMany scoped by
+      // workspaceId is the simplest safe path).
+      const result = await ctx.db.applicationCapabilityMap.deleteMany({
+        where: {
+          applicationId: input.applicationId,
+          capabilityId: input.capabilityId,
+          workspaceId: ctx.workspaceId,
+        },
+      });
+      return { success: true, deleted: result.count };
+    }),
+
   // ─── AI Mapping: accept / reject / modify ───────────────
   acceptAISuggestion: workspaceProcedure
     .input(
