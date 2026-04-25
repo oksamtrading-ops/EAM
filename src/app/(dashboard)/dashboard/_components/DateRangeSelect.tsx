@@ -14,14 +14,22 @@ import { CalendarDays } from "lucide-react";
 interface Props {
   value: DateRangeKey;
   onChange: (value: DateRangeKey) => void;
+  /**
+   * Override trigger className. Defaults to `w-72` (288px) which fits
+   * the longest label ("Last 30 days · NA") plus the calendar icon
+   * comfortably; pass `w-80` or wider for the dashboard top bar.
+   */
+  triggerClassName?: string;
 }
 
 const OPTIONS: DateRangeKey[] = ["7d", "30d", "90d", "6mo", "1yr", "2yr", "all"];
 
-export function DateRangeSelect({ value, onChange }: Props) {
+export function DateRangeSelect({ value, onChange, triggerClassName }: Props) {
   return (
     <Select value={value} onValueChange={(v) => v && onChange(v as DateRangeKey)}>
-      <SelectTrigger className="w-72 gap-2 text-sm font-medium">
+      <SelectTrigger
+        className={triggerClassName ?? "w-72 gap-2 text-sm font-medium"}
+      >
         <CalendarDays className="h-4 w-4 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>

@@ -105,9 +105,10 @@ export function DashboardShell({
 }
 
 /**
- * Compact date-range select that matches the mockup's "Last 30 days"
- * button instead of the wider DateRangeSelect used elsewhere on the
- * dashboard. Wraps the existing primitive with a smaller surface.
+ * Date-range select for the dashboard top bar. Wider than the default
+ * (h-9, w-44 instead of w-72 default-trigger) so the longest label
+ * ("Last 30 days") doesn't truncate or feel cramped against the
+ * AI-brief button + theme toggle next to it.
  */
 function DashboardDateRange({
   value,
@@ -118,7 +119,11 @@ function DashboardDateRange({
 }) {
   return (
     <div className="relative">
-      <DateRangeSelect value={value} onChange={onChange} />
+      <DateRangeSelect
+        value={value}
+        onChange={onChange}
+        triggerClassName="w-44 sm:w-48 gap-2 text-sm font-medium"
+      />
     </div>
   );
 }
