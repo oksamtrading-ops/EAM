@@ -89,9 +89,9 @@
   --surface-glass-subtle: rgba(255, 255, 255, 0.52);
   --surface-toolbar: rgba(255, 255, 255, 0.82);
   --surface-sidebar: #0f172a;
-  --sidebar-foreground: #e1e8f0;
-  --sidebar-muted: rgba(148, 180, 220, 0.3);
-  --sidebar-muted-foreground: rgba(180, 200, 230, 0.5);
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.4);
+  --sidebar-muted-foreground: rgba(255, 255, 255, 0.85);
   --sidebar-border: rgba(79, 143, 229, 0.08);
   --sidebar-hover: rgba(79, 143, 229, 0.08);
   --sidebar-active: linear-gradient(135deg, #0B5CD6 0%, #1a6ae8 100%);
@@ -191,9 +191,9 @@
   --surface-glass-subtle: rgba(20, 26, 40, 0.52);
   --surface-toolbar: rgba(15, 23, 42, 0.85);
   --surface-sidebar: #0f172a;
-  --sidebar-foreground: #d0d8e8;
-  --sidebar-muted: rgba(120, 160, 220, 0.25);
-  --sidebar-muted-foreground: rgba(160, 185, 220, 0.45);
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.35);
+  --sidebar-muted-foreground: rgba(255, 255, 255, 0.85);
   --sidebar-border: rgba(79, 143, 229, 0.10);
   --sidebar-hover: rgba(79, 143, 229, 0.10);
   --sidebar-active: linear-gradient(135deg, #4f8fe5 0%, #3d7ed1 100%);
