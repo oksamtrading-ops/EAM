@@ -10,6 +10,7 @@ import { KpiStripDense } from "./v2/KpiStripDense";
 import { BlockingColumn } from "./v2/BlockingColumn";
 import { InboxColumn } from "./v2/InboxColumn";
 import { AgentActivityCard } from "./v2/AgentActivityCard";
+import { PortfolioCostCard } from "./v2/PortfolioCostCard";
 import { ShippedCard } from "./v2/ShippedCard";
 import { PinnedAndActivityCard } from "./v2/PinnedAndActivityCard";
 
@@ -41,13 +42,16 @@ export function DashboardPageClient() {
             <HealthHero />
             <KpiStripDense />
 
-            {/* ─── Zone 2 — Today ─────────────────────────────── */}
+            {/* ─── Zone 2 — Portfolio cost ────────────────────── */}
+            <PortfolioCostCard />
+
+            {/* ─── Zone 3 — Today ─────────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <BlockingColumn />
               <InboxColumn />
             </div>
 
-            {/* ─── Zone 3 — Activity & Spend ──────────────────── */}
+            {/* ─── Zone 4 — Activity & Spend ──────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               <AgentActivityCard dateRange={dateRange} />
               <ShippedCard dateRange={dateRange} />
