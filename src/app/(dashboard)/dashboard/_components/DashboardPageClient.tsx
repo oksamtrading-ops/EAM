@@ -30,7 +30,7 @@ export function DashboardPageClient() {
 
   return (
     <>
-      <div className="px-3 sm:px-6 py-3 sm:py-6">
+      <div className="dashboard-surface px-3 sm:px-6 py-3 sm:py-6">
         <DashboardShell
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
