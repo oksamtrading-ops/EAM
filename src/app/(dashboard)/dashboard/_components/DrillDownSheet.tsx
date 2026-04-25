@@ -23,6 +23,7 @@ const TITLE_MAP: Record<DrillDownFilter["kind"], string> = {
   apps_by_health: "Applications by Health",
   risks: "Open Risks",
   capabilities_by_domain: "Capabilities",
+  apps_by_domain: "Applications",
   eol_risk: "EOL Exposures",
   overdue_initiatives: "Overdue Initiatives",
 };
@@ -32,6 +33,7 @@ function getTitle(filter: DrillDownFilter | null): string {
   if (filter.kind === "apps_by_health") return `${filter.bucket.charAt(0).toUpperCase() + filter.bucket.slice(1)} Applications`;
   if (filter.kind === "risks") return filter.severity === "all" ? "All Open Risks" : `${filter.severity.charAt(0).toUpperCase() + filter.severity.slice(1)} Risks`;
   if (filter.kind === "capabilities_by_domain") return filter.domainName ? `Capabilities: ${filter.domainName}` : "All Capabilities";
+  if (filter.kind === "apps_by_domain") return `Applications: ${filter.domainName}`;
   return TITLE_MAP[filter.kind];
 }
 
@@ -63,7 +65,10 @@ export function DrillDownSheet({ filter, onClose }: Props) {
         kind: filter.kind,
         bucket: filter.kind === "apps_by_health" ? filter.bucket : undefined,
         severity: filter.kind === "risks" ? filter.severity : undefined,
-        domainId: filter.kind === "capabilities_by_domain" ? filter.domainId : undefined,
+        domainId:
+          filter.kind === "capabilities_by_domain" || filter.kind === "apps_by_domain"
+            ? filter.domainId
+            : undefined,
         search: search || undefined,
       }
     : null;

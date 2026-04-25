@@ -104,6 +104,7 @@ export type DrillDownFilter =
   | { kind: "apps_by_health"; bucket: "healthy" | "warning" | "critical" }
   | { kind: "risks"; severity: "critical" | "high" | "all" }
   | { kind: "capabilities_by_domain"; domainId: string; domainName: string }
+  | { kind: "apps_by_domain"; domainId: string; domainName: string }
   | { kind: "eol_risk" }
   | { kind: "overdue_initiatives" };
 

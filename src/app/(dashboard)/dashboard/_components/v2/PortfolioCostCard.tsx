@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Wallet, Building2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Donut, type DonutSlice } from "@/components/ui/donut";
 import { cn } from "@/lib/utils";
+import { DrillDownSheet } from "../DrillDownSheet";
+import type { DrillDownFilter } from "@/lib/contracts/dashboard";
 
 const MAX_DOMAINS_VISIBLE = 6;
 const UNMAPPED_ID = "__unmapped__";
@@ -37,6 +40,12 @@ const UNMAPPED_TW_BAR =
 export function PortfolioCostCard() {
   const summary = trpc.dashboard.getSummary.useQuery();
   const byDomain = trpc.dashboard.getCostByDomain.useQuery();
+  const [drillFilter, setDrillFilter] = useState<DrillDownFilter | null>(null);
+
+  const openDomain = (domainId: string, domainName: string) => {
+    if (domainId === "__hidden__") return;
+    setDrillFilter({ kind: "apps_by_domain", domainId, domainName });
+  };
 
   const isLoading = summary.isLoading || byDomain.isLoading;
   const total = summary.data?.totalAnnualCost ?? 0;
@@ -136,6 +145,11 @@ export function PortfolioCostCard() {
               size={140}
               thickness={20}
               ariaLabel="Cost share by domain"
+              onSliceClick={(id) => {
+                if (id === "__hidden__") return;
+                const d = visible.find((v) => v.domainId === id);
+                if (d) openDomain(d.domainId, d.domain);
+              }}
               centerLabel={
                 <div className="text-center">
                   <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -175,6 +189,7 @@ export function PortfolioCostCard() {
                   pct={(d.totalCost / max) * 100}
                   rank={i}
                   isUnmapped={d.domainId === UNMAPPED_ID}
+                  onClick={() => openDomain(d.domainId, d.domain)}
                 />
               ))}
               {hidden.length > 0 && (
@@ -193,6 +208,10 @@ export function PortfolioCostCard() {
           )}
         </div>
       </div>
+      <DrillDownSheet
+        filter={drillFilter}
+        onClose={() => setDrillFilter(null)}
+      />
     </div>
   );
 }
@@ -205,6 +224,7 @@ type DomainBarProps = {
   pct: number;
   rank: number;
   isUnmapped: boolean;
+  onClick?: () => void;
 };
 
 function DomainBar({
@@ -215,9 +235,14 @@ function DomainBar({
   pct,
   rank,
   isUnmapped,
+  onClick,
 }: DomainBarProps) {
   return (
-    <div className="group">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group block w-full text-left rounded-md px-1.5 -mx-1.5 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ai)]/50"
+    >
       <div className="flex items-baseline justify-between gap-3 mb-1">
         <span
           className={cn(
@@ -253,7 +278,7 @@ function DomainBar({
           style={{ width: `${Math.max(pct, 1.5)}%` }}
         />
       </div>
-    </div>
+    </button>
   );
 }
 

@@ -687,7 +687,14 @@ export const dashboardRouter = router({
   getDrillDownItems: workspaceProcedure
     .input(
       z.object({
-        kind: z.enum(["apps_by_health", "risks", "capabilities_by_domain", "eol_risk", "overdue_initiatives"]),
+        kind: z.enum([
+          "apps_by_health",
+          "risks",
+          "capabilities_by_domain",
+          "apps_by_domain",
+          "eol_risk",
+          "overdue_initiatives",
+        ]),
         bucket: z.enum(["healthy", "warning", "critical"]).optional(),
         severity: z.enum(["critical", "high", "all"]).optional(),
         domainId: z.string().optional(),
@@ -785,6 +792,73 @@ export const dashboardRouter = router({
             sublabel: `${c.level} · Maturity: ${c.currentMaturity.replace(/_/g, " ")}`,
             href: deepLink("BusinessCapability", c.id),
           });
+        }
+      } else if (input.kind === "apps_by_domain") {
+        const domainId = input.domainId;
+        if (!domainId) return { items: [], total: 0 };
+
+        // Reuse the same L1-ancestor walk as getCostByDomain so the
+        // drill bucketing matches what the donut/bars displayed.
+        const caps = await ctx.db.businessCapability.findMany({
+          where: { workspaceId: wid, isActive: true },
+          select: { id: true, parentId: true, level: true },
+        });
+        const capById = new Map(caps.map((c) => [c.id, c]));
+        function findL1(capId: string): string | null {
+          const cap = capById.get(capId);
+          if (!cap) return null;
+          if (cap.level === "L1") return cap.id;
+          if (cap.parentId) return findL1(cap.parentId);
+          return null;
+        }
+
+        const apps = await ctx.db.application.findMany({
+          where: {
+            workspaceId: wid,
+            isActive: true,
+            annualCostUsd: { gt: 0 },
+            ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
+          },
+          select: {
+            id: true,
+            name: true,
+            annualCostUsd: true,
+            costCurrency: true,
+            lifecycle: true,
+            capabilities: { select: { capabilityId: true } },
+          },
+          orderBy: { annualCostUsd: "desc" },
+        });
+
+        for (const app of apps) {
+          let appL1: string | null = null;
+          for (const m of app.capabilities) {
+            const l1 = findL1(m.capabilityId);
+            if (l1) {
+              appL1 = l1;
+              break;
+            }
+          }
+          const isUnmapped = appL1 === null;
+          const matches = domainId === "__unmapped__" ? isUnmapped : appL1 === domainId;
+          if (!matches) continue;
+
+          const cost = Number(app.annualCostUsd ?? 0);
+          const currency = app.costCurrency ?? "USD";
+          const formatted = new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency,
+            maximumFractionDigits: 0,
+            notation: cost >= 10000 ? "compact" : "standard",
+          }).format(cost);
+
+          items.push({
+            id: app.id,
+            label: app.name,
+            sublabel: `${formatted} · ${app.lifecycle}`,
+            href: deepLink("Application", app.id),
+          });
+          if (items.length >= 50) break;
         }
       } else if (input.kind === "eol_risk") {
         const entries = await ctx.db.eolWatchEntry.findMany({

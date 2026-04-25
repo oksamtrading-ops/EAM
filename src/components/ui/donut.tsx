@@ -40,6 +40,8 @@ type DonutProps = {
   centerLabel?: React.ReactNode;
   ariaLabel?: string;
   className?: string;
+  /** When set, slices become buttons that fire this with the slice id. */
+  onSliceClick?: (id: string) => void;
 };
 
 const VIEWBOX = 100;
@@ -85,7 +87,25 @@ export function Donut({
   centerLabel,
   ariaLabel,
   className,
+  onSliceClick,
 }: DonutProps) {
+  const handleSliceKey = (id: string) => (e: React.KeyboardEvent) => {
+    if (!onSliceClick) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSliceClick(id);
+    }
+  };
+  const interactiveProps = (id: string) =>
+    onSliceClick
+      ? {
+          role: "button" as const,
+          tabIndex: 0,
+          style: { cursor: "pointer" as const },
+          onClick: () => onSliceClick(id),
+          onKeyDown: handleSliceKey(id),
+        }
+      : {};
   // Filter zero/negative slices and dedupe by id.
   const positive = slices.filter((s) => s.value > 0);
   const total = positive.reduce((sum, s) => sum + s.value, 0);
@@ -125,6 +145,7 @@ export function Donut({
             fill="none"
             strokeWidth={outerRadius - innerRadius}
             stroke={positive[0]!.color}
+            {...interactiveProps(positive[0]!.id)}
           >
             {positive[0]!.label && <title>{positive[0]!.label}</title>}
           </circle>
@@ -137,7 +158,12 @@ export function Donut({
               const end = (cumulative / total) * 2 * Math.PI;
               const d = arcPath(start, end, outerRadius, innerRadius);
               return (
-                <path key={slice.id} d={d} fill={slice.color}>
+                <path
+                  key={slice.id}
+                  d={d}
+                  fill={slice.color}
+                  {...interactiveProps(slice.id)}
+                >
                   {slice.label && <title>{slice.label}</title>}
                 </path>
               );
