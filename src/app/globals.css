@@ -68,7 +68,7 @@
   --secondary: rgba(11, 92, 214, 0.10);
   --secondary-foreground: #1a1a1a;
   --muted: rgba(100, 100, 100, 0.09);
-  --muted-foreground: #44495a;
+  --muted-foreground: #000000;
   --accent: rgba(11, 92, 214, 0.12);
   --accent-foreground: #1a1a1a;
   --destructive: #e53e3e;
