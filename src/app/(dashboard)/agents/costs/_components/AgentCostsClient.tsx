@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { formatUsd } from "@/lib/utils/agentPricing";
+import { useToken } from "@/lib/hooks/useToken";
 
 type Range = "7d" | "30d" | "90d";
 
@@ -49,6 +50,12 @@ const RANGE_LABELS: Record<Range, string> = {
 export function AgentCostsClient() {
   const [range, setRange] = useState<Range>("30d");
   const sinceDays = RANGE_DAYS[range];
+
+  // Read chart colors from CSS vars so dark-mode (and future Plan C
+  // #17 brand color overrides) flow through to recharts. Recharts
+  // can't resolve `var(--ai)` in stroke/fill props directly.
+  const aiColor = useToken("--ai", "#7c3aed");
+  const secondaryColor = "#0B5CD6"; // dataviz blue — kept hardcoded; not a brand token
 
   const summary = trpc.agentRun.costSummary.useQuery({ sinceDays });
   const byKind = trpc.agentRun.costByKind.useQuery({ sinceDays });
@@ -197,9 +204,9 @@ export function AgentCostsClient() {
                     type="monotone"
                     dataKey="usd"
                     name="USD"
-                    stroke="#7c3aed"
+                    stroke={aiColor}
                     strokeWidth={2}
-                    dot={{ r: 3, strokeWidth: 0, fill: "#7c3aed" }}
+                    dot={{ r: 3, strokeWidth: 0, fill: aiColor }}
                     activeDot={{ r: 5 }}
                   />
                   <Line
@@ -207,10 +214,10 @@ export function AgentCostsClient() {
                     type="monotone"
                     dataKey="runs"
                     name="Runs"
-                    stroke="#0B5CD6"
+                    stroke={secondaryColor}
                     strokeWidth={2}
                     strokeDasharray="4 3"
-                    dot={{ r: 2, strokeWidth: 0, fill: "#0B5CD6" }}
+                    dot={{ r: 2, strokeWidth: 0, fill: secondaryColor }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -269,7 +276,7 @@ export function AgentCostsClient() {
                     }}
                     formatter={(value) => formatUsd(Number(value))}
                   />
-                  <Bar dataKey="usd" name="USD" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="usd" name="USD" fill={aiColor} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

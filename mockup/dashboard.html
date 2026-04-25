@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EAM — Dashboard mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --ai: #7c3aed;
+      --ai-hover: #6d28d9;
+      --ai-subtle: rgba(124, 58, 237, 0.08);
+      --ai-glow: rgba(124, 58, 237, 0.18);
+    }
+    .dark {
+      --ai: #a78bfa;
+      --ai-hover: #8b5cf6;
+      --ai-subtle: rgba(167, 139, 250, 0.12);
+      --ai-glow: rgba(167, 139, 250, 0.25);
+    }
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui;
+      font-feature-settings: "cv11", "ss01";
+      letter-spacing: -0.011em;
+    }
+    .font-display {
+      font-family: 'Inter', ui-sans-serif, system-ui;
+      font-feature-settings: "cv11", "ss01", "ss02";
+      letter-spacing: -0.035em;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(40px) saturate(200%);
+      -webkit-backdrop-filter: blur(40px) saturate(200%);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .glass-toolbar {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .dark .glass {
+      background: rgba(20, 20, 22, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .dark .glass-strong {
+      background: rgba(24, 24, 27, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .dark .glass-toolbar {
+      background: rgba(15, 15, 17, 0.7);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .hero-glow {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, var(--ai-glow), transparent),
+        rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(40px) saturate(180%);
+    }
+    .dark .hero-glow {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, var(--ai-glow), transparent),
+        rgba(20, 20, 22, 0.65);
+    }
+    .ring-glow {
+      box-shadow:
+        0 0 0 1px rgba(124, 58, 237, 0.15),
+        0 8px 32px -12px rgba(124, 58, 237, 0.18);
+    }
+    .dark .ring-glow {
+      box-shadow:
+        0 0 0 1px rgba(167, 139, 250, 0.2),
+        0 8px 32px -12px rgba(167, 139, 250, 0.25);
+    }
+    .stat-card {
+      transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .stat-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(124, 58, 237, 0.2);
+    }
+    .dark .stat-card:hover {
+      border-color: rgba(167, 139, 250, 0.3);
+    }
+    .row-hover {
+      transition: background 150ms ease;
+    }
+    .pulse-dot {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    /* Tabular numerals everywhere we display data */
+    .tabular { font-variant-numeric: tabular-nums; }
+    /* Subtle scrollbar */
+    *::-webkit-scrollbar { width: 8px; height: 8px; }
+    *::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+    .dark *::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.1);
+    }
+  </style>
+</head>
+<body class="bg-zinc-50 dark:bg-[#0a0a0c] text-zinc-900 dark:text-zinc-100 min-h-screen antialiased">
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- TOP BAR                                       -->
+  <!-- ─────────────────────────────────────────── -->
+  <header class="glass-toolbar sticky top-0 z-40">
+    <div class="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between gap-6">
+      <!-- Workspace pill -->
+      <div class="flex items-center gap-3">
+        <div class="h-7 w-7 rounded-lg flex items-center justify-center" style="background: var(--ai-subtle);">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5" style="color: var(--ai);"></i>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold">ACME Engagement</span>
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-500 font-medium px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
+            Banking · NA
+          </span>
+        </div>
+      </div>
+
+      <!-- Spacer -->
+      <div class="flex-1"></div>
+
+      <!-- Right cluster -->
+      <div class="flex items-center gap-2">
+        <!-- Date range -->
+        <button class="flex items-center gap-2 text-xs font-medium px-3 h-8 rounded-lg bg-white/60 dark:bg-zinc-900/60 hover:bg-white dark:hover:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800 transition">
+          <i data-lucide="calendar-days" class="w-3.5 h-3.5 text-zinc-500"></i>
+          Last 30 days
+          <i data-lucide="chevron-down" class="w-3 h-3 text-zinc-400"></i>
+        </button>
+        <!-- AI brief -->
+        <button class="flex items-center gap-1.5 text-xs font-medium px-3 h-8 rounded-lg text-white transition" style="background: var(--ai);">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          AI brief
+        </button>
+        <!-- Theme toggle -->
+        <button id="theme-toggle" class="h-8 w-8 rounded-lg bg-white/60 dark:bg-zinc-900/60 hover:bg-white dark:hover:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800 flex items-center justify-center transition" title="Toggle theme">
+          <i data-lucide="moon" class="w-3.5 h-3.5 dark:hidden"></i>
+          <i data-lucide="sun" class="w-3.5 h-3.5 hidden dark:block"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- ZONE 1 — ENGAGEMENT HEALTH                    -->
+    <!-- ─────────────────────────────────────────── -->
+    <section class="rounded-2xl hero-glow ring-glow overflow-hidden">
+      <div class="p-7 grid grid-cols-12 gap-8 items-end">
+        <!-- Left: hero score -->
+        <div class="col-span-4">
+          <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest" style="color: var(--ai);">
+            <i data-lucide="activity" class="w-3 h-3"></i>
+            Engagement Health
+          </div>
+          <div class="mt-2 flex items-baseline gap-3">
+            <span class="font-display text-7xl font-bold tabular leading-none">82</span>
+            <div class="pb-2">
+              <div class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                Strong
+              </div>
+              <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">+4 vs. last week</div>
+            </div>
+          </div>
+          <p class="mt-3 text-sm text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
+            Composite of architecture health, knowledge freshness, intake backlog age, and agent run reliability.
+          </p>
+        </div>
+
+        <!-- Center: sparkline trail -->
+        <div class="col-span-5">
+          <svg viewBox="0 0 400 120" class="w-full h-28" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--ai)" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="var(--ai)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0,90 L20,82 L40,85 L60,72 L80,68 L100,75 L120,62 L140,55 L160,58 L180,48 L200,52 L220,42 L240,38 L260,30 L280,32 L300,22 L320,28 L340,18 L360,15 L380,8 L400,12"
+              fill="none"
+              stroke="var(--ai)"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M0,90 L20,82 L40,85 L60,72 L80,68 L100,75 L120,62 L140,55 L160,58 L180,48 L200,52 L220,42 L240,38 L260,30 L280,32 L300,22 L320,28 L340,18 L360,15 L380,8 L400,12 L400,120 L0,120 Z"
+              fill="url(#sparkGrad)"
+            />
+            <circle cx="400" cy="12" r="4" fill="var(--ai)" />
+            <circle cx="400" cy="12" r="8" fill="var(--ai)" opacity="0.2" />
+          </svg>
+          <div class="flex justify-between text-[10px] text-zinc-400 mt-1 font-mono">
+            <span>30d ago</span>
+            <span>Today</span>
+          </div>
+        </div>
+
+        <!-- Right: components -->
+        <div class="col-span-3 space-y-2">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Components</div>
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-zinc-600 dark:text-zinc-400">Architecture</span>
+              <span class="font-mono tabular text-emerald-600 dark:text-emerald-400">88</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-zinc-600 dark:text-zinc-400">Knowledge</span>
+              <span class="font-mono tabular text-emerald-600 dark:text-emerald-400">91</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-zinc-600 dark:text-zinc-400">Risk posture</span>
+              <span class="font-mono tabular text-amber-600 dark:text-amber-400">71</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-zinc-600 dark:text-zinc-400">Agent reliability</span>
+              <span class="font-mono tabular text-emerald-600 dark:text-emerald-400">96</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI strip (dense, divided) -->
+      <div class="border-t border-black/5 dark:border-white/5 grid grid-cols-6 divide-x divide-black/5 dark:divide-white/5">
+        <button class="px-5 py-3.5 text-left row-hover hover:bg-white/40 dark:hover:bg-white/5">
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Applications</div>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <span class="text-xl font-semibold tabular">47</span>
+            <span class="text-[10px] text-zinc-400 font-mono">+2</span>
+          </div>
+        </button>
+        <button class="px-5 py-3.5 text-left row-hover hover:bg-white/40 dark:hover:bg-white/5">
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Capabilities</div>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <span class="text-xl font-semibold tabular">89</span>
+            <span class="text-[10px] text-zinc-400 font-mono">3 levels</span>
+          </div>
+        </button>
+        <button class="px-5 py-3.5 text-left row-hover hover:bg-white/40 dark:hover:bg-white/5">
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold flex items-center gap-1">
+            Open risks
+            <span class="h-1.5 w-1.5 rounded-full bg-red-500 pulse-dot"></span>
+          </div>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <span class="text-xl font-semibold tabular">12</span>
+            <span class="text-[10px] text-red-600 dark:text-red-400 font-mono">2 critical</span>
+          </div>
+        </button>
+        <button class="px-5 py-3.5 text-left row-hover hover:bg-white/40 dark:hover:bg-white/5">
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Initiatives</div>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <span class="text-xl font-semibold tabular">14</span>
+            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-mono">3 overdue</span>
+          </div>
+        </button>
+        <button class="px-5 py-3.5 text-left row-hover bg-[var(--ai-subtle)] hover:bg-[var(--ai-subtle)]/80">
+          <div class="text-[10px] uppercase tracking-wider font-semibold" style="color: var(--ai);">Pending reviews</div>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <span class="text-xl font-semibold tabular">14</span>
+            <svg viewBox="0 0 60 16" class="h-4 w-12">
+              <path d="M0,12 L10,9 L20,11 L30,7 L40,8 L50,4 L60,3" stroke="var(--ai)" stroke-width="1.5" fill="none" stroke-linecap="round" />
+            </svg>
+          </div>
+        </button>
+        <button class="px-5 py-3.5 text-left row-hover bg-[var(--ai-subtle)] hover:bg-[var(--ai-subtle)]/80">
+          <div class="text-[10px] uppercase tracking-wider font-semibold" style="color: var(--ai);">Weekly spend</div>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <span class="text-xl font-semibold tabular">$42</span>
+            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-mono flex items-center">
+              <i data-lucide="arrow-up-right" class="w-2.5 h-2.5"></i>+$8
+            </span>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- ZONE 2 — TODAY                                -->
+    <!-- ─────────────────────────────────────────── -->
+    <section class="grid grid-cols-2 gap-6">
+
+      <!-- Blocking column -->
+      <div class="glass rounded-2xl p-6">
+        <header class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-semibold tracking-tight">Blocking</h2>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">5 items need attention</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded-md bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50">
+            <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+            5
+          </div>
+        </header>
+
+        <div class="space-y-1">
+          <!-- Critical risk -->
+          <div class="flex items-start gap-3 p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <span class="mt-1.5 h-2 w-2 rounded-full bg-red-500 shrink-0 pulse-dot"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Oracle Database 12.2 EOL on prod</div>
+              <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 flex items-center gap-2">
+                <span>Critical risk</span>
+                <span class="text-zinc-400">·</span>
+                <span class="font-mono">3 apps affected</span>
+                <span class="text-zinc-400">·</span>
+                <span>EOL in 22 days</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-zinc-400 mt-1.5"></i>
+          </div>
+          <!-- EOL -->
+          <div class="flex items-start gap-3 p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <span class="mt-1.5 h-2 w-2 rounded-full bg-amber-500 shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">3 EOL exposures within 90 days</div>
+              <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 flex items-center gap-2">
+                <span class="font-mono">Salesforce v54</span>
+                <span class="text-zinc-400">·</span>
+                <span class="font-mono">JBoss EAP 7.1</span>
+                <span class="text-zinc-400">·</span>
+                <span class="font-mono">+1 more</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-zinc-400 mt-1.5"></i>
+          </div>
+          <!-- Overdue initiatives -->
+          <div class="flex items-start gap-3 p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <span class="mt-1.5 h-2 w-2 rounded-full bg-amber-500 shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">2 initiatives overdue</div>
+              <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                "CRM consolidation" 8 days late · "Data lake migration" 3 days late
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-zinc-400 mt-1.5"></i>
+          </div>
+          <!-- Failing scheduled task -->
+          <div class="flex items-start gap-3 p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <span class="mt-1.5 h-2 w-2 rounded-full bg-red-500 shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Scheduled task failing</div>
+              <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 flex items-center gap-2">
+                <i data-lucide="calendar-clock" class="w-3 h-3"></i>
+                <span class="font-mono">weekly-compliance-scan</span>
+                <span class="text-zinc-400">·</span>
+                <span>3 failures</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-zinc-400 mt-1.5"></i>
+          </div>
+          <!-- Long-running run -->
+          <div class="flex items-start gap-3 p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <span class="mt-1.5 h-2 w-2 rounded-full bg-amber-500 shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Agent run elapsed 8m 24s</div>
+              <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 flex items-center gap-2">
+                <span class="font-mono">kind=research</span>
+                <span class="text-zinc-400">·</span>
+                <span>started 14:08</span>
+                <span class="text-zinc-400">·</span>
+                <span class="text-amber-600 dark:text-amber-400">past usual cap</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-zinc-400 mt-1.5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inbox column -->
+      <div class="glass rounded-2xl p-6">
+        <header class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-semibold tracking-tight">Pending reviews</h2>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">14 items across 4 categories</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded-md" style="background: var(--ai-subtle); color: var(--ai);">
+            <i data-lucide="inbox" class="w-3 h-3"></i>
+            14
+          </div>
+        </header>
+
+        <div class="space-y-2.5">
+          <!-- Intake drafts -->
+          <div class="rounded-xl border border-zinc-200/70 dark:border-zinc-800 p-3.5">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5" style="color: var(--ai);"></i>
+                  <span class="text-sm font-medium">Intake drafts</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">8</span>
+                </div>
+                <div class="mt-2 flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  <span class="flex items-center gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                    Capability ×3
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                    Risk ×2
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                    Application ×3
+                  </span>
+                </div>
+              </div>
+              <button class="text-[11px] font-medium px-2.5 py-1 rounded-md hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1">
+                Review
+                <i data-lucide="arrow-right" class="w-3 h-3"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Knowledge drafts -->
+          <div class="rounded-xl border border-zinc-200/70 dark:border-zinc-800 p-3.5">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="book-open" class="w-3.5 h-3.5" style="color: var(--ai);"></i>
+                  <span class="text-sm font-medium">Knowledge drafts</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">4</span>
+                </div>
+                <div class="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Mined from past runs ×2 · From documents ×2
+                </div>
+                <div class="mt-2 flex items-center gap-1">
+                  <div class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">Avg 87% confidence</div>
+                </div>
+              </div>
+              <button class="text-[11px] font-medium px-2.5 py-1 rounded-md text-white" style="background: var(--ai);">
+                Accept ≥90%
+              </button>
+            </div>
+          </div>
+
+          <!-- Stale facts -->
+          <div class="rounded-xl border border-amber-200/70 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20 p-3.5">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"></i>
+                  <span class="text-sm font-medium">Stale facts</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">1</span>
+                </div>
+                <div class="mt-2 text-[11px]">
+                  <span class="font-medium">"Salesforce is the primary CRM"</span>
+                  <span class="text-zinc-500 dark:text-zinc-400"> · 127 days since review</span>
+                </div>
+              </div>
+              <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30">
+                Mark reviewed
+              </button>
+            </div>
+          </div>
+
+          <!-- Dedup -->
+          <div class="rounded-xl border border-zinc-200/70 dark:border-zinc-800 p-3.5">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="copy" class="w-3.5 h-3.5 text-zinc-500"></i>
+                  <span class="text-sm font-medium">Dedup proposal</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">1</span>
+                </div>
+                <div class="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  New draft similar to existing fact (<span class="font-mono">distance 0.09</span>)
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <button class="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">Supersede</button>
+                <button class="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">Keep both</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- ZONE 3 — ACTIVITY & SPEND                     -->
+    <!-- ─────────────────────────────────────────── -->
+    <section class="grid grid-cols-3 gap-6">
+
+      <!-- Agent activity -->
+      <div class="glass rounded-2xl p-6">
+        <header class="mb-4">
+          <h2 class="text-base font-semibold tracking-tight flex items-center gap-2">
+            <i data-lucide="activity" class="w-4 h-4" style="color: var(--ai);"></i>
+            Agent activity
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Last 30 days</p>
+        </header>
+
+        <!-- Hero spend -->
+        <div class="mb-4">
+          <div class="flex items-baseline gap-2">
+            <span class="font-display text-3xl font-bold tabular">$184.21</span>
+            <span class="text-[11px] text-amber-600 dark:text-amber-400 font-mono flex items-center">
+              <i data-lucide="arrow-up-right" class="w-3 h-3"></i>+22%
+            </span>
+          </div>
+          <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            127 runs · 2.4M tokens · $1.45 / run
+          </div>
+        </div>
+
+        <!-- Daily spend area chart -->
+        <svg viewBox="0 0 280 80" class="w-full h-20 mb-4" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--ai)" stop-opacity="0.5" />
+              <stop offset="100%" stop-color="var(--ai)" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0,55 L9,52 L18,58 L27,48 L36,42 L45,50 L54,38 L63,40 L72,32 L81,35 L90,28 L99,30 L108,22 L117,25 L126,18 L135,28 L144,15 L153,20 L162,12 L171,18 L180,25 L189,15 L198,10 L207,18 L216,8 L225,12 L234,15 L243,8 L252,5 L261,10 L270,3 L280,8"
+            fill="url(#spendGrad)"
+            stroke="var(--ai)"
+            stroke-width="1.5"
+          />
+        </svg>
+
+        <!-- Top runs -->
+        <div class="space-y-1.5">
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">Top expensive runs</div>
+          <div class="flex items-center justify-between text-xs py-1 row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] -mx-2 px-2 rounded cursor-pointer">
+            <span class="truncate flex-1 mr-3">Capability mapping for retail unit</span>
+            <span class="font-mono tabular text-zinc-500">$2.84</span>
+          </div>
+          <div class="flex items-center justify-between text-xs py-1 row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] -mx-2 px-2 rounded cursor-pointer">
+            <span class="truncate flex-1 mr-3">Quarterly compliance critic loop</span>
+            <span class="font-mono tabular text-zinc-500">$2.11</span>
+          </div>
+          <div class="flex items-center justify-between text-xs py-1 row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] -mx-2 px-2 rounded cursor-pointer">
+            <span class="truncate flex-1 mr-3">Vendor consolidation analysis</span>
+            <span class="font-mono tabular text-zinc-500">$1.98</span>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+          <div class="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+            <i data-lucide="calendar-clock" class="w-3 h-3"></i>
+            5 scheduled tasks active
+          </div>
+          <div class="text-[10px] text-zinc-400 font-mono">next: in 4h</div>
+        </div>
+      </div>
+
+      <!-- Achievements -->
+      <div class="glass rounded-2xl p-6">
+        <header class="mb-4">
+          <h2 class="text-base font-semibold tracking-tight flex items-center gap-2">
+            <i data-lucide="trophy" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+            Shipped
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Last 30 days</p>
+        </header>
+
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                <i data-lucide="flag" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i>
+              </div>
+              <div>
+                <div class="text-sm font-medium">Initiatives completed</div>
+                <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">CRM rationalization · Data domain v2</div>
+              </div>
+            </div>
+            <span class="font-mono text-sm font-semibold tabular">3</span>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i>
+              </div>
+              <div>
+                <div class="text-sm font-medium">Risks resolved</div>
+                <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">3 high · 4 medium</div>
+              </div>
+            </div>
+            <span class="font-mono text-sm font-semibold tabular">7</span>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="h-7 w-7 rounded-lg flex items-center justify-center" style="background: var(--ai-subtle);">
+                <i data-lucide="book-open" class="w-3.5 h-3.5" style="color: var(--ai);"></i>
+              </div>
+              <div>
+                <div class="text-sm font-medium">Facts accepted</div>
+                <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">7 from docs · 5 mined</div>
+              </div>
+            </div>
+            <span class="font-mono text-sm font-semibold tabular">12</span>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="h-7 w-7 rounded-lg flex items-center justify-center" style="background: var(--ai-subtle);">
+                <i data-lucide="package" class="w-3.5 h-3.5" style="color: var(--ai);"></i>
+              </div>
+              <div>
+                <div class="text-sm font-medium">Deliverables generated</div>
+                <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">DOCX bundles to client</div>
+              </div>
+            </div>
+            <span class="font-mono text-sm font-semibold tabular">4</span>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="h-7 w-7 rounded-lg flex items-center justify-center" style="background: var(--ai-subtle);">
+                <i data-lucide="link-2" class="w-3.5 h-3.5" style="color: var(--ai);"></i>
+              </div>
+              <div>
+                <div class="text-sm font-medium">Share links sent</div>
+                <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">2 passcode · 4 anonymous</div>
+              </div>
+            </div>
+            <span class="font-mono text-sm font-semibold tabular">6</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pinned + activity -->
+      <div class="glass rounded-2xl p-6">
+        <header class="mb-4">
+          <h2 class="text-base font-semibold tracking-tight flex items-center gap-2">
+            <i data-lucide="pin" class="w-4 h-4 text-zinc-500"></i>
+            Pinned
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Quick access</p>
+        </header>
+
+        <div class="space-y-1.5 mb-5">
+          <div class="flex items-center gap-2.5 p-2 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-medium truncate">Oracle DB EOL — prod systems</div>
+            </div>
+            <span class="text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50">Risk</span>
+          </div>
+          <div class="flex items-center gap-2.5 p-2 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-medium truncate">CRM consolidation initiative</div>
+            </div>
+            <span class="text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50">H1</span>
+          </div>
+          <div class="flex items-center gap-2.5 p-2 -mx-2 rounded-lg row-hover hover:bg-black/[0.03] dark:hover:bg-white/[0.03] cursor-pointer">
+            <div class="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-medium truncate">Salesforce Sales Cloud</div>
+            </div>
+            <span class="text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50">App</span>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-black/5 dark:border-white/5">
+          <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-3">Recent activity</div>
+          <div class="space-y-2.5">
+            <div class="flex items-start gap-2.5">
+              <div class="h-5 w-5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="check" class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px]">Accepted fact <span class="font-medium">"Core banking on AS400 mainframe"</span></div>
+                <div class="text-[10px] text-zinc-400 font-mono mt-0.5">2h ago</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <div class="h-5 w-5 rounded-md flex items-center justify-center shrink-0 mt-0.5" style="background: var(--ai-subtle);">
+                <i data-lucide="package" class="w-2.5 h-2.5" style="color: var(--ai);"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px]">Generated <span class="font-medium">"Q1 Architecture Review.docx"</span></div>
+                <div class="text-[10px] text-zinc-400 font-mono mt-0.5">4h ago</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <div class="h-5 w-5 rounded-md flex items-center justify-center shrink-0 mt-0.5" style="background: var(--ai-subtle);">
+                <i data-lucide="sparkles" class="w-2.5 h-2.5" style="color: var(--ai);"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px]">Mined <span class="font-medium">5 drafts</span> from past runs</div>
+                <div class="text-[10px] text-zinc-400 font-mono mt-0.5">yesterday</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <div class="h-5 w-5 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="upload" class="w-2.5 h-2.5 text-zinc-600 dark:text-zinc-400"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px]">Uploaded <span class="font-medium">"vendor-contract-2026.pdf"</span></div>
+                <div class="text-[10px] text-zinc-400 font-mono mt-0.5">yesterday</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mockup disclaimer -->
+    <footer class="text-center py-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-[11px] font-mono">
+        <i data-lucide="alert-triangle" class="w-3 h-3 text-amber-600 dark:text-amber-400"></i>
+        <span class="text-amber-800 dark:text-amber-300">Mockup — not connected to live data</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // Initialize lucide icons
+    lucide.createIcons();
+
+    // Theme toggle
+    const root = document.documentElement;
+    const toggle = document.getElementById('theme-toggle');
+    toggle.addEventListener('click', () => {
+      root.classList.toggle('dark');
+      root.classList.toggle('light');
+    });
+
+    // Respect system preference on first load
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+  </script>
+</body>
+</html>

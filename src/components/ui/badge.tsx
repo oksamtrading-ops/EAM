@@ -20,9 +20,29 @@ const badgeVariants = cva(
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // Status-tone palette codified once. Combine with
+      // `variant: "outline"` to get the bg-X-50/text-X-700/border-X-200
+      // triplet that drifted across ~45 call sites in earlier code.
+      // Default `tone: "none"` is a no-op so existing call sites keep
+      // working unchanged until they get swept.
+      tone: {
+        none: "",
+        success:
+          "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50",
+        warn:
+          "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50",
+        danger:
+          "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50",
+        info:
+          "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50",
+        auth:
+          "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900/50",
+        ai: "bg-[var(--ai)]/10 text-[var(--ai)] border-[var(--ai)]/30",
+      },
     },
     defaultVariants: {
       variant: "default",
+      tone: "none",
     },
   }
 )
@@ -30,6 +50,7 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant = "default",
+  tone = "none",
   render,
   ...props
 }: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
@@ -37,7 +58,7 @@ function Badge({
     defaultTagName: "span",
     props: mergeProps<"span">(
       {
-        className: cn(badgeVariants({ variant }), className),
+        className: cn(badgeVariants({ variant, tone }), className),
       },
       props
     ),
@@ -45,6 +66,7 @@ function Badge({
     state: {
       slot: "badge",
       variant,
+      tone,
     },
   })
 }
