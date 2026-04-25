@@ -371,7 +371,7 @@ export function AgentConsole({
   if (!open) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-screen w-full sm:w-[480px] z-50 border-l bg-card flex flex-col shadow-xl">
+    <aside className="fixed inset-0 sm:inset-auto sm:right-0 sm:top-0 sm:h-screen sm:w-[480px] z-50 sm:border-l bg-card flex flex-col shadow-xl">
       <div className="px-5 py-3.5 border-b bg-gradient-to-r from-[var(--ai)]/10 to-transparent relative">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -847,16 +847,16 @@ function ToolCallCard({ call }: { call: ToolCall }) {
     <div className="rounded-lg border border-[var(--ai)]/30 bg-[var(--ai)]/5 px-2.5 py-1.5 text-[11px]">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-1.5"
+        className="w-full flex items-center gap-1.5 min-w-0"
       >
         {expanded ? (
-          <ChevronDown className="h-3 w-3 text-[var(--ai)]" />
+          <ChevronDown className="h-3 w-3 text-[var(--ai)] shrink-0" />
         ) : (
-          <ChevronRight className="h-3 w-3 text-[var(--ai)]" />
+          <ChevronRight className="h-3 w-3 text-[var(--ai)] shrink-0" />
         )}
-        <Wrench className="h-3 w-3 text-[var(--ai)]" />
-        <span className="font-mono font-medium text-[var(--ai)]">{call.name}</span>
-        <span className="ml-auto">
+        <Wrench className="h-3 w-3 text-[var(--ai)] shrink-0" />
+        <span className="font-mono font-medium text-[var(--ai)] truncate min-w-0">{call.name}</span>
+        <span className="ml-auto shrink-0">
           {call.status === "running" && (
             <Loader2 className="h-3 w-3 animate-spin text-[var(--ai)]" />
           )}
@@ -870,11 +870,11 @@ function ToolCallCard({ call }: { call: ToolCall }) {
       </button>
       {expanded && (
         <div className="mt-1.5 space-y-1">
-          <pre className="text-[10px] bg-background/60 rounded p-1.5 overflow-x-auto">
+          <pre className="text-[10px] bg-background/60 rounded p-1.5 whitespace-pre-wrap break-words overflow-x-auto">
 {JSON.stringify(call.input, null, 2)}
           </pre>
           {call.output != null && (
-            <pre className="text-[10px] bg-background/60 rounded p-1.5 overflow-x-auto max-h-40">
+            <pre className="text-[10px] bg-background/60 rounded p-1.5 whitespace-pre-wrap break-words overflow-x-auto max-h-40">
 {JSON.stringify(call.output, null, 2).slice(0, 4000)}
             </pre>
           )}
