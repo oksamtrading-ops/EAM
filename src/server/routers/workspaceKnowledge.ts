@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { embedKnowledgeRow } from "@/server/ai/embeddings/writeKnowledgeEmbeddings";
+import { mineRecentRunsForKnowledge } from "@/server/ai/services/mineRunsForKnowledge";
 
 const KnowledgeKindEnum = z.enum(["FACT", "DECISION", "PATTERN"]);
 
@@ -110,6 +111,27 @@ export const workspaceKnowledgeRouter = router({
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       await ctx.db.workspaceKnowledge.delete({ where: { id: input.id } });
       return { success: true };
+    }),
+
+  /**
+   * Sweep recent agent-run outputs for durable findings and propose
+   * them as KnowledgeDraft rows. Idempotent — runs that already
+   * produced drafts are skipped. Power-user surface; most workspaces
+   * will trigger this from the Knowledge tab's overflow menu.
+   */
+  mineRecentRuns: workspaceProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().int().min(1).max(100).default(25),
+        })
+        .optional()
+    )
+    .mutation(async ({ ctx, input }) => {
+      return mineRecentRunsForKnowledge({
+        workspaceId: ctx.workspaceId,
+        limit: input?.limit ?? 25,
+      });
     }),
 
   /**

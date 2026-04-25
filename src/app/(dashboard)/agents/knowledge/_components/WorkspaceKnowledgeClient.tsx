@@ -190,6 +190,18 @@ export function WorkspaceKnowledgeClient() {
       onError: (e) => toast.error(e.message),
     }
   );
+  const mineRuns = trpc.workspaceKnowledge.mineRecentRuns.useMutation({
+    onSuccess: (r) => {
+      const { draftsCreated, runsScanned, runsSkipped } = r;
+      const skippedNote = runsSkipped > 0 ? ` (${runsSkipped} already mined)` : "";
+      toast.success(
+        `Mined ${draftsCreated} draft${draftsCreated === 1 ? "" : "s"} from ${runsScanned} run${runsScanned === 1 ? "" : "s"}${skippedNote}`
+      );
+      utils.knowledgeDraft.list.invalidate();
+      if (draftsCreated > 0) setTab("drafts");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const draftsByDocument = useMemo(() => {
     const g: Record<
@@ -197,10 +209,25 @@ export function WorkspaceKnowledgeClient() {
       { filename: string; drafts: typeof drafts }
     > = {};
     for (const d of drafts ?? []) {
-      const key = d.sourceDocumentId ?? "__manual__";
+      // Group by source: documents bucket together by documentId,
+      // run-mined drafts share a "__mined__" bucket, and anything
+      // else (manual / agent-originated mid-conversation) lands in
+      // "__manual__".
+      let key: string;
+      let label: string;
+      if (d.sourceDocumentId) {
+        key = d.sourceDocumentId;
+        label = d.sourceDocument?.filename ?? "Document";
+      } else if (d.sourceRunId) {
+        key = "__mined__";
+        label = "Mined from past runs";
+      } else {
+        key = "__manual__";
+        label = "Agent-originated";
+      }
       if (!g[key]) {
         g[key] = {
-          filename: d.sourceDocument?.filename ?? "Agent-originated",
+          filename: label,
           drafts: [] as never,
         };
       }
@@ -219,6 +246,18 @@ export function WorkspaceKnowledgeClient() {
       label: "Accept all ≥80%",
       icon: <Sparkles className="h-4 w-4" />,
       onClick: () => bulkAcceptDrafts.mutate({ threshold: 0.8 }),
+    },
+    {
+      label: mineRuns.isPending ? "Mining recent runs…" : "Mine recent runs",
+      icon: mineRuns.isPending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Sparkles className="h-4 w-4" />
+      ),
+      onClick: () => {
+        if (mineRuns.isPending) return;
+        mineRuns.mutate({ limit: 25 });
+      },
     },
     {
       label: "Upload document",

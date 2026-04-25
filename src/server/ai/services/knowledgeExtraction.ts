@@ -18,7 +18,7 @@ import { extractPdfText } from "@/server/ai/services/pdfExtract";
 const MAX_CHUNK_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 6000;
 
-type FactCandidate = {
+export type FactCandidate = {
   subject: string;
   statement: string;
   kind: WorkspaceKnowledgeKind;
@@ -314,94 +314,128 @@ async function persistDrafts(opts: {
   ordinalToChunkId: Map<number, string>;
 }): Promise<{ draftsCreated: number }> {
   const { workspaceId, sourceDocumentId, facts, ordinalToChunkId } = opts;
-
-  // Auto-accept threshold is per-workspace. When set, drafts with
-  // confidence at or above the threshold commit directly to
-  // WorkspaceKnowledge and skip the approval queue.
   const settings = await loadAgentSettings(workspaceId);
-  const autoAccept = settings.autoAcceptConfidence;
 
   let count = 0;
   for (const f of facts) {
-    if (!VALID_KINDS.has(f.kind)) continue;
-    if (!f.subject?.trim() || !f.statement?.trim()) continue;
-    if (!Array.isArray(f.evidence) || f.evidence.length === 0) continue;
-
-    const evidence = f.evidence
-      .map((e) => ({
-        chunkId: ordinalToChunkId.get(e.chunkOrdinal) ?? null,
-        chunkOrdinal: e.chunkOrdinal,
-        excerpt:
-          typeof e.excerpt === "string" ? e.excerpt.slice(0, 600) : "",
-        page: typeof e.page === "number" ? e.page : null,
-      }))
-      .filter((e) => e.excerpt.length > 0);
-    if (evidence.length === 0) continue;
-
-    const subject = f.subject.trim().slice(0, 200);
-    const statement = f.statement.trim().slice(0, 2000);
-    const confidence = clamp01(f.confidence ?? 0.8);
-
-    const shouldAutoAccept =
-      autoAccept != null && confidence >= autoAccept;
-
-    if (shouldAutoAccept) {
-      // Skip the draft entirely and commit straight to
-      // WorkspaceKnowledge. We still record a draft row so the
-      // trace has provenance, but mark it ACCEPTED up front.
-      const committed = await db.workspaceKnowledge.create({
-        data: {
-          workspaceId,
-          kind: f.kind,
-          subject,
-          statement,
-          confidence,
-        },
-        select: { id: true },
-      });
-      await embedKnowledgeRow(committed.id).catch(() => {});
-      await db.knowledgeDraft.create({
-        data: {
-          workspaceId,
-          sourceDocumentId,
-          kind: f.kind,
-          subject,
-          statement,
-          confidence,
-          evidence: JSON.parse(JSON.stringify(evidence)),
-          status: "ACCEPTED",
-          reviewedAt: new Date(),
-          committedKnowledgeId: committed.id,
-        },
-      });
-    } else {
-      // Flag likely duplicates via semantic similarity so the review
-      // UI can surface a Supersede / Keep-both action. Fail-open on
-      // embedding errors — the draft still lands without a dedup
-      // hint.
-      const similarKnowledgeId = await findSimilarKnowledge({
-        workspaceId,
-        subject,
-        statement,
-      }).catch(() => null);
-
-      await db.knowledgeDraft.create({
-        data: {
-          workspaceId,
-          sourceDocumentId,
-          kind: f.kind,
-          subject,
-          statement,
-          confidence,
-          evidence: JSON.parse(JSON.stringify(evidence)),
-          status: "PENDING",
-          similarKnowledgeId,
-        },
-      });
-    }
-    count++;
+    const persisted = await persistOneDraft({
+      workspaceId,
+      sourceDocumentId,
+      sourceRunId: null,
+      fact: f,
+      ordinalToChunkId,
+      autoAcceptConfidence: settings.autoAcceptConfidence,
+    });
+    if (persisted) count++;
   }
   return { draftsCreated: count };
+}
+
+/**
+ * Per-fact persistence shared by the document-extractor (persistDrafts)
+ * and the run-miner (mineRecentRunsForKnowledge). Either
+ * `sourceDocumentId` or `sourceRunId` must be provided so each draft
+ * has provenance — the schema allows both nullable but at least one
+ * should be set in practice. Returns true when a draft (or its
+ * auto-accepted committed row) was created, false when validation
+ * dropped the fact.
+ */
+export async function persistOneDraft(opts: {
+  workspaceId: string;
+  sourceDocumentId: string | null;
+  sourceRunId: string | null;
+  fact: FactCandidate;
+  ordinalToChunkId: Map<number, string>;
+  autoAcceptConfidence: number | null;
+}): Promise<boolean> {
+  const {
+    workspaceId,
+    sourceDocumentId,
+    sourceRunId,
+    fact: f,
+    ordinalToChunkId,
+    autoAcceptConfidence,
+  } = opts;
+
+  if (!VALID_KINDS.has(f.kind)) return false;
+  if (!f.subject?.trim() || !f.statement?.trim()) return false;
+  if (!Array.isArray(f.evidence) || f.evidence.length === 0) return false;
+
+  const evidence = f.evidence
+    .map((e) => ({
+      chunkId: ordinalToChunkId.get(e.chunkOrdinal) ?? null,
+      chunkOrdinal: e.chunkOrdinal,
+      excerpt:
+        typeof e.excerpt === "string" ? e.excerpt.slice(0, 600) : "",
+      page: typeof e.page === "number" ? e.page : null,
+    }))
+    .filter((e) => e.excerpt.length > 0);
+  if (evidence.length === 0) return false;
+
+  const subject = f.subject.trim().slice(0, 200);
+  const statement = f.statement.trim().slice(0, 2000);
+  const confidence = clamp01(f.confidence ?? 0.8);
+
+  const shouldAutoAccept =
+    autoAcceptConfidence != null && confidence >= autoAcceptConfidence;
+
+  if (shouldAutoAccept) {
+    // Skip the draft entirely and commit straight to
+    // WorkspaceKnowledge. We still record a draft row so the
+    // trace has provenance, but mark it ACCEPTED up front.
+    const committed = await db.workspaceKnowledge.create({
+      data: {
+        workspaceId,
+        kind: f.kind,
+        subject,
+        statement,
+        confidence,
+        sourceRunId: sourceRunId ?? undefined,
+      },
+      select: { id: true },
+    });
+    await embedKnowledgeRow(committed.id).catch(() => {});
+    await db.knowledgeDraft.create({
+      data: {
+        workspaceId,
+        sourceDocumentId,
+        sourceRunId,
+        kind: f.kind,
+        subject,
+        statement,
+        confidence,
+        evidence: JSON.parse(JSON.stringify(evidence)),
+        status: "ACCEPTED",
+        reviewedAt: new Date(),
+        committedKnowledgeId: committed.id,
+      },
+    });
+  } else {
+    // Flag likely duplicates via semantic similarity so the review
+    // UI can surface a Supersede / Keep-both action. Fail-open on
+    // embedding errors — the draft still lands without a dedup hint.
+    const similarKnowledgeId = await findSimilarKnowledge({
+      workspaceId,
+      subject,
+      statement,
+    }).catch(() => null);
+
+    await db.knowledgeDraft.create({
+      data: {
+        workspaceId,
+        sourceDocumentId,
+        sourceRunId,
+        kind: f.kind,
+        subject,
+        statement,
+        confidence,
+        evidence: JSON.parse(JSON.stringify(evidence)),
+        status: "PENDING",
+        similarKnowledgeId,
+      },
+    });
+  }
+  return true;
 }
 
 // ────────────────────────────────────────────────────────────
