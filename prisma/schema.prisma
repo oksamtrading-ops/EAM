@@ -2367,6 +2367,10 @@ model WorkspaceAgentSettings {
   // Facts with updatedAt older than this many days are flagged "stale"
   // in the UI and have their retrieval rank decayed. Default 90 days.
   staleKnowledgeDays   Int      @default(90)
+  // Hard cap on rolling-30d Anthropic spend (USD). Null = unlimited.
+  // OpenAI embedding cost is NOT included in this cap (separate
+  // budget when that ships). Kill-switch: AGENT_BUDGET_ENFORCE=0.
+  monthlyAnthropicBudgetUsd Decimal? @db.Decimal(10, 2)
   updatedAt            DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
