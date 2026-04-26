@@ -15,6 +15,12 @@ import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
 
 const MAX_CHUNK_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 6000;
+// Diagrams legitimately produce more discrete entities than text
+// (one swimlane = N capabilities). Bump the ceiling to ~12K so
+// dense diagrams (~80-100 labeled boxes) don't truncate. Cost
+// ceiling per call: ~$0.18 on Sonnet 4. Truncation, if it happens,
+// is logged via stop_reason on the response.
+const MAX_OUTPUT_TOKENS_DIAGRAM = 12000;
 
 type DraftCandidate = {
   entityType: IntakeEntityType;
@@ -221,7 +227,7 @@ async function extractFromImage(
   const base64 = bytes.toString("base64");
   const response = await anthropic.messages.create({
     model: MODEL_REASONER,
-    max_tokens: MAX_OUTPUT_TOKENS,
+    max_tokens: MAX_OUTPUT_TOKENS_DIAGRAM,
     system: DIAGRAM_EXTRACTOR_PROMPT,
     messages: [
       {
@@ -266,7 +272,7 @@ async function extractFromPdfAsDiagram(
   const base64 = bytes.toString("base64");
   const response = await anthropic.messages.create({
     model: MODEL_REASONER,
-    max_tokens: MAX_OUTPUT_TOKENS,
+    max_tokens: MAX_OUTPUT_TOKENS_DIAGRAM,
     system: DIAGRAM_EXTRACTOR_PROMPT,
     messages: [
       {
@@ -428,7 +434,23 @@ async function extractDocxText(bytes: Buffer): Promise<string> {
 
 function parseExtractorResponse(response: {
   content: Array<{ type: string; text?: string }>;
+  stop_reason?: string | null;
+  usage?: { input_tokens?: number; output_tokens?: number };
 }): ExtractorResponse {
+  // Detect truncation. Anthropic returns stop_reason="max_tokens" when
+  // the response was cut off. JSON.parse will then likely fail, but
+  // even if it doesn't, the entity list is incomplete.
+  if (response.stop_reason === "max_tokens") {
+    console.warn(
+      JSON.stringify({
+        evt: "intake_extract_truncated",
+        message:
+          "Anthropic response hit max_tokens. Drafts list is incomplete; consider raising MAX_OUTPUT_TOKENS_DIAGRAM.",
+        outputTokens: response.usage?.output_tokens ?? null,
+      })
+    );
+  }
+
   const textBlock = response.content.find((b) => b.type === "text");
   const raw = textBlock?.text ?? "";
   const json = extractJson(raw);
