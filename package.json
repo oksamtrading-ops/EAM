@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "evals": "RUN_EVALS=1 vitest run src/server/ai/evals",
+    "evals": "RUN_EVALS=1 vitest run --no-file-parallelism src/server/ai/evals",
     "backfill:embeddings": "npx tsx src/server/ai/embeddings/backfill.ts",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:migrate": "npx prisma migrate dev",

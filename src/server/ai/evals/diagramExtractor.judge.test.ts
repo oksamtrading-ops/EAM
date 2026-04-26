@@ -5,34 +5,42 @@
  * extractor 3× (production temperature, absorbs sampling noise),
  * scores each run with Opus 4.6 against the rubric at
  * `rubrics/diagramExtractor.v1.ts`, logs mean + stdev, prints
- * failure exemplars for low scores, and writes the results to
- * `results/last-run.json` so the next run can diff scores.
+ * failure exemplars for low scores, and writes the archive slice
+ * to `results/last-run.json` (schema v2; nests under sub-agent
+ * name so re-running one judge file doesn't clobber others).
  *
- * v1 ships with a smoke assertion (avgScore > 0). After 5–10 runs
+ * v1 ships with a smoke assertion (avgScore > 0). After 5-10 runs
  * the empirical baseline reveals the right threshold; tighten then.
  *
  * Gated behind RUN_EVALS=1 — calls live Anthropic for both the
  * agent and the judge.
  */
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { extractFromImage } from "@/server/ai/services/intakeExtraction";
-import { judgeOutput, JUDGE_MODEL, type JudgeResult } from "./_judge";
-import { DIAGRAM_EXTRACTOR_RUBRIC } from "./rubrics/diagramExtractor.v1";
+import { judgeOutput, type JudgeResult } from "./_judge";
+import {
+  DIAGRAM_EXTRACTOR_RUBRIC,
+  DIAGRAM_EXTRACTOR_RUBRIC_VERSION,
+} from "./rubrics/diagramExtractor.v1";
+import {
+  diffSlice,
+  loadPreviousRun,
+  writeArchiveSlice,
+  type FixtureScore,
+} from "./_judgeArchive";
+import { mean, stdDev } from "./_stats";
 
 const RUN = process.env.RUN_EVALS === "1";
 const describeMaybe = RUN ? describe : describe.skip;
+
+const SUB_AGENT = "diagramExtractor";
 
 const FIXTURE_DIR = path.resolve(
   process.cwd(),
   "src/server/ai/evals/fixtures/diagram-extractor"
 );
-const RESULTS_DIR = path.resolve(
-  process.cwd(),
-  "src/server/ai/evals/results"
-);
-const LAST_RUN_PATH = path.join(RESULTS_DIR, "last-run.json");
 
 const FIXTURES = [
   "prod-upload-001",
@@ -46,23 +54,12 @@ type FixtureMeta = {
   expectedHints?: string;
 };
 
-type FixtureResult = {
+type LocalFixtureResult = {
   name: string;
   meanScore: number;
   stdDev: number;
   scores: JudgeResult[];
   costUsd: number;
-};
-
-type RunArchive = {
-  ranAt: string;
-  judgeModel: string;
-  totalCostUsd: number;
-  fixtures: Array<{
-    name: string;
-    meanScore: number;
-    stdDev: number;
-  }>;
 };
 
 function loadFixture(name: string): {
@@ -86,32 +83,8 @@ function loadFixture(name: string): {
   return { meta, bytes };
 }
 
-function loadPreviousRun(): RunArchive | null {
-  if (!existsSync(LAST_RUN_PATH)) return null;
-  try {
-    return JSON.parse(readFileSync(LAST_RUN_PATH, "utf-8")) as RunArchive;
-  } catch {
-    return null;
-  }
-}
-
-function mean(xs: number[]): number {
-  if (xs.length === 0) return 0;
-  return xs.reduce((a, b) => a + b, 0) / xs.length;
-}
-
-function stdDev(xs: number[]): number {
-  if (xs.length < 2) return 0;
-  const m = mean(xs);
-  const variance =
-    xs.reduce((a, b) => a + (b - m) * (b - m), 0) / (xs.length - 1);
-  return Math.sqrt(variance);
-}
-
 describeMaybe("diagram extractor — LLM judge", () => {
-  const fixtureResults: FixtureResult[] = [];
-
-  // Print run-over-run diff once at the start.
+  const fixtureResults: LocalFixtureResult[] = [];
   const previous = loadPreviousRun();
 
   for (const fixtureName of FIXTURES) {
@@ -120,14 +93,8 @@ describeMaybe("diagram extractor — LLM judge", () => {
       { timeout: 180_000 },
       async () => {
         const fx = loadFixture(fixtureName);
-        if (!fx) {
-          // Fixture PNG isn't present — skip cleanly without failing.
-          // Once a PNG is added the next run picks it up.
-          return;
-        }
+        if (!fx) return;
 
-        // 3× agent runs at production temperature to absorb sampling
-        // noise. Judge stays at temperature 0.
         const agentRuns = await Promise.all([1, 2, 3].map(() =>
           extractFromImage(fx.bytes, "image/png", `${fixtureName}.png`)
         ));
@@ -160,18 +127,6 @@ describeMaybe("diagram extractor — LLM judge", () => {
           costUsd: cost,
         });
 
-        // Console summary
-        const prevEntry = previous?.fixtures.find(
-          (f) => f.name === fixtureName
-        );
-        const delta = prevEntry
-          ? ` (was ${prevEntry.meanScore.toFixed(1)} → Δ ${(m - prevEntry.meanScore).toFixed(1)})`
-          : "";
-        console.log(
-          `[judge] ${fixtureName}: ${m.toFixed(1)} ± ${sd.toFixed(2)}${delta}  cost=$${cost.toFixed(3)}`
-        );
-
-        // Failure exemplar dump for low scores
         for (const j of judgments) {
           if (j.avgScore < 7) {
             console.log(
@@ -185,44 +140,36 @@ describeMaybe("diagram extractor — LLM judge", () => {
           }
         }
 
-        // Smoke assertion only — never fail the suite. Threshold
-        // tightens after 5–10 runs reveal the empirical baseline.
         expect(m).toBeGreaterThan(0);
       }
     );
   }
 
-  // After all fixtures, write the archive. Vitest doesn't run an
-  // afterAll hook with results visible to it, so we attach this to
-  // the last fixture's `it`.
-  it("write results archive + total cost", () => {
+  it("write archive slice + total cost", () => {
     if (fixtureResults.length === 0) {
       console.log(
-        `[judge] no fixtures ran (PNGs missing). See ${FIXTURE_DIR}/README.md`
+        `[judge] no diagram fixtures ran (PNGs missing). See ${FIXTURE_DIR}/README.md`
       );
       return;
     }
 
-    if (!existsSync(RESULTS_DIR)) {
-      mkdirSync(RESULTS_DIR, { recursive: true });
-    }
-
     const totalCost = fixtureResults.reduce((a, f) => a + f.costUsd, 0);
+    const slice: FixtureScore[] = fixtureResults.map((f) => ({
+      name: f.name,
+      meanScore: f.meanScore,
+      stdDev: f.stdDev,
+    }));
 
-    const archive: RunArchive = {
-      ranAt: new Date().toISOString(),
-      judgeModel: JUDGE_MODEL,
+    diffSlice(SUB_AGENT, slice, previous);
+
+    writeArchiveSlice(SUB_AGENT, {
+      rubricVersion: DIAGRAM_EXTRACTOR_RUBRIC_VERSION,
       totalCostUsd: totalCost,
-      fixtures: fixtureResults.map((f) => ({
-        name: f.name,
-        meanScore: f.meanScore,
-        stdDev: f.stdDev,
-      })),
-    };
+      fixtures: slice,
+    });
 
-    writeFileSync(LAST_RUN_PATH, JSON.stringify(archive, null, 2) + "\n");
-
-    console.log(`[judge] suite total: $${totalCost.toFixed(3)}`);
-    console.log(`[judge] archive written: ${LAST_RUN_PATH}`);
+    console.log(
+      `[judge] ${SUB_AGENT} subtotal: $${totalCost.toFixed(3)}`
+    );
   });
 });

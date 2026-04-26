@@ -38,6 +38,12 @@ export type JudgeResult = {
   costUsd: number;
 };
 
+export type WorkspaceSnapshot = {
+  applications?: Array<{ id: string; name: string }>;
+  capabilities?: Array<{ id: string; name: string; level?: string }>;
+  risks?: Array<{ id: string; title: string }>;
+};
+
 export type JudgeInput = {
   /** Per-sub-agent rubric — the system prompt the judge sees. */
   rubric: string;
@@ -45,11 +51,16 @@ export type JudgeInput = {
   task: string;
   /** The JSON output the agent produced. */
   agentOutput: unknown;
-  /** Optional context: source image (for vision judging) and free-text hints. */
+  /** Optional context: source image (for vision judging) + free-text hints +
+   *  structured workspace snapshot for ID-grounding checks. */
   fixtureRefs?: {
     sourceImageBase64?: string;
     sourceImageMimeType?: "image/png" | "image/jpeg" | "image/webp";
     expectedHints?: string;
+    /** When present, the rubric can verify the agent's evidence cites
+     *  real entity names from this snapshot. Biggest correctness lever
+     *  for text sub-agents — catches hallucinated entity references. */
+    workspaceSnapshot?: WorkspaceSnapshot;
   };
 };
 
@@ -78,6 +89,9 @@ export async function judgeOutput(opts: JudgeInput): Promise<JudgeResult> {
     opts.task,
     opts.fixtureRefs?.expectedHints
       ? `\n# Hints about the source\n${opts.fixtureRefs.expectedHints}`
+      : "",
+    opts.fixtureRefs?.workspaceSnapshot
+      ? `\n# Workspace context (entities the agent had access to)\nUse this to verify the agent's evidence/citations. Names not in this snapshot are hallucinations.\n${formatSnapshot(opts.fixtureRefs.workspaceSnapshot)}`
       : "",
     `\n# Agent output (JSON)`,
     "```json",
@@ -192,4 +206,27 @@ function normalizeScores(raw: unknown): JudgeScores {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatSnapshot(snapshot: WorkspaceSnapshot): string {
+  const lines: string[] = [];
+  if (snapshot.applications?.length) {
+    lines.push("Applications:");
+    for (const a of snapshot.applications) {
+      lines.push(`  - ${a.name} (id=${a.id})`);
+    }
+  }
+  if (snapshot.capabilities?.length) {
+    lines.push("Capabilities:");
+    for (const c of snapshot.capabilities) {
+      lines.push(`  - ${c.name}${c.level ? ` [${c.level}]` : ""} (id=${c.id})`);
+    }
+  }
+  if (snapshot.risks?.length) {
+    lines.push("Risks:");
+    for (const r of snapshot.risks) {
+      lines.push(`  - ${r.title} (id=${r.id})`);
+    }
+  }
+  return lines.join("\n");
 }
