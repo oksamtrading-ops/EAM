@@ -1,0 +1,5 @@
+{
+  "name": "low-quality-edge",
+  "description": "Intentionally degraded diagram (small / blurry / hand-drawn). Tests confidence calibration: should yield mostly 0.3-0.6 confidences, NOT over-confident 0.9s.",
+  "expectedHints": "Low-resolution or hand-drawn diagram. Some labels may be partially illegible. Agent should hedge with low-to-mid confidence (≤ 0.6) on most entities. Generic-placeholder boxes (e.g. 'App', 'Service') must score ≤ 0.4 per the prompt's own rule."
+}

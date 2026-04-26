@@ -1,0 +1,5 @@
+{
+  "name": "prod-upload-001",
+  "description": "5-column smart-* swimlane diagram with ~30 nested rows. Tests row enumeration (the historical regression fixed in 14ffd12).",
+  "expectedHints": "Diagram contains 5 L1 swimlanes (Smart production/engineering, Smart Finance, Smart marketing, Smart office, Smart personnel) plus a Data center band with 5 L1 columns (data acquisition, processing, storage, analysis, sharing) and ~4 child rows each. Application Portal row at top with device icons. Bottom infrastructure band: cloud service, IDC computer room, internet, VPN. Total expected entities: 60-75."
+}

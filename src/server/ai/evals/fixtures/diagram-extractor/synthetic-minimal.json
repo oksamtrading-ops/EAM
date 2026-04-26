@@ -1,0 +1,5 @@
+{
+  "name": "synthetic-minimal",
+  "description": "Hand-built minimal diagram: 3 labeled application boxes, 1 capability swimlane around them, 1 risk callout. Controlled ground truth.",
+  "expectedHints": "1 L1 capability (the swimlane header), 3 APPLICATION entities inside it, 1 RISK entity. Total: 5 entities."
+}

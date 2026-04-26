@@ -256,7 +256,7 @@ function isProbablyDiagram(pdfText: string | null): boolean {
   return pdfText.length < 800;
 }
 
-async function extractFromImage(
+export async function extractFromImage(
   bytes: Buffer,
   mimeType: "image/png" | "image/jpeg" | "image/webp",
   filename: string
