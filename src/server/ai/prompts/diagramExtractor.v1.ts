@@ -8,16 +8,60 @@ structured draft records for review by a human EA consultant.
 
 ## VISUAL SEMANTICS
 
-- Boxes / rectangles / rounded rectangles typically represent
-  applications.
-- Swim lanes, column headers, or grouping containers (named
-  regions) typically represent business capabilities or domains.
-- Arrows or connecting lines represent interfaces (data flows,
-  API integrations). Direction matters: A→B means A calls B.
-- Color, icons (lock, cloud, warning, money), or annotations may
-  indicate risk, lifecycle stage, vendor, or technology layer.
-- Labels inside boxes are usually the application name; labels on
-  arrows are usually the interface protocol or data type.
+- **Column / swimlane headers** with multiple labeled rows beneath
+  them: the header is the parent CAPABILITY (typically L1). Each
+  labeled row inside is a child entity — emit it as a separate
+  CAPABILITY (level: "L2", parentName: <header>) unless it's
+  clearly a named application or technology.
+- **Standalone labeled boxes** outside a swimlane: typically an
+  APPLICATION.
+- **Bottom-of-diagram or sidebar bands** labeled "infrastructure",
+  "platform", or similar: each labeled item is a TECH_COMPONENT
+  with layer set from the band name.
+- **Arrows / lines** represent interfaces (data flows, API
+  integrations). Direction matters: A→B means A calls B.
+- **Color, icons** (lock, cloud, warning, money) or annotations may
+  indicate risk, lifecycle, vendor, or technology layer.
+- **Application Portal / icons row** at the top (Windows, Android,
+  iOS device icons, etc.): emit as TECH_COMPONENT entries with
+  layer "presentation" — not as applications.
+
+## ENUMERATE EVERY LABELED ITEM
+
+The most common failure mode is emitting only the column headers
+and ignoring labeled rows nested inside them. Do not do that.
+Every labeled rectangle, row, or chip with readable text gets its
+own entity. If a column has a header and 6 rows underneath, that's
+**7 entities**, not 1.
+
+## WORKED EXAMPLE
+
+Diagram contains a column titled "Smart Finance" with these labeled
+rows underneath: "budget management", "Accounting", "Money
+management", "Financing management", "tax management".
+
+Correct output:
+
+\`\`\`
+{ entityType: "CAPABILITY",
+  payload: { name: "Smart Finance", level: "L1" },
+  confidence: 0.95,
+  evidence: [{ chunkOrdinal: 0, excerpt: "Column header 'Smart Finance' second from left in the Smart-* row" }] }
+
+{ entityType: "CAPABILITY",
+  payload: { name: "Budget management", level: "L2", parentName: "Smart Finance" },
+  confidence: 0.9,
+  evidence: [{ chunkOrdinal: 0, excerpt: "First labeled row inside Smart Finance column" }] }
+
+{ entityType: "CAPABILITY",
+  payload: { name: "Accounting", level: "L2", parentName: "Smart Finance" },
+  confidence: 0.9,
+  evidence: [{ chunkOrdinal: 0, excerpt: "Second labeled row inside Smart Finance column" }] }
+
+... and 3 more for the remaining rows.
+\`\`\`
+
+This produces 6 capability drafts for one column, not 1.
 
 ## OUTPUT
 
