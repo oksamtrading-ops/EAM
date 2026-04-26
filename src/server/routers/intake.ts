@@ -74,7 +74,7 @@ export const intakeRouter = router({
         .optional()
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.intakeDraft.findMany({
+      const drafts = await ctx.db.intakeDraft.findMany({
         where: {
           workspaceId: ctx.workspaceId,
           status: input?.status,
@@ -87,9 +87,48 @@ export const intakeRouter = router({
           { createdAt: "asc" },
         ],
         include: {
-          document: { select: { id: true, filename: true } },
+          document: {
+            select: {
+              id: true,
+              filename: true,
+              mimeType: true,
+              // hasThumbnail: boolean derived below — never ship the
+              // full base64 payload in a list response.
+              thumbnailBase64: true,
+            },
+          },
         },
       });
+      return drafts.map((d) => ({
+        ...d,
+        document: d.document
+          ? {
+              id: d.document.id,
+              filename: d.document.filename,
+              mimeType: d.document.mimeType,
+              hasThumbnail: !!d.document.thumbnailBase64,
+            }
+          : null,
+      }));
+    }),
+
+  /** Lazy-load the source-image thumbnail for a diagram intake.
+   *  Kept off listDocuments / listDrafts to avoid shipping ~500KB
+   *  base64 across every panel render. */
+  getThumbnail: workspaceProcedure
+    .input(z.object({ documentId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const doc = await ctx.db.intakeDocument.findFirst({
+        where: { id: input.documentId, workspaceId: ctx.workspaceId },
+        select: { thumbnailBase64: true, thumbnailMimeType: true },
+      });
+      if (!doc || !doc.thumbnailBase64 || !doc.thumbnailMimeType) {
+        return null;
+      }
+      return {
+        dataUri: `data:${doc.thumbnailMimeType};base64,${doc.thumbnailBase64}`,
+        mimeType: doc.thumbnailMimeType,
+      };
     }),
 
   acceptDraft: workspaceProcedure

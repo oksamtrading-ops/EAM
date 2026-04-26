@@ -1,15 +1,26 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Upload, Inbox, Sparkles } from "lucide-react";
+import {
+  Upload,
+  Inbox,
+  Sparkles,
+  CheckCircle,
+  AlertCircle,
+  HelpCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
 import { OverflowMenu, type OverflowAction } from "@/components/shared/OverflowMenu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trpc } from "@/lib/trpc/client";
+import { trpc, type RouterOutputs } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { UploadDialog } from "./UploadDialog";
 import { DraftCard, type DraftStatusFilter } from "./DraftCard";
 import { IntakeDraftPanel } from "./IntakeDraftPanel";
+import { IntakeSourceThumbnail } from "./IntakeSourceThumbnail";
 
 type EntityTypeFilter =
   | "ALL"
@@ -60,13 +71,20 @@ export function IntakePageClient() {
   const grouped = useMemo(() => {
     const g: Record<
       string,
-      { filename: string; drafts: NonNullable<typeof drafts> }
+      {
+        filename: string;
+        documentId: string | null;
+        hasThumbnail: boolean;
+        drafts: NonNullable<typeof drafts>;
+      }
     > = {};
     for (const d of drafts ?? []) {
       const key = d.documentId ?? "__manual__";
       if (!g[key]) {
         g[key] = {
           filename: d.document?.filename ?? "Manual / Unknown",
+          documentId: d.documentId,
+          hasThumbnail: !!d.document?.hasThumbnail,
           drafts: [] as never,
         };
       }
@@ -166,28 +184,31 @@ export function IntakePageClient() {
               Loading drafts...
             </div>
           ) : !drafts || drafts.length === 0 ? (
-            <EmptyState onUpload={() => setShowUpload(true)} />
+            <IntakeEmptyState onUpload={() => setShowUpload(true)} />
           ) : (
-            <div className="space-y-6 max-w-3xl mx-auto">
+            <div className="space-y-8 max-w-3xl mx-auto">
               {Object.entries(grouped).map(([docId, group]) => (
-                <section key={docId} className="space-y-2">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {group.filename}
-                    <span className="ml-2 text-muted-foreground/70">
-                      ({group.drafts.length})
-                    </span>
-                  </h2>
-                  <div className="space-y-2">
-                    {group.drafts.map((d) => (
-                      <DraftCard
-                        key={d.id}
-                        draft={d}
-                        onAccept={() => acceptMutation.mutate({ id: d.id })}
-                        onReject={() => rejectMutation.mutate({ id: d.id })}
-                        onEdit={() => setSelectedDraftId(d.id)}
-                      />
-                    ))}
+                <section key={docId} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {group.filename}
+                      <span className="ml-2 text-muted-foreground/70">
+                        ({group.drafts.length})
+                      </span>
+                    </h2>
                   </div>
+                  {group.hasThumbnail && group.documentId && (
+                    <IntakeSourceThumbnail
+                      documentId={group.documentId}
+                      filename={group.filename}
+                    />
+                  )}
+                  <ConfidenceGroups
+                    drafts={group.drafts}
+                    onAccept={(id) => acceptMutation.mutate({ id })}
+                    onReject={(id) => rejectMutation.mutate({ id })}
+                    onEdit={(id) => setSelectedDraftId(id)}
+                  />
                 </section>
               ))}
             </div>
@@ -214,22 +235,149 @@ export function IntakePageClient() {
   );
 }
 
-function EmptyState({ onUpload }: { onUpload: () => void }) {
+function IntakeEmptyState({ onUpload }: { onUpload: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center h-64 text-center">
-      <div className="h-12 w-12 rounded-xl bg-[var(--ai)]/15 flex items-center justify-center mb-3">
-        <Inbox className="h-6 w-6 text-[var(--ai)]" />
-      </div>
-      <p className="text-sm font-medium mb-1">No drafts yet</p>
-      <p className="text-xs text-muted-foreground mb-4 max-w-sm">
-        Upload a current-state review, strategy deck, or application inventory.
-        Claude will extract draft capability, application, risk, and vendor records
-        for your review.
-      </p>
-      <Button onClick={onUpload} size="sm" className="gap-1.5">
-        <Upload className="h-3.5 w-3.5" />
-        Upload Document
-      </Button>
+    <EmptyState
+      icon={Inbox}
+      title="No drafts yet"
+      body={
+        <>
+          Upload a current-state review, strategy deck, application inventory,
+          or architecture diagram. Claude will extract draft capability,
+          application, risk, and vendor records for your review.
+        </>
+      }
+      action={
+        <Button onClick={onUpload} size="sm" className="gap-1.5">
+          <Upload className="h-3.5 w-3.5" />
+          Upload Document
+        </Button>
+      }
+    />
+  );
+}
+
+type Draft = RouterOutputs["intake"]["listDrafts"][number];
+
+/** Confidence triage — Detected (≥0.7) / Uncertain (0.4–0.7) /
+ *  Inferred (<0.4). Three parallel-grammar buckets, each with an
+ *  icon (color-only signaling fails WCAG 1.4.1). Uncertain is
+ *  expanded by default — those are the drafts a consultant earns
+ *  their fee editing. Inferred is collapsed with a callout warning. */
+function ConfidenceGroups({
+  drafts,
+  onAccept,
+  onReject,
+  onEdit,
+}: {
+  drafts: Draft[];
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  onEdit: (id: string) => void;
+}) {
+  const detected = drafts.filter((d) => d.confidence >= 0.7);
+  const uncertain = drafts.filter(
+    (d) => d.confidence >= 0.4 && d.confidence < 0.7
+  );
+  const inferred = drafts.filter((d) => d.confidence < 0.4);
+
+  return (
+    <div className="space-y-3">
+      {detected.length > 0 && (
+        <ConfidenceSection
+          tone="success"
+          icon={CheckCircle}
+          label="Detected"
+          drafts={detected}
+          defaultOpen
+          onAccept={onAccept}
+          onReject={onReject}
+          onEdit={onEdit}
+        />
+      )}
+      {uncertain.length > 0 && (
+        <ConfidenceSection
+          tone="warn"
+          icon={AlertCircle}
+          label="Uncertain"
+          drafts={uncertain}
+          defaultOpen
+          onAccept={onAccept}
+          onReject={onReject}
+          onEdit={onEdit}
+        />
+      )}
+      {inferred.length > 0 && (
+        <div className="space-y-2">
+          <Callout tone="warn">
+            We weren&apos;t sure about these. Open to verify or dismiss.
+          </Callout>
+          <ConfidenceSection
+            tone="danger"
+            icon={HelpCircle}
+            label="Inferred"
+            drafts={inferred}
+            defaultOpen={false}
+            onAccept={onAccept}
+            onReject={onReject}
+            onEdit={onEdit}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfidenceSection({
+  tone,
+  icon: Icon,
+  label,
+  drafts,
+  defaultOpen,
+  onAccept,
+  onReject,
+  onEdit,
+}: {
+  tone: "success" | "warn" | "danger";
+  icon: typeof CheckCircle;
+  label: string;
+  drafts: Draft[];
+  defaultOpen: boolean;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  onEdit: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-foreground/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ai)]/50 rounded px-1 -mx-1 py-0.5"
+      >
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>{label}</span>
+        <Badge tone={tone} variant="outline" className="text-[10px] tabular-nums">
+          {drafts.length}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground ml-1">
+          {open ? "Hide" : "Show"}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-2">
+          {drafts.map((d) => (
+            <DraftCard
+              key={d.id}
+              draft={d}
+              onAccept={() => onAccept(d.id)}
+              onReject={() => onReject(d.id)}
+              onEdit={() => onEdit(d.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

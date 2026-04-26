@@ -135,6 +135,25 @@ export async function extractFromDocument(opts: {
       })
     );
 
+    // Persist a thumbnail for diagram intakes so the drafts panel can
+    // show reviewers what the model saw. Only image uploads — diagram-
+    // routed PDFs would need rasterization to produce a useful preview
+    // (deferred). Capped at ~500KB raw bytes to keep DB rows light;
+    // larger images skip persistence (panel falls back to a placeholder).
+    const isImageMime =
+      mimeType === "image/png" ||
+      mimeType === "image/jpeg" ||
+      mimeType === "image/webp";
+    if (isImageMime && bytes.length <= 500 * 1024) {
+      await db.intakeDocument.update({
+        where: { id: documentId },
+        data: {
+          thumbnailBase64: bytes.toString("base64"),
+          thumbnailMimeType: mimeType,
+        },
+      });
+    }
+
     // Persist chunks then drafts
     await db.$transaction(async (tx) => {
       if (extractor.chunks.length) {

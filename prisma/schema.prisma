@@ -2108,6 +2108,14 @@ model IntakeDocument {
   uploadedAt  DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  // For diagram intakes: source image bytes as base64 + its mime type,
+  // shown as a thumbnail in the drafts panel so reviewers can verify
+  // what the model actually saw. Capped at ~500KB at write time;
+  // larger images skip persistence (placeholder shown instead).
+  // Migrate to blob storage in a follow-up PR.
+  thumbnailBase64    String? @db.Text
+  thumbnailMimeType  String?
+
   workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   chunks          IntakeChunk[]
   drafts          IntakeDraft[]
