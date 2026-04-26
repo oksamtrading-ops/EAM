@@ -138,20 +138,38 @@ export async function extractFromDocument(opts: {
     // Persist a thumbnail for diagram intakes so the drafts panel can
     // show reviewers what the model saw. Only image uploads — diagram-
     // routed PDFs would need rasterization to produce a useful preview
-    // (deferred). Capped at ~500KB raw bytes to keep DB rows light;
-    // larger images skip persistence (panel falls back to a placeholder).
+    // (deferred). Capped at 5MB raw (~6.7MB base64) — covers the long
+    // tail of macOS screenshots, Lucidchart and Miro exports cleanly.
+    // Postgres TOAST handles 6.7MB rows; lazy-fetch via getThumbnail
+    // keeps listDrafts payloads light. Oversized images skip persistence
+    // and the panel renders a "Preview unavailable" placeholder so
+    // the silent-skip mode is gone.
+    const THUMBNAIL_MAX_BYTES = 5 * 1024 * 1024;
     const isImageMime =
       mimeType === "image/png" ||
       mimeType === "image/jpeg" ||
       mimeType === "image/webp";
-    if (isImageMime && bytes.length <= 500 * 1024) {
-      await db.intakeDocument.update({
-        where: { id: documentId },
-        data: {
-          thumbnailBase64: bytes.toString("base64"),
-          thumbnailMimeType: mimeType,
-        },
-      });
+    if (isImageMime) {
+      if (bytes.length <= THUMBNAIL_MAX_BYTES) {
+        await db.intakeDocument.update({
+          where: { id: documentId },
+          data: {
+            thumbnailBase64: bytes.toString("base64"),
+            thumbnailMimeType: mimeType,
+          },
+        });
+      } else {
+        console.warn(
+          JSON.stringify({
+            evt: "intake_thumbnail_skipped",
+            documentId,
+            workspaceId,
+            reason: "size_over_cap",
+            sizeBytes: bytes.length,
+            capBytes: THUMBNAIL_MAX_BYTES,
+          })
+        );
+      }
     }
 
     // Persist chunks then drafts

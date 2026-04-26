@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon, Maximize2 } from "lucide-react";
+import { Image as ImageIcon, Maximize2, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,11 @@ import { cn } from "@/lib/utils";
 type Props = {
   documentId: string;
   filename: string;
+  /** True when the source document was an image upload. When the
+   *  thumbnail row is missing (skipped due to size cap) we still
+   *  render a placeholder card so the user knows the system saw
+   *  their image — the silent-skip mode confused users in v1. */
+  isImage?: boolean;
 };
 
 /**
@@ -23,7 +28,11 @@ type Props = {
  * Renders nothing if the document has no thumbnail (text intakes,
  * oversized images that skipped persistence).
  */
-export function IntakeSourceThumbnail({ documentId, filename }: Props) {
+export function IntakeSourceThumbnail({
+  documentId,
+  filename,
+  isImage,
+}: Props) {
   const [open, setOpen] = useState(false);
   const { data, isLoading } = trpc.intake.getThumbnail.useQuery(
     { documentId },
@@ -45,7 +54,32 @@ export function IntakeSourceThumbnail({ documentId, filename }: Props) {
     );
   }
 
-  if (!data) return null;
+  // Image was uploaded but no thumbnail persisted — most often the
+  // 5MB cap fired. Render a placeholder so the user knows the system
+  // saw their image; never render nothing when isImage is true.
+  if (!data) {
+    if (!isImage) return null;
+    return (
+      <div
+        className="glass rounded-lg p-2 flex items-center gap-3 max-w-xs"
+        role="note"
+      >
+        <div className="h-12 w-12 rounded bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center shrink-0">
+          <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+            <ImageIcon className="h-3 w-3" />
+            Source
+          </div>
+          <div className="text-xs font-medium truncate">{filename}</div>
+          <div className="text-[10px] text-muted-foreground/80 mt-0.5">
+            Preview unavailable — file exceeded 5 MB cap
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

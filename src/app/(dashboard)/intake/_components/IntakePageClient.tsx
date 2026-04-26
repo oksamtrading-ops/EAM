@@ -75,6 +75,7 @@ export function IntakePageClient() {
         filename: string;
         documentId: string | null;
         hasThumbnail: boolean;
+        isImage: boolean;
         drafts: NonNullable<typeof drafts>;
       }
     > = {};
@@ -85,6 +86,7 @@ export function IntakePageClient() {
           filename: d.document?.filename ?? "Manual / Unknown",
           documentId: d.documentId,
           hasThumbnail: !!d.document?.hasThumbnail,
+          isImage: d.document?.mimeType?.startsWith("image/") ?? false,
           drafts: [] as never,
         };
       }
@@ -197,10 +199,11 @@ export function IntakePageClient() {
                       </span>
                     </h2>
                   </div>
-                  {group.hasThumbnail && group.documentId && (
+                  {group.documentId && (group.hasThumbnail || group.isImage) && (
                     <IntakeSourceThumbnail
                       documentId={group.documentId}
                       filename={group.filename}
+                      isImage={group.isImage}
                     />
                   )}
                   <ConfidenceGroups
