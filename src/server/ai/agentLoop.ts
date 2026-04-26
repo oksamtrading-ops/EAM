@@ -10,6 +10,7 @@ import {
 } from "./tools";
 import { TOOLS_BY_NAME } from "./tools/definitions";
 import { loadAgentSettings, AGENT_SETTINGS_DEFAULTS } from "./settings";
+import { checkBudget } from "./budget";
 import { db } from "@/server/db";
 
 // Legacy exports kept for any callers that imported these constants.
@@ -48,6 +49,9 @@ export type AgentLoopOptions = {
   /** Link this run as a sub-run of another run (Phase B — multi-agent orchestration). */
   parentRunId?: string;
   onEvent?: (event: AgentEvent) => void;
+  /** When true, append a `{` assistant prefill so the model continues mid-JSON.
+   *  The caller is responsible for parsing the response with `"{" + text`. */
+  expectsJson?: boolean;
 };
 
 type AnthropicContentBlock =
@@ -76,6 +80,7 @@ export async function runAgentLoop(
     conversationId,
     parentRunId,
     onEvent,
+    expectsJson,
   } = opts;
 
   // Per-workspace tunables (falls back to defaults when no row).
@@ -145,24 +150,96 @@ export async function runAgentLoop(
 
   try {
     for (let iter = 0; iter < maxToolIterations; iter++) {
+      // Budget gate — hard kill before the next paid Anthropic call.
+      const budget = await checkBudget(db, workspaceId);
+      console.log(
+        JSON.stringify({
+          evt: "budget_check",
+          runId,
+          workspaceId,
+          spentUsd: budget.spentUsd,
+          capUsd: budget.capUsd,
+          outcome: budget.ok ? "pass" : "block",
+        })
+      );
+      if (!budget.ok) {
+        const msg = `Workspace AI budget exceeded ($${budget.spentUsd.toFixed(2)}/$${budget.capUsd}). Raise the cap or wait for the rolling 30-day window to roll forward.`;
+        onEvent?.({ type: "error", message: msg, code: "budget_exceeded" });
+        await finish(
+          runId,
+          "FAILED",
+          totalTokensIn,
+          totalTokensOut,
+          "budget_exceeded"
+        );
+        return { runId, finalText, status: "FAILED" };
+      }
+
       const t0 = Date.now();
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        tools: tools.length
-          ? tools.map((t) => ({
+      // Prefill `{` when JSON is expected so the model continues
+      // mid-object. The prefill is sent in apiMessages but never
+      // persisted in `messages` — Anthropic returns only the
+      // continuation; the caller must reattach `{` when parsing.
+      const apiMessages = expectsJson
+        ? [...messages, { role: "assistant" as const, content: "{" }]
+        : messages;
+
+      const toolDefs = tools.length
+        ? tools.map((t, i) => {
+            const base = {
               name: t.name,
               description: t.description,
               input_schema: t.input_schema,
-            }))
-          : undefined,
-        messages: messages as never,
+            };
+            // cache_control on the LAST tool extends the cache prefix
+            // to cover system prompt + every tool def.
+            return i === tools.length - 1
+              ? { ...base, cache_control: { type: "ephemeral" as const } }
+              : base;
+          })
+        : undefined;
+
+      const response = await anthropic.messages.create({
+        model,
+        max_tokens: maxTokens,
+        system: [
+          {
+            type: "text" as const,
+            text: systemPrompt,
+            cache_control: { type: "ephemeral" as const },
+          },
+        ],
+        tools: toolDefs as never,
+        messages: apiMessages as never,
       });
       const latencyMs = Date.now() - t0;
 
-      totalTokensIn += response.usage?.input_tokens ?? 0;
-      totalTokensOut += response.usage?.output_tokens ?? 0;
+      const usage = response.usage as
+        | {
+            input_tokens?: number;
+            output_tokens?: number;
+            cache_read_input_tokens?: number;
+            cache_creation_input_tokens?: number;
+          }
+        | undefined;
+
+      totalTokensIn += usage?.input_tokens ?? 0;
+      totalTokensOut += usage?.output_tokens ?? 0;
+
+      console.log(
+        JSON.stringify({
+          evt: "agent_step",
+          runId,
+          workspaceId,
+          model,
+          iter,
+          tokensIn: usage?.input_tokens ?? 0,
+          tokensOut: usage?.output_tokens ?? 0,
+          cacheReadTokens: usage?.cache_read_input_tokens ?? 0,
+          cacheCreationTokens: usage?.cache_creation_input_tokens ?? 0,
+          latencyMs,
+        })
+      );
 
       await db.agentRunStep.create({
         data: {
@@ -172,8 +249,10 @@ export async function runAgentLoop(
           payload: {
             model,
             stopReason: response.stop_reason ?? null,
-            inputTokens: response.usage?.input_tokens ?? 0,
-            outputTokens: response.usage?.output_tokens ?? 0,
+            inputTokens: usage?.input_tokens ?? 0,
+            outputTokens: usage?.output_tokens ?? 0,
+            cacheReadTokensIn: usage?.cache_read_input_tokens ?? 0,
+            cacheCreationTokensIn: usage?.cache_creation_input_tokens ?? 0,
           },
           latencyMs,
         },

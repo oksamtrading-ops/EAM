@@ -116,12 +116,34 @@ export async function runSubAgent(
       maxTokens: SUB_AGENT_MAX_TOKENS,
       // Strip sub-agent tools from the filter → no recursive sub-agent calls.
       toolFilter: (toolName) => config.allowedTools.has(toolName),
+      // Anthropic-native JSON: prefill `{` so the model continues mid-object.
+      // parseJson reattaches the opening brace before parsing.
+      expectsJson: true,
     });
+
+    let parsed: unknown;
+    try {
+      parsed = parseJson(loopResult.finalText);
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          evt: "subagent_json_parse_fail",
+          runId: loopResult.runId,
+          subAgent: name,
+          message: err instanceof Error ? err.message : String(err),
+          textPreview: loopResult.finalText.slice(0, 200),
+        })
+      );
+      return {
+        ok: false,
+        error: `Sub-agent ${name} produced unparseable JSON.`,
+      };
+    }
 
     return {
       ok: true,
       runId: loopResult.runId,
-      result: parseJson(loopResult.finalText),
+      result: parsed,
     };
   } catch (err) {
     return {
@@ -131,16 +153,9 @@ export async function runSubAgent(
   }
 }
 
+/** With assistant prefill `{` the model returns the continuation only.
+ *  Always reattach the opening brace before parsing. Throws on invalid JSON;
+ *  the caller surfaces a typed error event. */
 function parseJson(raw: string): unknown {
-  const text = raw.trim();
-  if (!text) return { error: "Empty sub-agent response" };
-  // Strip optional ```json fences if the model leaked one.
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fence?.[1]?.trim() ?? text;
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    // Fall back to returning the raw text so the parent can still summarize.
-    return { _raw: candidate };
-  }
+  return JSON.parse("{" + raw);
 }
