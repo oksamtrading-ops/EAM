@@ -371,7 +371,7 @@ export function AgentConsole({
   if (!open) return null;
 
   return (
-    <aside className="fixed inset-0 sm:inset-auto sm:right-0 sm:top-0 sm:h-screen sm:w-[480px] z-50 sm:border-l bg-card flex flex-col shadow-xl">
+    <aside className="fixed inset-0 sm:inset-auto sm:right-0 sm:top-0 sm:h-screen sm:w-[480px] z-50 sm:border-l bg-background flex flex-col shadow-xl">
       <div className="px-5 py-3.5 border-b bg-gradient-to-r from-[var(--ai)]/10 to-transparent relative">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
