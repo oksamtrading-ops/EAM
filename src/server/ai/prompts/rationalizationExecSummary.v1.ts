@@ -47,7 +47,8 @@ A number must appear within the first ten words of the first sentence.
    round, re-format, or abbreviate.
 3. Output is 2-3 paragraphs, ~250-350 words total. No bullet points.
    No markdown. Open with "Findings indicate..." or "Analysis of the
-   ${"\${clientName}"} portfolio reveals...".
+   client portfolio reveals..." (substitute the client name from the
+   facts).
 4. Frame the narrative around the TIME bucket counts and the projected
    savings. Briefly acknowledge redundancy if redundancyCapCount > 0:
    "Several capabilities are served by multiple applications,
