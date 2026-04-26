@@ -7,6 +7,8 @@ import {
   INTAKE_EXTRACTOR_PROMPT,
   INTAKE_EXTRACTOR_VERSION,
 } from "@/server/ai/prompts/intakeExtractor.v1";
+import { DIAGRAM_EXTRACTOR_PROMPT } from "@/server/ai/prompts/diagramExtractor.v1";
+import { extractPdfText } from "@/server/ai/services/pdfExtract";
 import { db } from "@/server/db";
 import type { IntakeEntityType } from "@/generated/prisma/client";
 import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
@@ -71,10 +73,31 @@ export async function extractFromDocument(opts: {
   });
 
   try {
+    const t0 = Date.now();
     let extractor: ExtractorResponse;
+    let detectedAs: "diagram" | "text" = "text";
 
-    if (mimeType === "application/pdf") {
-      extractor = await extractFromPdf(bytes, filename);
+    if (
+      mimeType === "image/png" ||
+      mimeType === "image/jpeg" ||
+      mimeType === "image/webp"
+    ) {
+      detectedAs = "diagram";
+      extractor = await extractFromImage(bytes, mimeType, filename);
+    } else if (mimeType === "application/pdf") {
+      // Auto-detect: low text density → diagram path. We run pdf-parse
+      // for the heuristic regardless; if it routes to text, the text
+      // path can reuse what we already extracted.
+      const pdfText = await extractPdfText(bytes);
+      if (isProbablyDiagram(pdfText)) {
+        detectedAs = "diagram";
+        extractor = await extractFromPdfAsDiagram(bytes, filename);
+      } else {
+        // Text path — preserve existing behavior. The legacy extractFromPdf
+        // sends the PDF as a document block; the model still gets the
+        // visuals but uses the text-optimized prompt.
+        extractor = await extractFromPdf(bytes, filename);
+      }
     } else if (
       mimeType ===
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
@@ -92,6 +115,19 @@ export async function extractFromDocument(opts: {
       const text = bytes.toString("utf-8");
       extractor = await extractFromText(text, filename);
     }
+
+    console.log(
+      JSON.stringify({
+        evt: "intake_extract",
+        documentId,
+        workspaceId,
+        mimeType,
+        detectedAs,
+        draftsCreated: extractor.drafts.length,
+        chunksCreated: extractor.chunks.length,
+        durationMs: Date.now() - t0,
+      })
+    );
 
     // Persist chunks then drafts
     await db.$transaction(async (tx) => {
@@ -165,6 +201,103 @@ export async function extractFromDocument(opts: {
     });
     throw err;
   }
+}
+
+/** Heuristic: if pdf-parse extracted very little text, the PDF is
+ *  probably a diagram export (Visio, Lucidchart). Null = pdf-parse
+ *  failed, also treated as diagram (fall through to vision path).
+ *  Tuned for the common case: a 3-page Visio export usually yields
+ *  <500 chars of text; an architecture doc yields ≥4000. */
+function isProbablyDiagram(pdfText: string | null): boolean {
+  if (!pdfText) return true;
+  return pdfText.length < 800;
+}
+
+async function extractFromImage(
+  bytes: Buffer,
+  mimeType: "image/png" | "image/jpeg" | "image/webp",
+  filename: string
+): Promise<ExtractorResponse> {
+  const base64 = bytes.toString("base64");
+  const response = await anthropic.messages.create({
+    model: MODEL_REASONER,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: DIAGRAM_EXTRACTOR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mimeType,
+              data: base64,
+            },
+          } as never,
+          {
+            type: "text",
+            text: `Filename: ${filename}\n\nExtract draft EA entities visible in this architecture diagram per the system prompt. Return JSON only.`,
+          },
+        ],
+      },
+    ],
+  });
+  const parsed = parseExtractorResponse(response);
+  // Vision has no real chunks; synthesize a single anchor so evidence
+  // chunkOrdinal=0 has somewhere to point. Otherwise the evidence
+  // persistence in the transaction would drop all rows (chunk lookup
+  // miss).
+  if (!parsed.chunks.length) {
+    parsed.chunks = [
+      {
+        ordinal: 0,
+        text: `[Diagram: ${filename}] Source image — see evidence excerpts for spatial references.`,
+      },
+    ];
+  }
+  return parsed;
+}
+
+async function extractFromPdfAsDiagram(
+  bytes: Buffer,
+  filename: string
+): Promise<ExtractorResponse> {
+  const base64 = bytes.toString("base64");
+  const response = await anthropic.messages.create({
+    model: MODEL_REASONER,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: DIAGRAM_EXTRACTOR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64,
+            },
+          } as never,
+          {
+            type: "text",
+            text: `Filename: ${filename}\n\nThis PDF is primarily a diagram. Extract EA entities visible in the diagram per the system prompt. Return JSON only.`,
+          },
+        ],
+      },
+    ],
+  });
+  const parsed = parseExtractorResponse(response);
+  if (!parsed.chunks.length) {
+    parsed.chunks = [
+      {
+        ordinal: 0,
+        text: `[Diagram PDF: ${filename}] Source pages — see evidence excerpts for spatial references.`,
+      },
+    ];
+  }
+  return parsed;
 }
 
 async function extractFromPdf(

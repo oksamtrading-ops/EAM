@@ -13,6 +13,10 @@ const ACCEPTED_MIME = new Set([
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
+  // Image content blocks for vision-based architecture-diagram intake.
+  "image/png",
+  "image/jpeg",
+  "image/webp",
 ]);
 
 export const runtime = "nodejs";
@@ -104,6 +108,8 @@ function normalizeMime(mime: string | undefined, filename: string): string {
   if (mime === "text/plain" || mime === "text/markdown") return mime;
   if (mime === XLSX_MIME || mime === "application/vnd.ms-excel") return XLSX_MIME;
   if (mime === DOCX_MIME || mime === "application/msword") return DOCX_MIME;
+  if (mime === "image/png" || mime === "image/jpeg" || mime === "image/webp") return mime;
+  if (mime === "image/jpg") return "image/jpeg";
   // Fallback by extension (browsers don't always send the right MIME)
   const lower = filename.toLowerCase();
   if (lower.endsWith(".pdf")) return "application/pdf";
@@ -111,5 +117,8 @@ function normalizeMime(mime: string | undefined, filename: string): string {
   if (lower.endsWith(".txt")) return "text/plain";
   if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return XLSX_MIME;
   if (lower.endsWith(".docx") || lower.endsWith(".doc")) return DOCX_MIME;
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
   return mime ?? "application/octet-stream";
 }
