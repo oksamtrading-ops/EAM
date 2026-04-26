@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "@/server/trpc";
 import { estimateRunCostUsd } from "@/lib/utils/agentPricing";
+import { checkBudget } from "@/server/ai/budget";
 
 const SinceDaysInput = z
   .object({ sinceDays: z.number().int().min(1).max(365).default(30) })
@@ -119,12 +120,26 @@ export const agentRunRouter = router({
         totalTokensIn += r.totalTokensIn;
         totalTokensOut += r.totalTokensOut;
       }
+
+      // Budget context — uses the gate's own rolling-30d window
+      // regardless of the dashboard's sinceDays selector. The cap
+      // enforces on rolling 30d, so the chip must reflect that or
+      // it lies to the user.
+      const budget = await checkBudget(ctx.db, ctx.workspaceId);
+
       return {
         sinceDays,
         runCount: rows.length,
         totalUsd,
         totalTokensIn,
         totalTokensOut,
+        budget: {
+          capUsd: budget.capUsd,
+          spentUsd: budget.spentUsd,
+          pct: budget.capUsd
+            ? Math.min(100, (budget.spentUsd / budget.capUsd) * 100)
+            : null,
+        },
       };
     }),
 

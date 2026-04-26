@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card } from "@/components/ui/card";
+import { BudgetStatus } from "@/components/shared/BudgetStatus";
 import {
   Select,
   SelectContent,
@@ -111,6 +112,17 @@ export function AgentCostsClient() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-6xl mx-auto space-y-5">
+          {/* Budget strip — collapses (renders nothing) when no cap is set.
+              Uses the gate's own rolling-30d window, independent of the
+              dashboard's date-range selector. */}
+          {summary.data?.budget && (
+            <BudgetStatus
+              variant="strip"
+              capUsd={summary.data.budget.capUsd}
+              spentUsd={summary.data.budget.spentUsd}
+            />
+          )}
+
           {/* KPI row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard

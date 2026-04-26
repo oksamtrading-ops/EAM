@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
+import { BudgetStatus } from "@/components/shared/BudgetStatus";
 
 type FormState = {
   maxToolIterations: number;
@@ -16,6 +17,8 @@ type FormState = {
   autoAcceptConfidence: number;
   criticEnabled: boolean;
   staleKnowledgeDays: number;
+  // null = no cap (unlimited)
+  monthlyAnthropicBudgetUsd: number | null;
 };
 
 const DEFAULTS: FormState = {
@@ -26,6 +29,7 @@ const DEFAULTS: FormState = {
   autoAcceptConfidence: 0.9,
   criticEnabled: true,
   staleKnowledgeDays: 90,
+  monthlyAnthropicBudgetUsd: null,
 };
 
 export function AgentSettingsClient() {
@@ -33,8 +37,16 @@ export function AgentSettingsClient() {
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const utils = trpc.useUtils();
 
+  // Pull budget status from costSummary (same procedure the costs page
+  // uses) so the inline chip shows current spend in context when
+  // setting the cap.
+  const costSummary = trpc.agentRun.costSummary.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
+
   useEffect(() => {
     if (!data) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot hydrate of form from remote data; setState here is the standard pattern.
     setForm({
       maxToolIterations: data.maxToolIterations,
       subAgentBudget: data.subAgentBudget,
@@ -43,6 +55,11 @@ export function AgentSettingsClient() {
       autoAcceptConfidence: data.autoAcceptConfidence ?? 0.9,
       criticEnabled: data.criticEnabled,
       staleKnowledgeDays: data.staleKnowledgeDays ?? 90,
+      // Decimal? from Prisma → number | null on the wire
+      monthlyAnthropicBudgetUsd:
+        data.monthlyAnthropicBudgetUsd != null
+          ? Number(data.monthlyAnthropicBudgetUsd)
+          : null,
     });
   }, [data]);
 
@@ -72,6 +89,7 @@ export function AgentSettingsClient() {
         : null,
       criticEnabled: form.criticEnabled,
       staleKnowledgeDays: form.staleKnowledgeDays,
+      monthlyAnthropicBudgetUsd: form.monthlyAnthropicBudgetUsd,
     });
   }
 
@@ -233,6 +251,39 @@ export function AgentSettingsClient() {
                     }
                     className="w-24"
                   />
+                </SettingRow>
+
+                <SettingRow
+                  label="Monthly Anthropic budget"
+                  help="Hard cap on rolling-30d agent spend (USD). Leave blank for unlimited. The agent loop blocks new requests once exceeded; the cap window is independent of the date range on /agents/costs."
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={10}
+                        value={form.monthlyAnthropicBudgetUsd ?? ""}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            monthlyAnthropicBudgetUsd: e.target.value
+                              ? Math.max(0, parseFloat(e.target.value))
+                              : null,
+                          })
+                        }
+                        placeholder="Unlimited"
+                        className="w-32"
+                        aria-label="Monthly Anthropic budget cap in USD"
+                      />
+                    </div>
+                    <BudgetStatus
+                      variant="inline"
+                      capUsd={costSummary.data?.budget?.capUsd ?? null}
+                      spentUsd={costSummary.data?.budget?.spentUsd ?? 0}
+                    />
+                  </div>
                 </SettingRow>
 
                 <div className="border-t pt-5">

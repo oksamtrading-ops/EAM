@@ -8,6 +8,7 @@ export type ResolvedAgentSettings = {
   autoAcceptConfidence: number | null;
   criticEnabled: boolean;
   staleKnowledgeDays: number;
+  monthlyAnthropicBudgetUsd: number | null;
 };
 
 /**
@@ -22,6 +23,7 @@ export const AGENT_SETTINGS_DEFAULTS: ResolvedAgentSettings = {
   autoAcceptConfidence: null,
   criticEnabled: true,
   staleKnowledgeDays: 90,
+  monthlyAnthropicBudgetUsd: null, // unlimited by default
 };
 
 /**
@@ -43,6 +45,10 @@ export async function loadAgentSettings(
     autoAcceptConfidence: row.autoAcceptConfidence,
     criticEnabled: row.criticEnabled,
     staleKnowledgeDays: row.staleKnowledgeDays,
+    monthlyAnthropicBudgetUsd:
+      row.monthlyAnthropicBudgetUsd != null
+        ? Number(row.monthlyAnthropicBudgetUsd)
+        : null,
   };
 }
 

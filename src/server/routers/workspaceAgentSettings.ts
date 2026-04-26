@@ -9,6 +9,14 @@ const UpdateInput = z.object({
   autoAcceptConfidence: z.number().min(0).max(1).nullable().optional(),
   criticEnabled: z.boolean().optional(),
   staleKnowledgeDays: z.number().int().min(7).max(365).optional(),
+  // null clears the cap (unlimited). Decimal column on the model;
+  // accept number from the client and Prisma coerces.
+  monthlyAnthropicBudgetUsd: z
+    .number()
+    .min(0)
+    .max(1_000_000)
+    .nullable()
+    .optional(),
 });
 
 export const workspaceAgentSettingsRouter = router({
