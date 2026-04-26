@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useCallback, useState, useEffect } from "react";
+import { setActiveWorkspace } from "@/app/actions/setActiveWorkspace";
 
 export type WorkspaceInfo = {
   id: string;
@@ -22,8 +23,6 @@ type WorkspaceContextValue = {
 
 const WorkspaceCtx = createContext<WorkspaceContextValue | null>(null);
 
-const COOKIE_KEY = "eam-active-workspace";
-
 export function WorkspaceProvider({
   children,
   workspaces: initialWorkspaces,
@@ -44,8 +43,9 @@ export function WorkspaceProvider({
         workspaces.find((w) => w.isDefault && w.isActive) ??
         workspaces.find((w) => w.isActive);
       if (fallback) {
-        document.cookie = `${COOKIE_KEY}=${fallback.id}; path=/; max-age=${60 * 60 * 24 * 365}`;
-        window.location.reload();
+        void setActiveWorkspace(fallback.id).then(() => {
+          window.location.reload();
+        });
       }
     }
   }, [workspaces, activeId]);
@@ -53,9 +53,11 @@ export function WorkspaceProvider({
   const activeWs = workspaces.find((w) => w.id === activeId) ?? workspaces[0];
 
   const switchWorkspace = useCallback((id: string) => {
-    // Write cookie — server layout reads it on next request
-    document.cookie = `${COOKIE_KEY}=${id}; path=/; max-age=${60 * 60 * 24 * 365}`;
-    window.location.reload();
+    // Server action signs and sets the HMAC cookie; reload picks it up.
+    void setActiveWorkspace(id).then((res) => {
+      if (res.ok) window.location.reload();
+      else console.error("Failed to switch workspace:", res.reason);
+    });
   }, []);
 
   const setWorkspaces = useCallback((ws: WorkspaceInfo[]) => {

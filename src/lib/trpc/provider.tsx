@@ -11,13 +11,7 @@ function getBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
-export function TRPCProvider({
-  children,
-  workspaceId,
-}: {
-  children: React.ReactNode;
-  workspaceId?: string;
-}) {
+export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -33,13 +27,9 @@ export function TRPCProvider({
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
           transformer: superjson,
-          headers() {
-            const headers: Record<string, string> = {};
-            if (workspaceId) {
-              headers["x-workspace-id"] = workspaceId;
-            }
-            return headers;
-          },
+          // Workspace context is derived server-side from the
+          // HMAC-signed `eam-active-workspace-sig` cookie. The client
+          // never sends a workspace identifier — preventing forgery.
         }),
       ],
     })
