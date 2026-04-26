@@ -3,8 +3,14 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { buildDeliverableDocx } from "@/server/ai/deliverables/buildDocx";
 import { buildRationalizationDocx } from "@/server/ai/deliverables/buildRationalizationDocx";
+import { buildPortfolioSnapshotReport } from "@/server/ai/deliverables/buildPortfolioSnapshotReport";
 import { computeRationalizationMetrics } from "@/server/ai/deliverables/rationalizationMetrics";
 import { classifyAnthropicError } from "@/server/ai/client";
+
+// Coverage threshold for the rationalization fork: at <60% the
+// portfolio is too sparsely classified for a credible disposition
+// plan, so we ship a smaller honest snapshot instead.
+const COVERAGE_THRESHOLD = 0.6;
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -61,27 +67,58 @@ export async function POST(req: Request) {
     try {
       const metrics = await computeRationalizationMetrics(db, workspace.id);
 
-      const result = await buildRationalizationDocx({
-        clientName,
-        brandHex: workspace.brandColor,
-        logoBytes: null, // Logo fetching from logoUrl is week-2; cover renders without it
-        logoMimeType: null,
-        preparedBy: user.name,
-        metrics,
-      });
+      // Coverage fork: low coverage → Portfolio Snapshot Report;
+      // sufficient coverage → full Application Rationalization Plan.
+      // The platform refuses to ship a half-baked plan that papers
+      // over an unclassified portfolio.
+      const sufficientCoverage =
+        metrics.coverageRatio >= COVERAGE_THRESHOLD;
 
-      const filename = `${slugify(clientName)}-rationalization-${new Date().toISOString().slice(0, 10)}.docx`;
-      return new Response(new Uint8Array(result.buffer), {
-        status: 200,
-        headers: {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Cache-Control": "no-store",
-          "X-Deliverable-Template": `rationalization@${result.templateVersion}`,
-          "X-Exec-Summary-Source": result.execSummarySource,
-        },
-      });
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (sufficientCoverage) {
+        const result = await buildRationalizationDocx({
+          clientName,
+          brandHex: workspace.brandColor,
+          logoBytes: null,
+          logoMimeType: null,
+          preparedBy: user.name,
+          metrics,
+        });
+        const filename = `${slugify(clientName)}-rationalization-${today}.docx`;
+        return new Response(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+            "X-Deliverable-Template": `rationalization@${result.templateVersion}`,
+            "X-Llm-Source": result.llmSource,
+            "X-Coverage-Pct": String(Math.round(metrics.coverageRatio * 100)),
+          },
+        });
+      } else {
+        const result = await buildPortfolioSnapshotReport({
+          clientName,
+          brandHex: workspace.brandColor,
+          preparedBy: user.name,
+          metrics,
+        });
+        const filename = `${slugify(clientName)}-portfolio-snapshot-${today}.docx`;
+        return new Response(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+            "X-Deliverable-Template": `portfolio-snapshot@${result.templateVersion}`,
+            "X-Llm-Source": result.llmSource,
+            "X-Coverage-Pct": String(Math.round(metrics.coverageRatio * 100)),
+          },
+        });
+      }
     } catch (err) {
       const info = classifyAnthropicError(err);
       return NextResponse.json(

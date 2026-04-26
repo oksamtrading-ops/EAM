@@ -93,6 +93,39 @@ export function renderInline(text: string): TextRun[] {
   return runs.length > 0 ? runs : [new TextRun({ text })];
 }
 
+/** Action-title paragraph — the bolded "key takeaway" line that
+ *  sits directly underneath each H1 in MBB-style decks.
+ *  Italic 13pt with a 2pt brand-colored left border + padding.
+ *  Idiomatic Word (no colored callout bar — that's a PowerPoint
+ *  master-slide artifact in disguise).
+ *
+ *  Per MBB convention these MUST be complete sentences containing
+ *  a number ("Eleven apps drive 38% of run-cost..."), not topic
+ *  labels ("Elimination Candidates"). The caller is responsible
+ *  for that — this helper just renders. */
+export function actionTitle(text: string, brandHex: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 80, after: 240 },
+    indent: { left: 200 },
+    border: {
+      left: {
+        style: BorderStyle.SINGLE,
+        size: 16, // 2pt — docx units are 1/8pt
+        color: brandHex,
+        space: 12,
+      },
+    },
+    children: [
+      new TextRun({
+        text,
+        italics: true,
+        size: 26, // 13pt
+        color: "1F2937",
+      }),
+    ],
+  });
+}
+
 /** Build a brand-tinted heading paragraph. */
 export function brandedHeading(
   text: string,
@@ -248,10 +281,17 @@ export function renderCoverPage(opts: {
   return out;
 }
 
-/** Footer factory — page numbers + workspace label + template version. */
+/** Consultant-grade footer. Three pipe-separated fields, 8pt grey:
+ *
+ *   Strictly Confidential — Prepared for {client}    |    {project}    |    Page X of Y
+ *
+ *  Per MBB convention. Drops the date (cover has it) and the
+ *  template version (lives in Document.creator metadata for
+ *  traceability). "Strictly Confidential" is the right register;
+ *  "Confidential and Proprietary" is law-firm tone, avoid. */
 export function makeFooter(
   clientName: string,
-  templateVersionLabel: string
+  projectLabel: string
 ): Footer {
   return new Footer({
     children: [
@@ -259,23 +299,24 @@ export function makeFooter(
         alignment: AlignmentType.CENTER,
         children: [
           new TextRun({
-            text: `${clientName}  ·  `,
-            color: "999999",
+            text: `Strictly Confidential — Prepared for ${clientName}`,
+            color: "9CA3AF",
+            size: 16,
+            italics: true,
+          }),
+          new TextRun({
+            text: `    |    ${projectLabel}    |    `,
+            color: "9CA3AF",
             size: 16,
           }),
           new TextRun({
             children: ["Page ", PageNumber.CURRENT],
-            color: "999999",
+            color: "9CA3AF",
             size: 16,
           }),
           new TextRun({
             children: [" of ", PageNumber.TOTAL_PAGES],
-            color: "999999",
-            size: 16,
-          }),
-          new TextRun({
-            text: `  ·  ${templateVersionLabel}`,
-            color: "BBBBBB",
+            color: "9CA3AF",
             size: 16,
           }),
         ],
@@ -293,9 +334,13 @@ export function makeEmptyHeader(): Header {
   });
 }
 
-/** Branded table builder — header row tinted with brandHex, body
- *  cells with subtle borders. Optional column widths via percentage
- *  array (must sum to 100). */
+/** MBB-style table builder.
+ *  - Header row: brand-color text, bold, with a 2pt brand bottom border.
+ *  - Body rows: alternating row banding (white / FAFAFA), no vertical
+ *    borders, no horizontal borders between body rows.
+ *  - This is the "gridless body" look real consulting decks use:
+ *    separation by tone, not by lines.
+ */
 export function buildTable(opts: {
   headers: string[];
   rows: string[][];
@@ -303,11 +348,29 @@ export function buildTable(opts: {
   columnWidthsPct?: number[];
 }): Table {
   const headerShading: IShadingAttributesProperties = {
-    fill: tintHex(opts.brandHex, 0.92),
+    fill: "FFFFFF",
+  };
+  const headerBottom = {
+    style: BorderStyle.SINGLE,
+    size: 12, // ~1.5pt
+    color: opts.brandHex,
+  };
+  const noBorder = {
+    style: BorderStyle.NONE,
+    size: 0,
+    color: "FFFFFF",
   };
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+      insideHorizontal: noBorder,
+      insideVertical: noBorder,
+    },
     rows: [
       new TableRow({
         tableHeader: true,
@@ -321,9 +384,16 @@ export function buildTable(opts: {
                     type: WidthType.PERCENTAGE,
                   }
                 : undefined,
+              borders: {
+                top: noBorder,
+                bottom: headerBottom,
+                left: noBorder,
+                right: noBorder,
+              },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.LEFT,
+                  spacing: { before: 60, after: 60 },
                   children: [
                     new TextRun({
                       text: h,
@@ -338,7 +408,7 @@ export function buildTable(opts: {
         ),
       }),
       ...opts.rows.map(
-        (r) =>
+        (r, rowIdx) =>
           new TableRow({
             children: r.map(
               (cell, i) =>
@@ -350,27 +420,27 @@ export function buildTable(opts: {
                         type: WidthType.PERCENTAGE,
                       }
                     : undefined,
+                  shading: {
+                    fill: rowIdx % 2 === 1 ? "FAFAFA" : "FFFFFF",
+                  },
+                  borders: {
+                    top: noBorder,
+                    bottom: noBorder,
+                    left: noBorder,
+                    right: noBorder,
+                  },
                   children: [
                     new Paragraph({
+                      spacing: { before: 60, after: 60 },
                       children: [new TextRun({ text: cell, size: 20 })],
                     }),
                   ],
-                  borders: cellBorders(),
                 })
             ),
           })
       ),
     ],
   });
-}
-
-function cellBorders() {
-  const e: { style: typeof BorderStyle.SINGLE; size: number; color: string } = {
-    style: BorderStyle.SINGLE,
-    size: 1,
-    color: "E5E7EB",
-  };
-  return { top: e, bottom: e, left: e, right: e };
 }
 
 /** Lighten a hex color toward white by `amount` (0..1, where 0.92

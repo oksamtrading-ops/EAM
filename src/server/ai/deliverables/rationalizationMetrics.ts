@@ -113,6 +113,94 @@ export async function computeRationalizationMetrics(
   const migrate3yrUsd = (buckets.MIGRATE?.annualCostUsd ?? 0) * 0.5 * 3;
   const totalCandidate3yrUsd = eliminate3yrUsd + migrate3yrUsd;
 
+  // Extra aggregates used by the v2 templates ─────────────────
+  const totalAnnualCostUsd = apps.reduce(
+    (s, a) => s + Number(a.annualCostUsd ?? 0),
+    0
+  );
+
+  const allAppSummaries = apps.map((a) => summarize(a));
+  const topAppsByCost = allAppSummaries
+    .slice()
+    .sort(sortByCostDesc)
+    .slice(0, 10);
+
+  const lifecycleDistribution: Record<
+    string,
+    { count: number; annualCostUsd: number }
+  > = {};
+  for (const a of allAppSummaries) {
+    const key = a.lifecycle;
+    if (!lifecycleDistribution[key]) {
+      lifecycleDistribution[key] = { count: 0, annualCostUsd: 0 };
+    }
+    lifecycleDistribution[key]!.count++;
+    lifecycleDistribution[key]!.annualCostUsd += a.annualCostUsd;
+  }
+
+  const vendorMap = new Map<
+    string,
+    { vendor: string; count: number; annualCostUsd: number }
+  >();
+  for (const a of allAppSummaries) {
+    const v = a.vendor?.trim() || "(unknown)";
+    const entry = vendorMap.get(v) ?? {
+      vendor: v,
+      count: 0,
+      annualCostUsd: 0,
+    };
+    entry.count++;
+    entry.annualCostUsd += a.annualCostUsd;
+    vendorMap.set(v, entry);
+  }
+  const vendorConcentration = Array.from(vendorMap.values())
+    .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
+    .slice(0, 10);
+
+  // Ranked "classify these first" list — combines lifecycle urgency
+  // + cost magnitude + capability-orphan signal. Used by the
+  // Portfolio Snapshot Report when classification coverage is low.
+  type ClassifyHint = AppSummary & { reason: string };
+  const unclassified = allAppSummaries.filter(
+    (a) => !a.rationalizationStatus
+  );
+  const classifyFirst: ClassifyHint[] = [];
+
+  // 1. PHASING_OUT — active retirement candidates need a decision.
+  for (const a of unclassified) {
+    if (a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED") {
+      classifyFirst.push({
+        ...a,
+        reason: "Active retirement candidate — disposition decision overdue.",
+      });
+    }
+  }
+  // 2. Highest cost (top 8) — biggest impact when classified.
+  const byCostDesc = unclassified
+    .filter((a) => a.lifecycle === "ACTIVE" && a.annualCostUsd > 0)
+    .sort(sortByCostDesc);
+  for (const a of byCostDesc) {
+    if (classifyFirst.find((x) => x.id === a.id)) continue;
+    if (classifyFirst.length >= 12) break;
+    classifyFirst.push({
+      ...a,
+      reason: `${a.annualCostUsd > 0 ? "High annual cost" : "Cost not set"} — classify to surface savings or investment.`,
+    });
+  }
+  // 3. Orphaned (no capability mappings) — gap in the model that
+  //    blocks redundancy analysis.
+  const orphaned = unclassified.filter(
+    (a) => a.capabilityNames.length === 0
+  );
+  for (const a of orphaned) {
+    if (classifyFirst.find((x) => x.id === a.id)) continue;
+    if (classifyFirst.length >= 12) break;
+    classifyFirst.push({
+      ...a,
+      reason: "No capability mappings — orphan blocks redundancy analysis.",
+    });
+  }
+
   const assumptions = [
     "Horizon: 3 years from the report date.",
     "ELIMINATE candidates: 100% of annualCostUsd avoided over the horizon.",
@@ -136,10 +224,14 @@ export async function computeRationalizationMetrics(
     }
   }
 
+  const coverageRatio =
+    apps.length > 0 ? classifiedApps / apps.length : 0;
+
   return {
     totalApps: apps.length,
     activeApps,
     classifiedApps,
+    coverageRatio,
     byClassification: buckets,
     topEliminationCandidates,
     topMigrationCandidates,
@@ -151,5 +243,10 @@ export async function computeRationalizationMetrics(
       assumptions,
     },
     costCurrency,
+    totalAnnualCostUsd,
+    topAppsByCost,
+    lifecycleDistribution,
+    vendorConcentration,
+    classifyFirst,
   };
 }
