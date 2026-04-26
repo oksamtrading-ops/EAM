@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Package,
   Loader2,
@@ -11,6 +11,10 @@ import {
   BookOpen,
   Map as MapIcon,
   Activity,
+  TrendingUp,
+  Layers,
+  Lock,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,15 +26,18 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3 | 4;
+type EngagementType = "rationalization" | "generic" | null;
 
 export function DeliverableWizardClient() {
   const { workspaceId } = useWorkspace();
+  const [engagementType, setEngagementType] = useState<EngagementType>(null);
   const [step, setStep] = useState<Step>(1);
   const [runIds, setRunIds] = useState<Set<string>>(new Set());
   const [knowledgeIds, setKnowledgeIds] = useState<Set<string>>(new Set());
   const [initiativeIds, setInitiativeIds] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [clientNameOverride, setClientNameOverride] = useState("");
 
   const { data: runs } = trpc.agentRun.list.useQuery({
     limit: 100,
@@ -52,6 +59,43 @@ export function DeliverableWizardClient() {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     return next;
+  }
+
+  async function generateRationalization() {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/export/deliverable-docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          type: "rationalization",
+          clientNameOverride: clientNameOverride.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? `Build failed: ${res.status}`);
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") ?? "";
+      const fnMatch = cd.match(/filename="([^"]+)"/);
+      const filename = fnMatch?.[1] ?? "rationalization.docx";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Rationalization plan downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Build failed");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function generate() {
@@ -98,19 +142,207 @@ export function DeliverableWizardClient() {
     }
   }
 
+  // ─── Engagement-type picker (shown first, before any step) ────
+  if (engagementType === null) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5">
+          <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+            <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+              <Package className="h-3.5 w-3.5 text-[var(--ai)]" />
+            </span>
+            New deliverable
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pick the engagement type. Each template produces a
+            client-ready Word document with workspace branding.
+          </p>
+        </div>
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="max-w-3xl mx-auto space-y-3">
+            <EngagementCard
+              icon={<TrendingUp className="h-5 w-5" />}
+              title="Application Rationalization Plan"
+              description="TIME analysis, redundancy map, decommission roadmap, and projected savings. Drawn directly from the workspace's classified applications."
+              available
+              onSelect={() => setEngagementType("rationalization")}
+            />
+            <EngagementCard
+              icon={<Layers className="h-5 w-5" />}
+              title="Capability Maturity Assessment"
+              description="Capability tree, current vs. target maturity, gap analysis."
+              available={false}
+              comingSoonNote="Available after the Rationalization template ships in production."
+            />
+            <EngagementCard
+              icon={<MapIcon className="h-5 w-5" />}
+              title="Architecture Roadmap"
+              description="Current state to target state, phased initiative plan with dependencies."
+              available={false}
+              comingSoonNote="Available after the Rationalization template ships in production."
+            />
+
+            <div className="pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setEngagementType("generic")}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Or build a generic deliverable from selected runs, facts, and initiatives →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Rationalization confirmation step ────────────────────────
+  if (engagementType === "rationalization") {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+              <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+                <TrendingUp className="h-3.5 w-3.5 text-[var(--ai)]" />
+              </span>
+              Application Rationalization Plan
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Generates from this workspace&apos;s classified applications.
+              No selection required.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEngagementType(null)}
+            className="text-xs"
+          >
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+            Change type
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="max-w-2xl mx-auto space-y-5">
+            <div className="rounded-lg border bg-card p-4">
+              <h2 className="text-sm font-semibold mb-2">
+                What&apos;s included
+              </h2>
+              <ul className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Branded cover page (workspace clientName + brand color)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Executive summary (deterministic facts, LLM-glued prose)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Methodology + assumptions callout
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Portfolio snapshot (TIME counts and costs)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  TIME quadrant analysis (BV × technical health 2×2)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Top elimination + migration candidates (top 10 by cost)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Redundancy map (capabilities served by ≥2 apps)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Decommission roadmap (NOW / NEXT / LATER horizons)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Projected 3-year savings
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Appendices: full classified app list + methodology
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Client name override (optional)
+              </Label>
+              <Input
+                value={clientNameOverride}
+                onChange={(e) => setClientNameOverride(e.target.value)}
+                placeholder="Defaults to the workspace's clientName"
+                className="mt-1"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Leave blank to use this workspace&apos;s configured client name.
+              </p>
+            </div>
+
+            <Button
+              onClick={generateRationalization}
+              disabled={generating}
+              className="w-full gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Computing metrics + assembling DOCX…
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Generate Rationalization Plan
+                </>
+              )}
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              ~5–15 seconds. The exec summary is grounded against the
+              deterministic facts; numbers in the summary always match
+              the body sections.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Generic deliverable (legacy 4-step flow) ─────────────────
   return (
     <div className="flex h-full flex-col">
-      <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5">
-        <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
-          <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
-            <Package className="h-3.5 w-3.5 text-[var(--ai)]" />
-          </span>
-          Bundle deliverable
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Pick runs, facts, and initiatives to compile into a Word document
-          with an AI-generated executive summary.
-        </p>
+      <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+            <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+              <Package className="h-3.5 w-3.5 text-[var(--ai)]" />
+            </span>
+            Bundle deliverable
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pick runs, facts, and initiatives to compile into a Word document
+            with an AI-generated executive summary.
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setEngagementType(null)}
+          className="text-xs"
+        >
+          <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+          Change type
+        </Button>
       </div>
 
       <div className="border-b px-4 sm:px-5 py-2 bg-background/60">
@@ -402,5 +634,63 @@ function slugify(s: string): string {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 60) || "deliverable"
+  );
+}
+
+function EngagementCard({
+  icon,
+  title,
+  description,
+  available,
+  comingSoonNote,
+  onSelect,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  available: boolean;
+  comingSoonNote?: string;
+  onSelect?: () => void;
+}) {
+  const Comp = available ? "button" : "div";
+  return (
+    <Comp
+      type={available ? "button" : undefined}
+      onClick={available ? onSelect : undefined}
+      className={cn(
+        "w-full rounded-lg border bg-card p-4 text-left transition-colors",
+        available
+          ? "hover:border-[var(--ai)] hover:bg-[var(--ai)]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ai)]/50 cursor-pointer"
+          : "opacity-60"
+      )}
+      title={!available ? comingSoonNote : undefined}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
+            available
+              ? "bg-[var(--ai)]/15 text-[var(--ai)]"
+              : "bg-muted/40 text-muted-foreground"
+          )}
+        >
+          {available ? icon : <Lock className="h-5 w-5" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            {!available && (
+              <Badge variant="outline" className="text-[10px]">
+                Coming soon
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </div>
+        {available && (
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+        )}
+      </div>
+    </Comp>
   );
 }

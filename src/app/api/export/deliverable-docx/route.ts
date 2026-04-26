@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { buildDeliverableDocx } from "@/server/ai/deliverables/buildDocx";
+import { buildRationalizationDocx } from "@/server/ai/deliverables/buildRationalizationDocx";
+import { computeRationalizationMetrics } from "@/server/ai/deliverables/rationalizationMetrics";
 import { classifyAnthropicError } from "@/server/ai/client";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+
+type DeliverableType = "generic" | "rationalization";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -13,12 +17,85 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as {
     workspaceId?: string;
+    type?: DeliverableType;
     title?: string;
     runIds?: string[];
     knowledgeIds?: string[];
     initiativeIds?: string[];
+    clientNameOverride?: string;
   };
-  const { workspaceId, title } = body;
+  const { workspaceId } = body;
+  const type: DeliverableType = body.type === "rationalization"
+    ? "rationalization"
+    : "generic";
+
+  if (!workspaceId) {
+    return NextResponse.json({ error: "Missing workspaceId" }, { status: 400 });
+  }
+
+  const user = await db.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true, name: true },
+  });
+  if (!user) return new Response("User not found", { status: 401 });
+
+  const workspace = await db.workspace.findFirst({
+    where: { id: workspaceId, userId: user.id },
+    select: {
+      id: true,
+      name: true,
+      clientName: true,
+      brandColor: true,
+      logoUrl: true,
+    },
+  });
+  if (!workspace) return new Response("Forbidden", { status: 403 });
+
+  // ─── Rationalization template ─────────────────────────────
+  if (type === "rationalization") {
+    const clientName =
+      body.clientNameOverride?.trim() ||
+      workspace.clientName?.trim() ||
+      workspace.name;
+
+    try {
+      const metrics = await computeRationalizationMetrics(db, workspace.id);
+
+      const result = await buildRationalizationDocx({
+        clientName,
+        brandHex: workspace.brandColor,
+        logoBytes: null, // Logo fetching from logoUrl is week-2; cover renders without it
+        logoMimeType: null,
+        preparedBy: user.name,
+        metrics,
+      });
+
+      const filename = `${slugify(clientName)}-rationalization-${new Date().toISOString().slice(0, 10)}.docx`;
+      return new Response(new Uint8Array(result.buffer), {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "no-store",
+          "X-Deliverable-Template": `rationalization@${result.templateVersion}`,
+          "X-Exec-Summary-Source": result.execSummarySource,
+        },
+      });
+    } catch (err) {
+      const info = classifyAnthropicError(err);
+      return NextResponse.json(
+        {
+          error: err instanceof Error ? err.message : info.friendly,
+          code: info.code,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ─── Generic template (legacy path) ───────────────────────
+  const { title } = body;
   const runIds = Array.isArray(body.runIds) ? body.runIds : [];
   const knowledgeIds = Array.isArray(body.knowledgeIds)
     ? body.knowledgeIds
@@ -27,9 +104,6 @@ export async function POST(req: Request) {
     ? body.initiativeIds
     : [];
 
-  if (!workspaceId) {
-    return NextResponse.json({ error: "Missing workspaceId" }, { status: 400 });
-  }
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title required" }, { status: 400 });
   }
@@ -39,18 +113,6 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-    select: { id: true },
-  });
-  if (!user) return new Response("User not found", { status: 401 });
-
-  const workspace = await db.workspace.findFirst({
-    where: { id: workspaceId, userId: user.id },
-    select: { id: true, name: true, clientName: true },
-  });
-  if (!workspace) return new Response("Forbidden", { status: 403 });
 
   const [runs, facts, initiatives] = await Promise.all([
     runIds.length > 0

@@ -350,6 +350,23 @@ export const applicationRouter = router({
     };
   }),
 
+  // ─── Rationalization deliverable: aggregator ─────────────
+  // Shaped specifically for buildRationalizationDocx (one-shot
+  // template). Produces deterministic facts the doc renders without
+  // LLM involvement; the exec-summary LLM is fed a derived subset
+  // and forbidden from introducing new numbers.
+  //
+  // Body lives in src/server/ai/deliverables/rationalizationMetrics.ts
+  // so the /api/export/deliverable-docx route can call the same code
+  // without going through tRPC.
+  getRationalizationMetrics: workspaceProcedure.query(async ({ ctx }) => {
+    const { computeRationalizationMetrics } = await import(
+      "@/server/ai/deliverables/rationalizationMetrics"
+    );
+    return computeRationalizationMetrics(ctx.db, ctx.workspaceId);
+  }),
+
+
   // ─── AI Mapping: context loader ─────────────────────────
   getAIMappingContext: workspaceProcedure
     .input(z.object({ applicationId: z.string() }))

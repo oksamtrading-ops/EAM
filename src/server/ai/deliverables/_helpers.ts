@@ -1,0 +1,447 @@
+import "server-only";
+import {
+  Paragraph,
+  HeadingLevel,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  AlignmentType,
+  BorderStyle,
+  Footer,
+  Header,
+  PageNumber,
+  ImageRun,
+  type IShadingAttributesProperties,
+} from "docx";
+
+/** Default brand color when the workspace hasn't set one. Matches
+ *  the platform's --ai token (violet). docx wants hex without `#`. */
+const DEFAULT_BRAND_HEX = "7C3AED";
+
+/** Sanitize a workspace-supplied hex into the 6-char form docx wants.
+ *  Accepts "#7c3aed" or "7c3aed"; falls back to default on garbage. */
+export function normalizeHex(input: string | null | undefined): string {
+  if (!input) return DEFAULT_BRAND_HEX;
+  const stripped = input.replace(/^#/, "").trim().toUpperCase();
+  if (/^[0-9A-F]{6}$/.test(stripped)) return stripped;
+  if (/^[0-9A-F]{3}$/.test(stripped)) {
+    // Expand short hex to 6 chars
+    return stripped
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+  return DEFAULT_BRAND_HEX;
+}
+
+/** Format a currency amount with Intl.NumberFormat. Handles unknown
+ *  currency codes by falling back to USD without throwing. Returns a
+ *  display string like "$1,250,000" or "€1,2 Mio." (locale-dependent). */
+export function formatCurrency(
+  amount: number,
+  currency = "USD",
+  locale = "en-US"
+): string {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+}
+
+/** ISO-8601 date string formatted for a doc cover page. */
+export function formatDateISO(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Inline-markdown renderer (backticks → mono, **bold**, *italic*).
+ *  Lifted from the legacy buildDocx so the new template inherits the
+ *  same conventions. */
+export function renderInline(text: string): TextRun[] {
+  const runs: TextRun[] = [];
+  const pattern = /`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > cursor) {
+      runs.push(new TextRun({ text: text.slice(cursor, match.index) }));
+    }
+    if (match[1] != null) {
+      runs.push(
+        new TextRun({ text: match[1], font: "Consolas", color: "6B21A8" })
+      );
+    } else if (match[2] != null) {
+      runs.push(new TextRun({ text: match[2], bold: true }));
+    } else if (match[3] != null) {
+      runs.push(new TextRun({ text: match[3], italics: true }));
+    }
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < text.length) {
+    runs.push(new TextRun({ text: text.slice(cursor) }));
+  }
+  return runs.length > 0 ? runs : [new TextRun({ text })];
+}
+
+/** Build a brand-tinted heading paragraph. */
+export function brandedHeading(
+  text: string,
+  level: typeof HeadingLevel[keyof typeof HeadingLevel],
+  brandHex: string,
+  opts: { spacingBefore?: number; spacingAfter?: number } = {}
+): Paragraph {
+  return new Paragraph({
+    heading: level,
+    spacing: {
+      before: opts.spacingBefore ?? 240,
+      after: opts.spacingAfter ?? 120,
+    },
+    children: [
+      new TextRun({
+        text,
+        color: brandHex,
+        bold: true,
+      }),
+    ],
+  });
+}
+
+/** Cover page paragraphs. Returns a flat array of paragraphs the
+ *  caller pushes onto its document children list (followed by a page
+ *  break before the next section). */
+export function renderCoverPage(opts: {
+  documentTitle: string;
+  clientName: string;
+  brandHex: string;
+  templateVersionLabel: string; // e.g. "EAM Rationalization Template v1.0"
+  preparedBy?: string | null;
+  logoBytes?: Buffer | null;
+  logoMimeType?: string | null;
+}): Paragraph[] {
+  const out: Paragraph[] = [];
+
+  // Top spacer
+  out.push(new Paragraph({ spacing: { before: 1200, after: 0 }, children: [] }));
+
+  // Logo (centered, ~2" tall)
+  if (opts.logoBytes && opts.logoMimeType) {
+    try {
+      out.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 480 },
+          children: [
+            new ImageRun({
+              data: opts.logoBytes,
+              transformation: { width: 200, height: 80 },
+              type: imageRunType(opts.logoMimeType),
+            } as never),
+          ],
+        })
+      );
+    } catch {
+      // Bad image bytes — skip silently rather than fail the doc.
+    }
+  }
+
+  // Document title (huge, brand-tinted)
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 240 },
+      children: [
+        new TextRun({
+          text: opts.documentTitle,
+          color: opts.brandHex,
+          bold: true,
+          size: 56, // 28pt
+          font: "Calibri",
+        }),
+      ],
+    })
+  );
+
+  // Subtitle: client name
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 360 },
+      children: [
+        new TextRun({
+          text: opts.clientName,
+          color: "333333",
+          size: 36, // 18pt
+          font: "Calibri",
+        }),
+      ],
+    })
+  );
+
+  // Generation date + template version
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 720, after: 80 },
+      children: [
+        new TextRun({
+          text: formatDateISO(),
+          color: "666666",
+          size: 22,
+          italics: true,
+        }),
+      ],
+    })
+  );
+
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [
+        new TextRun({
+          text: opts.templateVersionLabel,
+          color: "999999",
+          size: 18,
+          italics: true,
+        }),
+      ],
+    })
+  );
+
+  if (opts.preparedBy) {
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 120 },
+        children: [
+          new TextRun({
+            text: `Prepared by ${opts.preparedBy}`,
+            color: "999999",
+            size: 18,
+            italics: true,
+          }),
+        ],
+      })
+    );
+  }
+
+  // Forces a page break so the body starts on page 2.
+  out.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: "", break: 1 }),
+      ],
+      pageBreakBefore: true,
+    })
+  );
+
+  return out;
+}
+
+/** Footer factory — page numbers + workspace label + template version. */
+export function makeFooter(
+  clientName: string,
+  templateVersionLabel: string
+): Footer {
+  return new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            text: `${clientName}  ·  `,
+            color: "999999",
+            size: 16,
+          }),
+          new TextRun({
+            children: ["Page ", PageNumber.CURRENT],
+            color: "999999",
+            size: 16,
+          }),
+          new TextRun({
+            children: [" of ", PageNumber.TOTAL_PAGES],
+            color: "999999",
+            size: 16,
+          }),
+          new TextRun({
+            text: `  ·  ${templateVersionLabel}`,
+            color: "BBBBBB",
+            size: 16,
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/** Optional empty header. Kept as a placeholder for future
+ *  brand-tinted top borders without requiring callers to import
+ *  Header themselves. */
+export function makeEmptyHeader(): Header {
+  return new Header({
+    children: [new Paragraph({ children: [] })],
+  });
+}
+
+/** Branded table builder — header row tinted with brandHex, body
+ *  cells with subtle borders. Optional column widths via percentage
+ *  array (must sum to 100). */
+export function buildTable(opts: {
+  headers: string[];
+  rows: string[][];
+  brandHex: string;
+  columnWidthsPct?: number[];
+}): Table {
+  const headerShading: IShadingAttributesProperties = {
+    fill: tintHex(opts.brandHex, 0.92),
+  };
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        tableHeader: true,
+        children: opts.headers.map(
+          (h, i) =>
+            new TableCell({
+              shading: headerShading,
+              width: opts.columnWidthsPct
+                ? {
+                    size: opts.columnWidthsPct[i] ?? 100 / opts.headers.length,
+                    type: WidthType.PERCENTAGE,
+                  }
+                : undefined,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [
+                    new TextRun({
+                      text: h,
+                      bold: true,
+                      size: 20,
+                      color: opts.brandHex,
+                    }),
+                  ],
+                }),
+              ],
+            })
+        ),
+      }),
+      ...opts.rows.map(
+        (r) =>
+          new TableRow({
+            children: r.map(
+              (cell, i) =>
+                new TableCell({
+                  width: opts.columnWidthsPct
+                    ? {
+                        size:
+                          opts.columnWidthsPct[i] ?? 100 / opts.headers.length,
+                        type: WidthType.PERCENTAGE,
+                      }
+                    : undefined,
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: cell, size: 20 })],
+                    }),
+                  ],
+                  borders: cellBorders(),
+                })
+            ),
+          })
+      ),
+    ],
+  });
+}
+
+function cellBorders() {
+  const e: { style: typeof BorderStyle.SINGLE; size: number; color: string } = {
+    style: BorderStyle.SINGLE,
+    size: 1,
+    color: "E5E7EB",
+  };
+  return { top: e, bottom: e, left: e, right: e };
+}
+
+/** Lighten a hex color toward white by `amount` (0..1, where 0.92
+ *  means "92% white"). Used for subtle table-header tinting. */
+export function tintHex(hex: string, amount: number): string {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const tint = (c: number) => Math.round(c + (255 - c) * amount);
+  const toHex = (n: number) => n.toString(16).padStart(2, "0").toUpperCase();
+  return `${toHex(tint(r))}${toHex(tint(g))}${toHex(tint(b))}`;
+}
+
+function imageRunType(mime: string): "png" | "jpg" | "gif" | "bmp" {
+  if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg";
+  if (mime.includes("gif")) return "gif";
+  if (mime.includes("bmp")) return "bmp";
+  return "png";
+}
+
+/** A "callout" paragraph — light-tinted background, brand left border.
+ *  Used for the Assumptions block and "no data" hints. docx doesn't
+ *  natively support background-colored paragraphs, so we render a
+ *  one-row, one-cell table styled to look like a callout. */
+export function buildCallout(opts: {
+  title: string;
+  bullets: string[];
+  brandHex: string;
+}): Table {
+  const fill = tintHex(opts.brandHex, 0.96);
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            shading: { fill },
+            borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              left: {
+                style: BorderStyle.SINGLE,
+                size: 16,
+                color: opts.brandHex,
+              },
+            },
+            children: [
+              new Paragraph({
+                spacing: { after: 80 },
+                children: [
+                  new TextRun({
+                    text: opts.title,
+                    bold: true,
+                    size: 20,
+                    color: opts.brandHex,
+                  }),
+                ],
+              }),
+              ...opts.bullets.map(
+                (b) =>
+                  new Paragraph({
+                    bullet: { level: 0 },
+                    spacing: { after: 40 },
+                    children: [new TextRun({ text: b, size: 20 })],
+                  })
+              ),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
