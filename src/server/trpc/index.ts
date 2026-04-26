@@ -1,4 +1,3 @@
-import "@/server/env"; // boot-time env validation (throws on missing required keys in prod)
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";

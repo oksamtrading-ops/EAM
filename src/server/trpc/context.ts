@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
+import { assertEnv } from "@/server/env";
 import {
   COOKIE_NAME as WS_COOKIE_NAME,
   verify as verifyWsCookie,
@@ -8,6 +9,10 @@ import {
 const LEGACY_COOKIE_NAME = "eam-active-workspace";
 
 export async function createTRPCContext(opts: { headers: Headers }) {
+  // Request-time env validation. Skipped during `next build`'s page-data
+  // collection phase by env.ts itself; first real request validates +
+  // throws on missing required prod keys.
+  assertEnv();
   const { userId } = await auth();
 
   // Primary path: HMAC-signed cookie. Fallback: legacy unsigned cookie

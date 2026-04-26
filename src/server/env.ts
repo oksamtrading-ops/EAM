@@ -12,6 +12,11 @@ export function assertEnv(): void {
   if (validated) return;
   validated = true;
   if (process.env.NODE_ENV !== "production") return;
+  // Skip during `next build` page-data-collection phase: that step
+  // runs in production NODE_ENV without runtime secrets injected, so
+  // a hard throw would brick the build. We still validate at request
+  // time via the explicit assertEnv() call from the tRPC context.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
 
   const missing = REQUIRED_PROD_KEYS.filter((k) => !process.env[k]);
   if (missing.length) {
@@ -30,5 +35,3 @@ export function assertEnv(): void {
     }
   }
 }
-
-assertEnv();
