@@ -14,7 +14,12 @@ import type { IntakeEntityType } from "@/generated/prisma/client";
 import { embedIntakeChunks } from "@/server/ai/embeddings/writeChunkEmbeddings";
 
 const MAX_CHUNK_CHARS = 4000;
-const MAX_OUTPUT_TOKENS = 6000;
+// Bumped from 6000 to 12000 to match the diagram path. Dense
+// source documents (full current-state reviews, 15+ apps with
+// rich payloads) legitimately exceed the old budget — Halloran
+// hit it on first upload. Cost ceiling stays under ~$0.18/call
+// on Sonnet 4.
+const MAX_OUTPUT_TOKENS = 12000;
 // Diagrams legitimately produce more discrete entities than text
 // (one swimlane = N capabilities). Bump the ceiling to ~12K so
 // dense diagrams (~80-100 labeled boxes) don't truncate. Cost

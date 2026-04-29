@@ -36,28 +36,7 @@ export function normalizeHex(input: string | null | undefined): string {
   return DEFAULT_BRAND_HEX;
 }
 
-/** Format a currency amount with Intl.NumberFormat. Handles unknown
- *  currency codes by falling back to USD without throwing. Returns a
- *  display string like "$1,250,000" or "€1,2 Mio." (locale-dependent). */
-export function formatCurrency(
-  amount: number,
-  currency = "USD",
-  locale = "en-US"
-): string {
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
-}
+export { formatCurrency } from "@/lib/currency";
 
 /** ISO-8601 date string formatted for a doc cover page. */
 export function formatDateISO(d: Date = new Date()): string {

@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatCurrencyCompact, formatCurrency } from "@/lib/currency";
 import type { RouterOutputs } from "@/lib/trpc/client";
 
 export type DraftStatusFilter =
@@ -77,6 +78,305 @@ function confidenceColor(c: number): string {
   if (c >= 0.9) return "bg-emerald-50 text-emerald-700 border-emerald-200";
   if (c >= 0.7) return "bg-blue-50 text-blue-700 border-blue-200";
   return "bg-amber-50 text-amber-700 border-amber-200";
+}
+
+// ─── Facts strip ──────────────────────────────────────────────
+// Surfaces the high-signal payload fields inline so reviewers can
+// accept/reject without expanding the card. Conditional pills:
+// pills with no value are not rendered, so sparse payloads
+// collapse to nothing rather than empty placeholders.
+
+type Tone = "red" | "amber" | "emerald" | "blue" | "indigo" | "slate";
+
+const TONE: Record<Tone, string> = {
+  red: "bg-red-50 text-red-700 border-red-200",
+  amber: "bg-amber-50 text-amber-700 border-amber-200",
+  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  blue: "bg-blue-50 text-blue-700 border-blue-200",
+  indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  slate: "bg-slate-50 text-slate-700 border-slate-200",
+};
+
+type Pill = { label: string; tone: Tone; title?: string; emphasis?: boolean };
+
+function titleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const SEVERITY_TONE: Record<string, Tone> = {
+  CRITICAL: "red",
+  HIGH: "amber",
+  MEDIUM: "blue",
+  LOW: "slate",
+};
+
+const TIME_TONE: Record<string, Tone> = {
+  ELIMINATE: "red",
+  MIGRATE: "amber",
+  INVEST: "emerald",
+  TOLERATE: "slate",
+};
+
+const HORIZON_TONE: Record<string, Tone> = {
+  H1_NOW: "red",
+  H2_NEXT: "amber",
+  H3_LATER: "blue",
+  BEYOND: "slate",
+};
+
+const HORIZON_LABEL: Record<string, string> = {
+  H1_NOW: "Now",
+  H2_NEXT: "Next",
+  H3_LATER: "Later",
+  BEYOND: "Beyond",
+};
+
+const VENDOR_STATUS_TONE: Record<string, Tone> = {
+  STRATEGIC: "indigo",
+  ACTIVE: "emerald",
+  UNDER_REVIEW: "amber",
+  EXITING: "slate",
+  DEPRECATED: "slate",
+};
+
+const RISK_STATUS_TONE: Record<string, Tone> = {
+  OPEN: "red",
+  IN_PROGRESS: "amber",
+  MITIGATED: "blue",
+  ACCEPTED: "slate",
+  CLOSED: "slate",
+};
+
+const LIFECYCLE_TONE: Record<string, Tone> = {
+  PLANNED: "blue",
+  ACTIVE: "emerald",
+  PHASING_OUT: "amber",
+  RETIRED: "slate",
+  SUNSET: "slate",
+};
+
+function pillsForPayload(
+  entityType: string,
+  payload: Record<string, unknown>
+): Pill[] {
+  const pills: Pill[] = [];
+  const get = (k: string): string | undefined => {
+    const v = payload[k];
+    return typeof v === "string" && v.trim().length ? v : undefined;
+  };
+  const getNum = (k: string): number | undefined => {
+    const v = payload[k];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim().length) {
+      const n = Number(v);
+      if (Number.isFinite(n)) return n;
+    }
+    return undefined;
+  };
+
+  switch (entityType) {
+    case "CAPABILITY": {
+      const cur = get("currentMaturity");
+      const tgt = get("targetMaturity");
+      if (cur && tgt) {
+        pills.push({
+          label: `${titleCase(cur)} → ${titleCase(tgt)}`,
+          tone: "blue",
+          title: `Maturity: ${titleCase(cur)} → ${titleCase(tgt)}`,
+        });
+      } else if (cur) {
+        pills.push({
+          label: `Current: ${titleCase(cur)}`,
+          tone: "slate",
+          title: `Current maturity: ${titleCase(cur)}`,
+        });
+      } else if (tgt) {
+        pills.push({
+          label: `Target: ${titleCase(tgt)}`,
+          tone: "slate",
+          title: `Target maturity: ${titleCase(tgt)}`,
+        });
+      }
+      const imp = get("strategicImportance");
+      if (imp)
+        pills.push({
+          label: titleCase(imp),
+          tone: SEVERITY_TONE[imp] ?? "slate",
+          title: `Strategic importance: ${titleCase(imp)}`,
+        });
+      break;
+    }
+    case "APPLICATION": {
+      const lifecycle = get("lifecycle");
+      if (lifecycle)
+        pills.push({
+          label: titleCase(lifecycle),
+          tone: LIFECYCLE_TONE[lifecycle] ?? "slate",
+          title: `Lifecycle: ${titleCase(lifecycle)}`,
+        });
+      const vendor = get("vendor");
+      if (vendor)
+        pills.push({
+          label: vendor,
+          tone: "slate",
+          title: `Vendor: ${vendor}`,
+        });
+      const cost = getNum("annualCostUsd");
+      if (cost != null) {
+        const ccy = get("costCurrency") ?? "USD";
+        pills.push({
+          label: formatCurrencyCompact(cost, ccy),
+          tone: "indigo",
+          title: `Annual cost: ${formatCurrency(cost, ccy)}`,
+        });
+      }
+      const time = get("rationalizationStatus");
+      if (time)
+        pills.push({
+          label: titleCase(time),
+          tone: TIME_TONE[time] ?? "slate",
+          title: `TIME disposition: ${titleCase(time)}`,
+          emphasis: true,
+        });
+      break;
+    }
+    case "RISK": {
+      const cat = get("category");
+      if (cat)
+        pills.push({
+          label: titleCase(cat),
+          tone: "slate",
+          title: `Category: ${titleCase(cat)}`,
+        });
+      const lik = get("likelihood");
+      const imp = get("impact");
+      if (lik && imp) {
+        const sev = SEVERITY_TONE[imp] ?? "slate";
+        pills.push({
+          label: `${lik[0]} × ${imp[0]}`,
+          tone: sev,
+          title: `Likelihood ${titleCase(lik)} × Impact ${titleCase(imp)}`,
+        });
+      }
+      const status = get("status");
+      if (status)
+        pills.push({
+          label: titleCase(status),
+          tone: RISK_STATUS_TONE[status] ?? "slate",
+          title: `Status: ${titleCase(status)}`,
+        });
+      break;
+    }
+    case "VENDOR": {
+      const cat = get("category");
+      if (cat)
+        pills.push({
+          label: titleCase(cat),
+          tone: "slate",
+          title: `Category: ${titleCase(cat)}`,
+        });
+      const status = get("status");
+      if (status)
+        pills.push({
+          label: titleCase(status),
+          tone: VENDOR_STATUS_TONE[status] ?? "slate",
+          title: `Status: ${titleCase(status)}`,
+        });
+      const spend = getNum("annualSpend");
+      if (spend != null) {
+        const ccy = get("currency") ?? "USD";
+        pills.push({
+          label: formatCurrencyCompact(spend, ccy),
+          tone: "indigo",
+          title: `Annual spend: ${formatCurrency(spend, ccy)}`,
+        });
+      }
+      break;
+    }
+    case "INITIATIVE": {
+      const horizon = get("horizon");
+      if (horizon)
+        pills.push({
+          label: HORIZON_LABEL[horizon] ?? titleCase(horizon),
+          tone: HORIZON_TONE[horizon] ?? "slate",
+          title: `Horizon: ${HORIZON_LABEL[horizon] ?? titleCase(horizon)}`,
+        });
+      const priority = get("priority");
+      if (priority)
+        pills.push({
+          label: titleCase(priority),
+          tone: SEVERITY_TONE[priority] ?? "slate",
+          title: `Priority: ${titleCase(priority)}`,
+        });
+      const cat = get("category");
+      if (cat)
+        pills.push({
+          label: titleCase(cat),
+          tone: "slate",
+          title: `Category: ${titleCase(cat)}`,
+        });
+      const budget = getNum("budgetUsd");
+      if (budget != null) {
+        const ccy = get("budgetCurrency") ?? "USD";
+        pills.push({
+          label: formatCurrencyCompact(budget, ccy),
+          tone: "indigo",
+          title: `Budget: ${formatCurrency(budget, ccy)}`,
+        });
+      }
+      break;
+    }
+    case "TECH_COMPONENT": {
+      const layer = get("layer");
+      if (layer)
+        pills.push({
+          label: titleCase(layer),
+          tone: "slate",
+          title: `Layer: ${titleCase(layer)}`,
+        });
+      break;
+    }
+  }
+  return pills;
+}
+
+function FactsStrip({ pills }: { pills: Pill[] }) {
+  if (pills.length === 0) return null;
+  // Show first 3 inline, collapse the rest into a "+N more" pill
+  // that renders the overflow. Panel ~380px holds 3 comfortably.
+  const visible = pills.slice(0, 3);
+  const overflow = pills.slice(3);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      {visible.map((p, i) => (
+        <span
+          key={i}
+          title={p.title}
+          className={cn(
+            "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+            TONE[p.tone],
+            p.emphasis && "ring-1 ring-current/20"
+          )}
+        >
+          {p.label}
+        </span>
+      ))}
+      {overflow.length > 0 && (
+        <span
+          title={overflow.map((p) => p.title ?? p.label).join(" • ")}
+          className={cn(
+            "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+            TONE.slate
+          )}
+        >
+          +{overflow.length} more
+        </span>
+      )}
+    </div>
+  );
 }
 
 export function DraftCard({ draft, onAccept, onReject, onEdit }: Props) {
@@ -151,6 +451,7 @@ export function DraftCard({ draft, onAccept, onReject, onEdit }: Props) {
               {payload.description}
             </p>
           )}
+          <FactsStrip pills={pillsForPayload(draft.entityType, payload)} />
         </div>
 
         {isPending && (
