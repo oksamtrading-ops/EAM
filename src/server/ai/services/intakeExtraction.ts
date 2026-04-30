@@ -34,9 +34,18 @@ type DraftCandidate = {
   evidence: Array<{ chunkOrdinal: number; excerpt: string; page?: number }>;
 };
 
+type KnowledgeFactCandidate = {
+  kind: "FACT" | "DECISION" | "PATTERN";
+  subject: string;
+  statement: string;
+  confidence: number;
+  evidence: Array<{ chunkOrdinal: number; excerpt: string; page?: number }>;
+};
+
 type ExtractorResponse = {
   chunks: Array<{ ordinal: number; text: string; page?: number }>;
   drafts: DraftCandidate[];
+  knowledgeFacts: KnowledgeFactCandidate[];
 };
 
 const VALID_ENTITY_TYPES = new Set([
@@ -45,7 +54,15 @@ const VALID_ENTITY_TYPES = new Set([
   "RISK",
   "VENDOR",
   "TECH_COMPONENT",
+  "INITIATIVE",
+  "OBJECTIVE",
+  "COMPLIANCE_REQUIREMENT",
+  "EOL_WATCH",
+  "ARCH_STATE",
+  "WORKSPACE_PROFILE",
 ]);
+
+const VALID_KNOWLEDGE_KINDS = new Set(["FACT", "DECISION", "PATTERN"]);
 
 function chunkPlainText(text: string): Array<{ ordinal: number; text: string }> {
   const paragraphs = text
@@ -214,6 +231,31 @@ export async function extractFromDocument(opts: {
             entityType: d.entityType,
             payload: JSON.parse(JSON.stringify(d.payload ?? {})),
             confidence: clamp01(d.confidence ?? 0),
+            evidence: JSON.parse(JSON.stringify(evidence)),
+            status: "PENDING",
+          },
+        });
+      }
+
+      // Sibling pipeline: cross-cutting facts → KnowledgeDraft. The
+      // /knowledge UI surfaces these for accept/reject independently
+      // of the IntakeDraft list.
+      for (const f of extractor.knowledgeFacts) {
+        const evidence = (f.evidence ?? [])
+          .map((e) => ({
+            chunkId: ordinalToId.get(e.chunkOrdinal) ?? null,
+            excerpt: typeof e.excerpt === "string" ? e.excerpt.slice(0, 600) : "",
+            page: typeof e.page === "number" ? e.page : null,
+          }))
+          .filter((e) => e.excerpt.length > 0);
+        await tx.knowledgeDraft.create({
+          data: {
+            workspaceId,
+            sourceDocumentId: documentId,
+            kind: f.kind,
+            subject: f.subject.slice(0, 200),
+            statement: f.statement.slice(0, 1000),
+            confidence: clamp01(f.confidence),
             evidence: JSON.parse(JSON.stringify(evidence)),
             status: "PENDING",
           },
@@ -421,7 +463,7 @@ async function extractFromXlsx(
   }
 
   if (chunks.length === 0) {
-    return { chunks: [], drafts: [] };
+    return { chunks: [], drafts: [], knowledgeFacts: [] };
   }
 
   const pre = chunks
@@ -527,7 +569,35 @@ function parseExtractorResponse(response: {
       }))
     : [];
 
-  return { chunks, drafts };
+  const knowledgeFacts: KnowledgeFactCandidate[] = Array.isArray(
+    parsed.knowledgeFacts
+  )
+    ? parsed.knowledgeFacts
+        .map((f) => {
+          const kindRaw = String(f?.kind ?? "FACT").toUpperCase();
+          const kind = (
+            VALID_KNOWLEDGE_KINDS.has(kindRaw) ? kindRaw : "FACT"
+          ) as KnowledgeFactCandidate["kind"];
+          return {
+            kind,
+            subject: typeof f?.subject === "string" ? f.subject : "",
+            statement: typeof f?.statement === "string" ? f.statement : "",
+            confidence:
+              typeof f?.confidence === "number" ? f.confidence : 0.7,
+            evidence: Array.isArray(f?.evidence)
+              ? f.evidence.map((e) => ({
+                  chunkOrdinal:
+                    typeof e.chunkOrdinal === "number" ? e.chunkOrdinal : 0,
+                  excerpt: typeof e.excerpt === "string" ? e.excerpt : "",
+                  page: typeof e.page === "number" ? e.page : undefined,
+                }))
+              : [],
+          };
+        })
+        .filter((f) => f.subject.length > 0 && f.statement.length > 0)
+    : [];
+
+  return { chunks, drafts, knowledgeFacts };
 }
 
 function extractJson(raw: string): string {

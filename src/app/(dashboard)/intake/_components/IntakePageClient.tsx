@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Upload,
   Inbox,
@@ -29,7 +30,12 @@ type EntityTypeFilter =
   | "RISK"
   | "VENDOR"
   | "TECH_COMPONENT"
-  | "INITIATIVE";
+  | "INITIATIVE"
+  | "OBJECTIVE"
+  | "COMPLIANCE_REQUIREMENT"
+  | "EOL_WATCH"
+  | "ARCH_STATE"
+  | "WORKSPACE_PROFILE";
 
 export function IntakePageClient() {
   const [showUpload, setShowUpload] = useState(false);
@@ -176,6 +182,11 @@ export function IntakePageClient() {
             <option value="VENDOR">Vendors</option>
             <option value="TECH_COMPONENT">Tech Components</option>
             <option value="INITIATIVE">Initiatives</option>
+            <option value="OBJECTIVE">Objectives</option>
+            <option value="COMPLIANCE_REQUIREMENT">Compliance</option>
+            <option value="EOL_WATCH">EOL Watch</option>
+            <option value="ARCH_STATE">Architecture States</option>
+            <option value="WORKSPACE_PROFILE">Workspace Profile</option>
           </select>
         </div>
 
@@ -189,7 +200,13 @@ export function IntakePageClient() {
             <IntakeEmptyState onUpload={() => setShowUpload(true)} />
           ) : (
             <div className="space-y-8 max-w-3xl mx-auto">
-              {Object.entries(grouped).map(([docId, group]) => (
+              {Object.entries(grouped).map(([docId, group]) => {
+                const docMeta = group.documentId
+                  ? documents?.find((d) => d.id === group.documentId)
+                  : undefined;
+                const knowledgeCount =
+                  docMeta?._count?.knowledgeDrafts ?? 0;
+                return (
                 <section key={docId} className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -198,6 +215,16 @@ export function IntakePageClient() {
                         ({group.drafts.length})
                       </span>
                     </h2>
+                    {knowledgeCount > 0 && (
+                      <Link
+                        href="/agents/knowledge"
+                        className="text-[11px] text-[var(--ai)] hover:underline whitespace-nowrap"
+                        title="Knowledge facts go to the knowledge workspace, not the intake panel"
+                      >
+                        Review {knowledgeCount} knowledge fact
+                        {knowledgeCount === 1 ? "" : "s"} →
+                      </Link>
+                    )}
                   </div>
                   {group.documentId && (group.hasThumbnail || group.isImage) && (
                     <IntakeSourceThumbnail
@@ -213,7 +240,8 @@ export function IntakePageClient() {
                     onEdit={(id) => setSelectedDraftId(id)}
                   />
                 </section>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

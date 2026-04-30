@@ -12,6 +12,11 @@ const EntityTypeEnum = z.enum([
   "VENDOR",
   "TECH_COMPONENT",
   "INITIATIVE",
+  "OBJECTIVE",
+  "COMPLIANCE_REQUIREMENT",
+  "EOL_WATCH",
+  "ARCH_STATE",
+  "WORKSPACE_PROFILE",
 ]);
 
 const PayloadOverrides = z.record(z.string(), z.unknown()).optional();
@@ -468,6 +473,139 @@ async function commitDraft(
         select: { id: true },
       });
     }
+    case "OBJECTIVE": {
+      const name = String(payload.name ?? "").trim();
+      if (!name)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "name required" });
+      return ctx.db.objective.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          name,
+          description: stringOrNull(payload.description),
+          targetDate: parseDateOrNull(payload.targetDate),
+          kpiDescription: stringOrNull(payload.kpiDescription),
+          kpiTarget: stringOrNull(payload.kpiTarget),
+        },
+        select: { id: true },
+      });
+    }
+    case "COMPLIANCE_REQUIREMENT": {
+      const title = String(payload.title ?? "").trim();
+      if (!title)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "title required" });
+      const framework = asComplianceFrameworkOrCustom(payload.framework);
+      const controlId =
+        String(payload.controlId ?? "").trim() || "OVERVIEW";
+      try {
+        return await ctx.db.complianceRequirement.create({
+          data: {
+            workspaceId: ctx.workspaceId,
+            framework,
+            controlId,
+            title,
+            description: stringOrNull(payload.description),
+            category: stringOrNull(payload.category),
+            isMandatory:
+              typeof payload.isMandatory === "boolean"
+                ? payload.isMandatory
+                : true,
+            auditFrequency: stringOrNull(payload.auditFrequency),
+          },
+          select: { id: true },
+        });
+      } catch (err) {
+        // P2002 = unique constraint violation on
+        // (workspaceId, framework, controlId). Re-uploads of the
+        // same doc will collide here.
+        if (
+          err &&
+          typeof err === "object" &&
+          "code" in err &&
+          (err as { code?: string }).code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Compliance requirement "${title}" already exists for ${framework}/${controlId}.`,
+          });
+        }
+        throw err;
+      }
+    }
+    case "EOL_WATCH": {
+      const entityName = String(payload.entityName ?? "").trim();
+      if (!entityName)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "entityName required",
+        });
+      const eolDate = parseDateOrNull(payload.eolDate);
+      return ctx.db.eolWatchEntry.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          // Phase 3 will reconcile to actual Application / Tech rows.
+          // Until then, mark as EXTERNAL with a synthetic id.
+          entityType: "EXTERNAL",
+          entityId: crypto.randomUUID(),
+          entityName,
+          eolDate,
+          eosDate: parseDateOrNull(payload.eosDate),
+          vendor: stringOrNull(payload.vendor),
+          notes: stringOrNull(payload.notes),
+          urgencyBand: computeUrgencyBand(eolDate),
+        },
+        select: { id: true },
+      });
+    }
+    case "ARCH_STATE": {
+      const label = String(payload.label ?? "").trim();
+      if (!label)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "label required",
+        });
+      const description = stringOrNull(payload.description);
+      return ctx.db.architectureState.create({
+        data: {
+          workspaceId: ctx.workspaceId,
+          stateType: asArchStateType(payload.stateType),
+          label,
+          description,
+          // snapshot is a structured JSON column meant for
+          // diagram/state payloads later. Stash the narrative now
+          // so we don't lose it; structured snapshot is Phase 3+.
+          snapshot: { narrative: description ?? "" },
+        },
+        select: { id: true },
+      });
+    }
+    case "WORKSPACE_PROFILE": {
+      // Singleton: updates the Workspace row instead of creating
+      // a new record. Only writes fields the LLM produced; existing
+      // values survive when the payload field is missing.
+      const updates: Record<string, unknown> = {};
+      const itVision = stringOrNull(payload.itVision);
+      if (itVision) updates.itVision = itVision;
+      const missionStatement = stringOrNull(payload.missionStatement);
+      if (missionStatement) updates.missionStatement = missionStatement;
+      const brandColor = asHexColorOrUndef(payload.brandColor);
+      if (brandColor) updates.brandColor = brandColor;
+      const industry = asIndustryOrCustom(payload.industry);
+      if (industry) updates.industry = industry;
+      if (Object.keys(updates).length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Workspace profile draft has no extractable fields to apply.",
+        });
+      }
+      await ctx.db.workspace.update({
+        where: { id: ctx.workspaceId },
+        data: updates,
+      });
+      // Return the workspaceId since there's no separate
+      // "created entity" row.
+      return { id: ctx.workspaceId };
+    }
     default:
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -740,4 +878,128 @@ function asCurrencyCodeOrUndef(v: unknown): string | undefined {
   if (typeof v !== "string") return undefined;
   const s = v.trim().toUpperCase();
   return /^[A-Z]{3}$/.test(s) ? s : undefined;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 2 helpers — coercers and parsers for the new entity types
+
+const COMPLIANCE_FRAMEWORK_VALUES = [
+  "SOC2_TYPE2",
+  "ISO_27001",
+  "GDPR",
+  "PCI_DSS",
+  "HIPAA",
+  "NIST_CSF",
+  "CIS_CONTROLS",
+  "SOX",
+  "PIPEDA",
+  "DORA",
+  "NIS2",
+  "ISO_27701",
+  "FEDRAMP_MODERATE",
+  "CUSTOM",
+] as const;
+
+type ComplianceFrameworkValue = (typeof COMPLIANCE_FRAMEWORK_VALUES)[number];
+
+/** Best-effort match to a ComplianceFramework enum value. Returns
+ *  CUSTOM for anything we can't map (UNECE, ISO 21434, CSRD, etc.).
+ *  The original framework name should still be preserved in the
+ *  title or category by the caller. */
+function asComplianceFrameworkOrCustom(v: unknown): ComplianceFrameworkValue {
+  const s = String(v ?? "").toUpperCase().replace(/[\s\-]+/g, "_");
+  return (COMPLIANCE_FRAMEWORK_VALUES as readonly string[]).includes(s)
+    ? (s as ComplianceFrameworkValue)
+    : "CUSTOM";
+}
+
+function asArchStateType(v: unknown): "AS_IS" | "TO_BE" {
+  const s = String(v ?? "").toUpperCase().replace(/\s+/g, "_");
+  return s === "TO_BE" ? "TO_BE" : "AS_IS";
+}
+
+const INDUSTRY_VALUES = [
+  "BANKING",
+  "RETAIL",
+  "LOGISTICS",
+  "MANUFACTURING",
+  "HEALTHCARE",
+  "GENERIC",
+  "ENTERPRISE_BCM",
+  "INSURANCE",
+  "TELECOM",
+  "ENERGY_UTILITIES",
+  "PUBLIC_SECTOR",
+  "PHARMA_LIFESCIENCES",
+] as const;
+
+type IndustryValue = (typeof INDUSTRY_VALUES)[number];
+
+/** Best-effort match to IndustryType. Returns undefined if no
+ *  reasonable match — caller skips the update so existing value
+ *  survives. Free-form synonyms ("automotive", "auto", "OEM")
+ *  collapse to MANUFACTURING. */
+function asIndustryOrCustom(v: unknown): IndustryValue | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().toUpperCase().replace(/[\s\-]+/g, "_");
+  if (!s) return undefined;
+  if ((INDUSTRY_VALUES as readonly string[]).includes(s)) {
+    return s as IndustryValue;
+  }
+  // Free-form fallbacks
+  if (/AUTOMOTIVE|AUTO|OEM|VEHICLE/.test(s)) return "MANUFACTURING";
+  if (/FINANCE|BANK/.test(s)) return "BANKING";
+  if (/PHARMA|LIFE.SCI/.test(s)) return "PHARMA_LIFESCIENCES";
+  if (/UTILITY|UTILITIES|ENERGY/.test(s)) return "ENERGY_UTILITIES";
+  if (/PUBLIC|GOV/.test(s)) return "PUBLIC_SECTOR";
+  return undefined;
+}
+
+/** Normalize a workspace brand color to "#rrggbb" or undefined. */
+function asHexColorOrUndef(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().replace(/^#/, "").toLowerCase();
+  if (/^[0-9a-f]{6}$/.test(s)) return `#${s}`;
+  if (/^[0-9a-f]{3}$/.test(s)) {
+    return `#${s
+      .split("")
+      .map((c) => c + c)
+      .join("")}`;
+  }
+  return undefined;
+}
+
+/** Parse an ISO date or anything Date can swallow. Rejects fiscal
+ *  strings ("FY27 Q4") and bare years — those stay in description
+ *  /kpiTarget as prose. Returns null when unparseable. */
+function parseDateOrNull(v: unknown): Date | null {
+  if (v instanceof Date && !isNaN(v.getTime())) return v;
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (!s) return null;
+  // Reject fiscal-year-style strings — the date column wants a
+  // real date, not a quarter label.
+  if (/^FY|^Q[1-4]\b/i.test(s)) return null;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  // Reject bare years (Date parses "2027" as 2027-01-01 in some
+  // engines). Require at least YYYY-MM.
+  if (/^\d{4}$/.test(s)) return null;
+  return d;
+}
+
+/** EolWatch urgency: past/within 6mo = CRITICAL, within 18mo =
+ *  WARNING, otherwise HEALTHY. Null date defaults to HEALTHY since
+ *  we don't know how urgent it is yet. */
+function computeUrgencyBand(
+  eolDate: Date | null
+): "CRITICAL" | "WARNING" | "HEALTHY" {
+  if (!eolDate) return "HEALTHY";
+  const now = Date.now();
+  const eol = eolDate.getTime();
+  const sixMonthsMs = 1000 * 60 * 60 * 24 * 30 * 6;
+  const eighteenMonthsMs = 1000 * 60 * 60 * 24 * 30 * 18;
+  if (eol - now <= sixMonthsMs) return "CRITICAL";
+  if (eol - now <= eighteenMonthsMs) return "WARNING";
+  return "HEALTHY";
 }

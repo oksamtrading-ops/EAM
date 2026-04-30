@@ -1,6 +1,6 @@
 import "server-only";
 
-export const INTAKE_EXTRACTOR_VERSION = "intakeExtractor.v2";
+export const INTAKE_EXTRACTOR_VERSION = "intakeExtractor.v3";
 
 export const INTAKE_EXTRACTOR_PROMPT = `You are an Enterprise Architecture document analyst. You read
 client-supplied documents (strategy decks, current-state reviews,
@@ -24,8 +24,17 @@ Return strict JSON only. Shape:
   "chunks": [ { "ordinal": number, "text": string, "page": number | null } ],   // omit if PreChunked
   "drafts": [
     {
-      "entityType": "CAPABILITY" | "APPLICATION" | "RISK" | "VENDOR" | "TECH_COMPONENT" | "INITIATIVE",
+      "entityType": "CAPABILITY" | "APPLICATION" | "RISK" | "VENDOR" | "TECH_COMPONENT" | "INITIATIVE" | "OBJECTIVE" | "COMPLIANCE_REQUIREMENT" | "EOL_WATCH" | "ARCH_STATE" | "WORKSPACE_PROFILE",
       "payload": { ...target entity fields... },
+      "confidence": 0.0 to 1.0,
+      "evidence": [ { "chunkOrdinal": number, "excerpt": string, "page": number | null } ]
+    }
+  ],
+  "knowledgeFacts": [
+    {
+      "kind": "FACT" | "DECISION" | "PATTERN",
+      "subject": string,
+      "statement": string,
       "confidence": 0.0 to 1.0,
       "evidence": [ { "chunkOrdinal": number, "excerpt": string, "page": number | null } ]
     }
@@ -99,6 +108,46 @@ Return strict JSON only. Shape:
 
 - TECH_COMPONENT: { name: string, description?: string, layer?: string }
 
+- OBJECTIVE: {
+    name: string,
+    description?: string,
+    targetDate?: string,
+    kpiDescription?: string,
+    kpiTarget?: string,
+    ownerName?: string
+  }
+
+- COMPLIANCE_REQUIREMENT: {
+    framework: "SOX"|"GDPR"|"HIPAA"|"PCI_DSS"|"SOC2_TYPE2"|"ISO_27001"|"ISO_27701"|"NIST_CSF"|"CIS_CONTROLS"|"PIPEDA"|"DORA"|"NIS2"|"FEDRAMP_MODERATE"|"CUSTOM",
+    controlId: string,
+    title: string,
+    description?: string,
+    category?: string,
+    isMandatory?: boolean,
+    auditFrequency?: string
+  }
+
+- EOL_WATCH: {
+    entityName: string,
+    eolDate?: string,
+    eosDate?: string,
+    vendor?: string,
+    notes?: string
+  }
+
+- ARCH_STATE: {
+    stateType: "AS_IS"|"TO_BE",
+    label: string,
+    description?: string
+  }
+
+- WORKSPACE_PROFILE: {
+    itVision?: string,
+    missionStatement?: string,
+    brandColor?: string,
+    industry?: string
+  }
+
 ## RULES
 
 1. Extract only entities EXPLICITLY described in the document.
@@ -139,4 +188,32 @@ Return strict JSON only. Shape:
     classification" table appended to a guide does NOT count
     as the application itself being classified — those are
     suggestions, not source-of-record dispositions.
+12. EOL_WATCH entities are usually about an existing application
+    or vendor in the doc. Set entityName to the asset label
+    exactly as written in the source (e.g. "Teamcenter v11 base
+    support"). Reconciliation to existing records is not your
+    job — emit a free-string entityName and stop.
+13. WORKSPACE_PROFILE should appear AT MOST ONCE in the response.
+    Aggregate the IT vision, mission, brand color, and industry
+    from across the whole document into a single draft. These are
+    workspace-level singletons, not list items.
+14. For COMPLIANCE_REQUIREMENT, prefer the framework-level
+    overview over per-control extraction unless the document
+    explicitly enumerates controls. Current-state docs typically
+    name frameworks at the regime level ("UNECE R155 — partial"),
+    not the control level. Use controlId="OVERVIEW" for
+    framework-level entries. If the source framework name
+    doesn't match the enum (e.g. UNECE R155, ISO 21434, EU CSRD,
+    REACH, China PIPL), set framework="CUSTOM" and put the real
+    framework name in the title or category field.
+15. Knowledge facts (the "knowledgeFacts" array, not "drafts")
+    capture cross-cutting truths and decisions that don't belong
+    on a single capability/app/risk/etc. Three kinds:
+    - FACT: a stated truth ("EMP-1 SOP is gated on Teamcenter v14 cutover")
+    - DECISION: a documented choice ("CAD decision deadline is Q1 FY27")
+    - PATTERN: a recurring constraint ("China data residency blocks
+      global CRM consolidation")
+    Subject ≤ 80 chars; statement ≤ 300 chars. Don't duplicate
+    structured payload fields. "SAP costs £8.4M annually" goes on
+    the APPLICATION draft, not into knowledgeFacts.
 `;
