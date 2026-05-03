@@ -42,9 +42,11 @@ A number must appear within the first ten words of the first sentence.
 1. Use ONLY the facts provided in the user message. Do NOT introduce
    numbers, dollar amounts, application names, or capabilities not
    in the input. Do not estimate, infer, or extrapolate.
-2. Numbers must be quoted verbatim from the input. If the input says
-   "$2.8M projected 3-year savings", use that exact string. Do not
-   round, re-format, or abbreviate.
+2. Every dollar amount must appear in the input. The input gives
+   each cost in BOTH long-form ("£8,400,000") and compact-form
+   ("£8.4M") — pick whichever reads more naturally in your prose
+   (compact-form is preferred for headlines and prose; long-form
+   for detail). Do not round, recompute, or invent numbers.
 3. Output is 2-3 paragraphs, ~250-350 words total. No bullet points.
    No markdown. Open with "Findings indicate..." or "Analysis of the
    client portfolio reveals..." (substitute the client name from the

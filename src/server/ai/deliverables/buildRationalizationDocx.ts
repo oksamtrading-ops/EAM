@@ -16,6 +16,7 @@ import {
   buildCallout,
   buildTable,
   formatCurrency,
+  formatCurrencyCompact,
   formatDateISO,
   makeFooter,
   normalizeHex,
@@ -157,11 +158,15 @@ export async function buildRationalizationDocx(
   const m = input.metrics;
   const cur = m.costCurrency;
   const fmt = (n: number) => formatCurrency(n, cur);
+  const fmtCompact = (n: number) => formatCurrencyCompact(n, cur);
 
   // Pre-format dollar values once so the LLM input + the doc body
   // share exact strings — what makes the post-check tractable.
-  const facts = buildExecSummaryFacts(m, fmt, input.clientName);
-  const bucketFacts = buildBucketFacts(m, fmt, input.clientName);
+  // Each cost ships in BOTH long-form ("£8,400,000") and compact-
+  // form ("£8.4M") so the LLM can pick whichever reads more
+  // naturally; the post-check accepts either.
+  const facts = buildExecSummaryFacts(m, fmt, fmtCompact, input.clientName);
+  const bucketFacts = buildBucketFacts(m, fmt, fmtCompact, input.clientName);
 
   // Two LLM calls (exec summary + bucket narratives in one).
   const [execSummary, bucketNarratives] = await Promise.all([
@@ -276,6 +281,19 @@ export async function buildRationalizationDocx(
     )
   );
   children.push(buildQuadrantTable(m, brandHex));
+  children.push(
+    new Paragraph({
+      spacing: { before: 80, after: 200 },
+      children: [
+        new TextRun({
+          text: "Placement: CRITICAL business value reads as HIGH; MEDIUM, UNKNOWN, and unset read as LOW. FAIR technical health reads as Poor (the Good half is reserved for actively healthy systems).",
+          italics: true,
+          size: 18,
+          color: "6B7280",
+        }),
+      ],
+    })
+  );
 
   // ─── 5–8. Per-bucket narratives ────────────────────────────
   pushBucketSection(
@@ -690,13 +708,27 @@ function buildQuadrantTable(
     ...(m.byClassification.INVEST?.apps ?? []),
     ...(m.byClassification.TOLERATE?.apps ?? []),
   ];
-  const isHighBV = (a: AppSummary) => a.businessValue === "HIGH";
+  // 2×2 placement covers every BV/TH enum so apps don't fall
+  // through. Schema enums:
+  //   BV: LOW / MEDIUM / HIGH / CRITICAL / BV_UNKNOWN / null
+  //   TH: EXCELLENT / GOOD / FAIR / POOR / TH_CRITICAL / null
+  // Convention: CRITICAL BV reads as HIGH (most strategic);
+  // MEDIUM/UNKNOWN/null reads as LOW; FAIR TH reads as Poor (the
+  // "good" half is reserved for actively healthy systems).
+  const isHighBV = (a: AppSummary) =>
+    a.businessValue === "HIGH" || a.businessValue === "CRITICAL";
   const isLowBV = (a: AppSummary) =>
-    a.businessValue === "LOW" || a.businessValue === "BV_UNKNOWN";
+    a.businessValue === "LOW" ||
+    a.businessValue === "MEDIUM" ||
+    a.businessValue === "BV_UNKNOWN" ||
+    a.businessValue === null;
   const isGoodTH = (a: AppSummary) =>
     a.technicalHealth === "EXCELLENT" || a.technicalHealth === "GOOD";
   const isPoorTH = (a: AppSummary) =>
-    a.technicalHealth === "POOR" || a.technicalHealth === "TH_CRITICAL";
+    a.technicalHealth === "FAIR" ||
+    a.technicalHealth === "POOR" ||
+    a.technicalHealth === "TH_CRITICAL" ||
+    a.technicalHealth === null;
   const cell = (filter: (a: AppSummary) => boolean): string => {
     const inCell = allApps.filter(filter);
     if (inCell.length === 0) return "—";
@@ -876,13 +908,20 @@ type ExecSummaryFacts = {
   totalApps: number;
   activeApps: number;
   classifiedApps: number;
-  eliminate: { count: number; cost: string };
-  migrate: { count: number; cost: string };
-  invest: { count: number; cost: string };
-  tolerate: { count: number; cost: string };
+  // Each cost ships in BOTH long-form ("£8,400,000") and
+  // compact-form ("£8.4M"). The LLM picks whichever reads more
+  // naturally; the post-check `verifyDollarAmounts` accepts either;
+  // any number not in either form fails (hallucination).
+  eliminate: { count: number; cost: string; costCompact: string };
+  migrate: { count: number; cost: string; costCompact: string };
+  invest: { count: number; cost: string; costCompact: string };
+  tolerate: { count: number; cost: string; costCompact: string };
   topEliminate3: string[];
   topMigrate3: string[];
   projectedSavings3yr: string;
+  projectedSavings3yrCompact: string;
+  totalAnnualCost: string;
+  totalAnnualCostCompact: string;
   redundancyCapCount: number;
   costCurrency: string;
 };
@@ -890,32 +929,32 @@ type ExecSummaryFacts = {
 function buildExecSummaryFacts(
   m: RationalizationMetrics,
   fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
   clientName: string
 ): ExecSummaryFacts {
+  const bucket = (key: "ELIMINATE" | "MIGRATE" | "INVEST" | "TOLERATE") => {
+    const cost = m.byClassification[key]?.annualCostUsd ?? 0;
+    return {
+      count: m.byClassification[key]?.count ?? 0,
+      cost: fmt(cost),
+      costCompact: fmtCompact(cost),
+    };
+  };
   return {
     clientName,
     totalApps: m.totalApps,
     activeApps: m.activeApps,
     classifiedApps: m.classifiedApps,
-    eliminate: {
-      count: m.byClassification.ELIMINATE?.count ?? 0,
-      cost: fmt(m.byClassification.ELIMINATE?.annualCostUsd ?? 0),
-    },
-    migrate: {
-      count: m.byClassification.MIGRATE?.count ?? 0,
-      cost: fmt(m.byClassification.MIGRATE?.annualCostUsd ?? 0),
-    },
-    invest: {
-      count: m.byClassification.INVEST?.count ?? 0,
-      cost: fmt(m.byClassification.INVEST?.annualCostUsd ?? 0),
-    },
-    tolerate: {
-      count: m.byClassification.TOLERATE?.count ?? 0,
-      cost: fmt(m.byClassification.TOLERATE?.annualCostUsd ?? 0),
-    },
+    eliminate: bucket("ELIMINATE"),
+    migrate: bucket("MIGRATE"),
+    invest: bucket("INVEST"),
+    tolerate: bucket("TOLERATE"),
     topEliminate3: m.topEliminationCandidates.slice(0, 3).map((a) => a.name),
     topMigrate3: m.topMigrationCandidates.slice(0, 3).map((a) => a.name),
     projectedSavings3yr: fmt(m.projectedSavings.totalCandidate3yrUsd),
+    projectedSavings3yrCompact: fmtCompact(m.projectedSavings.totalCandidate3yrUsd),
+    totalAnnualCost: fmt(m.totalAnnualCostUsd),
+    totalAnnualCostCompact: fmtCompact(m.totalAnnualCostUsd),
     redundancyCapCount: m.redundancyMatrix.length,
     costCurrency: m.costCurrency,
   };
@@ -953,10 +992,17 @@ async function generateExecutiveSummary(
       if (!text) continue;
       if (!verifyDollarAmounts(text, [
         facts.eliminate.cost,
+        facts.eliminate.costCompact,
         facts.migrate.cost,
+        facts.migrate.costCompact,
         facts.invest.cost,
+        facts.invest.costCompact,
         facts.tolerate.cost,
+        facts.tolerate.costCompact,
         facts.projectedSavings3yr,
+        facts.projectedSavings3yrCompact,
+        facts.totalAnnualCost,
+        facts.totalAnnualCostCompact,
       ])) {
         console.warn(
           JSON.stringify({
@@ -1010,12 +1056,16 @@ type BucketFacts = {
     "ELIMINATE" | "MIGRATE" | "INVEST" | "TOLERATE",
     {
       count: number;
+      // Dual-form per the post-check; LLM picks whichever reads
+      // best in prose. See ExecSummaryFacts for full rationale.
       cost: string;
+      costCompact: string;
       top5: Array<{
         name: string;
         vendor: string;
         capability: string;
         cost: string;
+        costCompact: string;
         bv: string;
         th: string;
       }>;
@@ -1026,6 +1076,7 @@ type BucketFacts = {
 function buildBucketFacts(
   m: RationalizationMetrics,
   fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
   clientName: string
 ): BucketFacts {
   const top5 = (apps: AppSummary[]) =>
@@ -1038,16 +1089,21 @@ function buildBucketFacts(
         vendor: a.vendor ?? "—",
         capability: a.capabilityNames[0] ?? "—",
         cost: fmt(a.annualCostUsd),
+        costCompact: fmtCompact(a.annualCostUsd),
         bv: (a.businessValue ?? "—").replace(/^BV_/, ""),
         th: (a.technicalHealth ?? "—").replace(/^TH_/, ""),
       }));
   const buildBucket = (
     key: "ELIMINATE" | "MIGRATE" | "INVEST" | "TOLERATE"
-  ) => ({
-    count: m.byClassification[key]?.count ?? 0,
-    cost: fmt(m.byClassification[key]?.annualCostUsd ?? 0),
-    top5: top5(m.byClassification[key]?.apps ?? []),
-  });
+  ) => {
+    const cost = m.byClassification[key]?.annualCostUsd ?? 0;
+    return {
+      count: m.byClassification[key]?.count ?? 0,
+      cost: fmt(cost),
+      costCompact: fmtCompact(cost),
+      top5: top5(m.byClassification[key]?.apps ?? []),
+    };
+  };
   return {
     clientName,
     costCurrency: m.costCurrency,
@@ -1104,12 +1160,17 @@ async function generateBucketNarratives(
       if (!narratives) continue;
 
       // Fact-grounding post-check across all bucket narratives.
-      const allCosts = [
-        facts.buckets.ELIMINATE.cost,
-        facts.buckets.MIGRATE.cost,
-        facts.buckets.INVEST.cost,
-        facts.buckets.TOLERATE.cost,
-      ];
+      // Allowed costs: each bucket total in BOTH forms, plus every
+      // top-5 per-app cost in BOTH forms (the LLM is told to name
+      // specific apps from top5 — those costs are valid quotes).
+      const allCosts: string[] = [];
+      for (const k of ["ELIMINATE", "MIGRATE", "INVEST", "TOLERATE"] as const) {
+        const b = facts.buckets[k];
+        allCosts.push(b.cost, b.costCompact);
+        for (const a of b.top5) {
+          allCosts.push(a.cost, a.costCompact);
+        }
+      }
       const allText =
         narratives.ELIMINATE.governingThought +
         narratives.ELIMINATE.whyNow.join(" ") +
@@ -1261,17 +1322,55 @@ function parseJsonish(raw: string): Record<string, unknown> & {
   }
 }
 
+/** Parse a money string ("£8.4M", "£8,400,000", "$2.5B") into its
+ *  numeric value. Returns null if the string isn't a recognizable
+ *  money expression. */
+function parseMoney(s: string): number | null {
+  const m = s.match(/[$€£¥]\s*([\d.,]+)\s*([KkMmBb])?/);
+  if (!m) return null;
+  const digits = m[1]!.replace(/,/g, "");
+  const num = parseFloat(digits);
+  if (!isFinite(num)) return null;
+  const suffix = m[2]?.toUpperCase();
+  const mult =
+    suffix === "K" ? 1_000 :
+    suffix === "M" ? 1_000_000 :
+    suffix === "B" ? 1_000_000_000 :
+    1;
+  return num * mult;
+}
+
+/** Verify every dollar amount in `text` matches a value in
+ *  `allowedCosts` within 1.5% tolerance (covers rounding diffs
+ *  between e.g. "£4.58M" and "£4.6M"). Hallucinated numbers (any
+ *  value not within tolerance of an allowed value) fail.
+ *
+ *  This loosens the previous string-equality check that rejected
+ *  any compact-form currency the LLM emitted (the input only had
+ *  long-form). The cost-grounding intent is preserved: the LLM
+ *  cannot invent dollar amounts; it can only paraphrase the ones
+ *  in the input. */
 function verifyDollarAmounts(
   text: string,
   allowedCosts: string[]
 ): boolean {
-  const allowed = new Set<string>(
-    allowedCosts.map((s) => s.trim()).filter(Boolean)
-  );
-  const pattern = /[$€£¥][\d.,KMB]+/g;
+  const allowedNumbers = allowedCosts
+    .map(parseMoney)
+    .filter((n): n is number => n !== null);
+  if (allowedNumbers.length === 0) {
+    // No allowed costs known — fall back to the strict "no money in
+    // text" rule (any money expression in the prose is a hallucination).
+    return !/[$€£¥]\s*[\d.,]+\s*(?:[KkMmBb])?/.test(text);
+  }
+  const pattern = /[$€£¥]\s*[\d.,]+\s*(?:[KkMmBb])?/g;
   const matches = text.match(pattern) ?? [];
   for (const m of matches) {
-    if (!allowed.has(m)) return false;
+    const n = parseMoney(m);
+    if (n === null) return false;
+    const ok = allowedNumbers.some((a) =>
+      a === 0 ? n === 0 : Math.abs(n - a) / Math.max(a, 1) < 0.015
+    );
+    if (!ok) return false;
   }
   return true;
 }

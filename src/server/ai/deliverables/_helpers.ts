@@ -37,7 +37,7 @@ export function normalizeHex(input: string | null | undefined): string {
   return DEFAULT_BRAND_HEX;
 }
 
-export { formatCurrency } from "@/lib/currency";
+export { formatCurrency, formatCurrencyCompact } from "@/lib/currency";
 
 /** ISO-8601 date string formatted for a doc cover page. */
 export function formatDateISO(d: Date = new Date()): string {

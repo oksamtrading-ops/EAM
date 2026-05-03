@@ -49,9 +49,11 @@ For each of ELIMINATE, MIGRATE, INVEST, TOLERATE, produce four fields:
 
 ## RULES
 
-- Numbers must be quoted verbatim from the input. If the input
-  says "$2.8M", use that exact string. Do not round, abbreviate,
-  or recompute.
+- Every dollar amount must appear in the input. The input gives
+  each cost in BOTH long-form ("£8,400,000") and compact-form
+  ("£8.4M") — pick whichever reads more naturally in your prose
+  (compact-form is preferred for headlines and prose; long-form
+  for detail). Do not round, recompute, or invent numbers.
 - Application names and vendor names must come from the input's
   top5 lists.
 - Third-person consulting prose. Active verbs, present tense.
