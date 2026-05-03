@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   const user = await db.user.findUnique({
     where: { clerkId: userId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, email: true },
   });
   if (!user) return new Response("User not found", { status: 401 });
 
@@ -99,10 +99,13 @@ export async function POST(req: Request) {
           },
         });
       } else {
+        const engagementCode = `${slugify(workspace.name).toUpperCase().slice(0, 12)}-${today.slice(0, 7)}`;
         const result = await buildPortfolioSnapshotReport({
           clientName,
           brandHex: workspace.brandColor,
           preparedBy: user.name,
+          engagementCode,
+          contactLine: user.email ?? null,
           metrics,
         });
         const filename = `${slugify(clientName)}-portfolio-snapshot-${today}.docx`;

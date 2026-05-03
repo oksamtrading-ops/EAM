@@ -76,6 +76,44 @@ export type RationalizationMetrics = {
     annualCostUsd: number;
   }>;
   classifyFirst: ClassifyHint[];
+
+  // ─── Snapshot-tier aggregates (v2.0) ─────────────────────────
+  // Pure derivations from the data already fetched. Used by the
+  // Portfolio Snapshot Report to surface buried headlines.
+
+  /** PHASING_OUT + RETIRED — the run-cost most likely to slip. */
+  phasingOut: {
+    count: number;
+    annualCostUsd: number;
+    shareOfTotal: number;
+  };
+  /** Conservative split: vendor null/empty/internal-tag = in-house. */
+  sourcing: {
+    inHouse: { count: number; annualCostUsd: number };
+    thirdParty: { count: number; annualCostUsd: number };
+    inHouseShare: number;
+  };
+  /** Vendors with ≥2 apps — the multi-product exposure story. */
+  multiProductVendors: Array<{
+    vendor: string;
+    count: number;
+    annualCostUsd: number;
+    apps: Array<{ name: string; capabilityNames: string[] }>;
+  }>;
+  /** Top-N concentration ratios for the Cost Overview headline. */
+  topNConcentration: {
+    top3Share: number;
+    top10Share: number;
+  };
+  /** Apps with no capability mappings — blocks redundancy analysis. */
+  capabilityGap: {
+    unmappedAppCount: number;
+    unmappedAnnualCostUsd: number;
+    topCostlyOrphans: AppSummary[];
+  };
+  /** Largest single-vendor concentration. */
+  vendorTopName: string;
+  vendorTopShare: number;
 };
 
 export type RationalizationDocxInput = {

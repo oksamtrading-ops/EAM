@@ -59,14 +59,25 @@ export async function computeRationalizationMetrics(
     { count: number; annualCostUsd: number; apps: AppSummary[] }
   >;
 
+  // Single predicate used by both the classified-counter and the
+  // unclassified filter below. Previous version used `!status` for
+  // unclassified, which diverged from this predicate when `status`
+  // was a truthy non-bucket value (legacy enum, typo, etc.) — apps
+  // were counted as "not classified" by classifiedApps but excluded
+  // from the unclassified list, leaving classifyFirst empty even
+  // though coverage was 0%. That triggered the inverted "ready for
+  // full plan" message in the snapshot.
+  const isClassified = (status: string | null) =>
+    !!status && status in buckets;
+
   let activeApps = 0;
   let classifiedApps = 0;
 
   for (const app of apps) {
     if (app.lifecycle === "ACTIVE") activeApps++;
-    const status = app.rationalizationStatus;
-    if (status && status in buckets) {
+    if (isClassified(app.rationalizationStatus)) {
       const summary = summarize(app);
+      const status = app.rationalizationStatus as string;
       buckets[status]!.count++;
       buckets[status]!.annualCostUsd += summary.annualCostUsd;
       buckets[status]!.apps.push(summary);
@@ -162,7 +173,7 @@ export async function computeRationalizationMetrics(
   // Portfolio Snapshot Report when classification coverage is low.
   type ClassifyHint = AppSummary & { reason: string };
   const unclassified = allAppSummaries.filter(
-    (a) => !a.rationalizationStatus
+    (a) => !isClassified(a.rationalizationStatus)
   );
   const classifyFirst: ClassifyHint[] = [];
 
@@ -227,6 +238,126 @@ export async function computeRationalizationMetrics(
   const coverageRatio =
     apps.length > 0 ? classifiedApps / apps.length : 0;
 
+  // ─── Snapshot-tier aggregates (v2.0) ─────────────────────────
+
+  const phasingOutLifecycles = new Set(["PHASING_OUT", "RETIRED"]);
+  const phasingOutApps = allAppSummaries.filter((a) =>
+    phasingOutLifecycles.has(a.lifecycle)
+  );
+  const phasingOutCost = phasingOutApps.reduce(
+    (s, a) => s + a.annualCostUsd,
+    0
+  );
+  const phasingOut = {
+    count: phasingOutApps.length,
+    annualCostUsd: phasingOutCost,
+    shareOfTotal:
+      totalAnnualCostUsd > 0 ? phasingOutCost / totalAnnualCostUsd : 0,
+  };
+
+  // Sourcing split — conservative regex; ambiguous vendors stay
+  // third-party so we don't over-claim in-house spend.
+  const inHousePattern =
+    /^\s*(in[\s-]?house|internal|bespoke|custom|self[\s-]?built|home[\s-]?grown)/i;
+  const isInHouse = (vendor: string | null) => {
+    const v = (vendor ?? "").trim();
+    if (!v) return true;
+    return inHousePattern.test(v);
+  };
+  const inHouseApps = allAppSummaries.filter((a) => isInHouse(a.vendor));
+  const thirdPartyApps = allAppSummaries.filter(
+    (a) => !isInHouse(a.vendor)
+  );
+  const inHouseCost = inHouseApps.reduce(
+    (s, a) => s + a.annualCostUsd,
+    0
+  );
+  const thirdPartyCost = thirdPartyApps.reduce(
+    (s, a) => s + a.annualCostUsd,
+    0
+  );
+  const sourcing = {
+    inHouse: {
+      count: inHouseApps.length,
+      annualCostUsd: inHouseCost,
+    },
+    thirdParty: {
+      count: thirdPartyApps.length,
+      annualCostUsd: thirdPartyCost,
+    },
+    inHouseShare:
+      totalAnnualCostUsd > 0 ? inHouseCost / totalAnnualCostUsd : 0,
+  };
+
+  // Multi-product vendor exposure — vendors appearing on ≥2 apps.
+  const multiVendorMap = new Map<
+    string,
+    {
+      vendor: string;
+      count: number;
+      annualCostUsd: number;
+      apps: Array<{ name: string; capabilityNames: string[] }>;
+    }
+  >();
+  for (const a of allAppSummaries) {
+    const v = a.vendor?.trim();
+    if (!v) continue; // in-house aggregated separately
+    const entry = multiVendorMap.get(v) ?? {
+      vendor: v,
+      count: 0,
+      annualCostUsd: 0,
+      apps: [],
+    };
+    entry.count++;
+    entry.annualCostUsd += a.annualCostUsd;
+    entry.apps.push({
+      name: a.name,
+      capabilityNames: a.capabilityNames,
+    });
+    multiVendorMap.set(v, entry);
+  }
+  const multiProductVendors = Array.from(multiVendorMap.values())
+    .filter((e) => e.count >= 2)
+    .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
+    .slice(0, 5);
+
+  // Top-N concentration ratios.
+  const sortedCosts = allAppSummaries
+    .map((a) => a.annualCostUsd)
+    .sort((a, b) => b - a);
+  const sumTop = (n: number) =>
+    sortedCosts.slice(0, n).reduce((s, c) => s + c, 0);
+  const topNConcentration = {
+    top3Share:
+      totalAnnualCostUsd > 0 ? sumTop(3) / totalAnnualCostUsd : 0,
+    top10Share:
+      totalAnnualCostUsd > 0 ? sumTop(10) / totalAnnualCostUsd : 0,
+  };
+
+  // Capability coverage gap — apps with no capability mappings.
+  const orphanedApps = allAppSummaries.filter(
+    (a) => a.capabilityNames.length === 0
+  );
+  const capabilityGap = {
+    unmappedAppCount: orphanedApps.length,
+    unmappedAnnualCostUsd: orphanedApps.reduce(
+      (s, a) => s + a.annualCostUsd,
+      0
+    ),
+    topCostlyOrphans: orphanedApps
+      .slice()
+      .sort(sortByCostDesc)
+      .slice(0, 5),
+  };
+
+  // Largest single-vendor concentration (for KPI tile + risk row).
+  const topVendor = vendorConcentration[0];
+  const vendorTopName = topVendor?.vendor ?? "—";
+  const vendorTopShare =
+    topVendor && totalAnnualCostUsd > 0
+      ? topVendor.annualCostUsd / totalAnnualCostUsd
+      : 0;
+
   return {
     totalApps: apps.length,
     activeApps,
@@ -248,5 +379,12 @@ export async function computeRationalizationMetrics(
     lifecycleDistribution,
     vendorConcentration,
     classifyFirst,
+    phasingOut,
+    sourcing,
+    multiProductVendors,
+    topNConcentration,
+    capabilityGap,
+    vendorTopName,
+    vendorTopShare,
   };
 }
