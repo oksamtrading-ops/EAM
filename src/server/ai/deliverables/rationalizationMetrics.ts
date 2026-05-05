@@ -2,6 +2,37 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { RationalizationMetrics } from "./buildRationalizationDocx";
 
+/** Vendor parent aliases — collapse umbrella names to the
+ *  negotiating-counterparty level. This is the difference between
+ *  Deloitte-tier and BCG-tier vendor analysis: the headline
+ *  single-vendor lever in any automotive/industrial portfolio is
+ *  the parent group, not the product line. */
+const VENDOR_ALIASES: Array<{ pattern: RegExp; parent: string }> = [
+  { pattern: /^siemens(\s+digital\s+industries)?$/i, parent: "Siemens" },
+  { pattern: /^dassault\s+syst[eè]mes(\s+\([^)]+\))?$/i, parent: "Dassault Systèmes" },
+  { pattern: /^delmia(\s+\([^)]+\))?$/i, parent: "Dassault Systèmes" },
+  { pattern: /^microsoft(\s+\w+)*$/i, parent: "Microsoft" },
+  { pattern: /^salesforce(\.com)?(\s+\w+)*$/i, parent: "Salesforce" },
+  { pattern: /^sap(\s+\w+)*$/i, parent: "SAP" },
+  { pattern: /^oracle(\s+\w+)*$/i, parent: "Oracle" },
+  { pattern: /^ibm(\s+\w+)*$/i, parent: "IBM" },
+  { pattern: /^aws|^amazon\s+web\s+services$/i, parent: "AWS" },
+  { pattern: /^google\s+cloud|^gcp$/i, parent: "Google Cloud" },
+  { pattern: /^adobe(\s+\w+)*$/i, parent: "Adobe" },
+  { pattern: /^servicenow(\s+\w+)*$/i, parent: "ServiceNow" },
+  { pattern: /^workday(\s+\w+)*$/i, parent: "Workday" },
+];
+
+/** Collapse a vendor string to its negotiating-counterparty parent
+ *  group. Returns the input trimmed when no alias matches. */
+function resolveVendorParent(vendor: string): string {
+  const trimmed = vendor.trim();
+  for (const alias of VENDOR_ALIASES) {
+    if (alias.pattern.test(trimmed)) return alias.parent;
+  }
+  return trimmed;
+}
+
 /**
  * Compute deterministic rationalization metrics for a workspace.
  * Shared between the `application.getRationalizationMetrics` tRPC
@@ -149,12 +180,16 @@ export async function computeRationalizationMetrics(
     lifecycleDistribution[key]!.annualCostUsd += a.annualCostUsd;
   }
 
+  // Vendor concentration aggregated by parent group via aliases —
+  // matches the multiProductVendors rollup so the same Siemens
+  // umbrella appears in both views.
   const vendorMap = new Map<
     string,
     { vendor: string; count: number; annualCostUsd: number }
   >();
   for (const a of allAppSummaries) {
-    const v = a.vendor?.trim() || "(unknown)";
+    const raw = a.vendor?.trim() || "(unknown)";
+    const v = raw === "(unknown)" ? raw : resolveVendorParent(raw);
     const entry = vendorMap.get(v) ?? {
       vendor: v,
       count: 0,
@@ -289,7 +324,8 @@ export async function computeRationalizationMetrics(
       totalAnnualCostUsd > 0 ? inHouseCost / totalAnnualCostUsd : 0,
   };
 
-  // Multi-product vendor exposure — vendors appearing on ≥2 apps.
+  // Multi-product vendor exposure — vendors appearing on ≥2 apps,
+  // aggregated by parent group via the module-level aliases.
   const multiVendorMap = new Map<
     string,
     {
@@ -302,8 +338,10 @@ export async function computeRationalizationMetrics(
   for (const a of allAppSummaries) {
     const v = a.vendor?.trim();
     if (!v) continue; // in-house aggregated separately
-    const entry = multiVendorMap.get(v) ?? {
-      vendor: v,
+    if (isInHouse(a.vendor)) continue; // skip in-house pseudo-vendors
+    const parent = resolveVendorParent(v);
+    const entry = multiVendorMap.get(parent) ?? {
+      vendor: parent,
       count: 0,
       annualCostUsd: 0,
       apps: [],
@@ -314,7 +352,7 @@ export async function computeRationalizationMetrics(
       name: a.name,
       capabilityNames: a.capabilityNames,
     });
-    multiVendorMap.set(v, entry);
+    multiVendorMap.set(parent, entry);
   }
   const multiProductVendors = Array.from(multiVendorMap.values())
     .filter((e) => e.count >= 2)

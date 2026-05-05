@@ -51,6 +51,15 @@ import {
   renderSectionDivider,
 } from "./_helpers";
 import { T, TONE, type Tone } from "./tokens";
+import {
+  buildTimeQuadrantChart,
+  bvToScore,
+  thToScore,
+  type QuadrantPoint,
+} from "./charts/buildTimeQuadrantChart";
+import { buildLifecycleDonut } from "./charts/buildLifecycleDonut";
+import { buildVendorPareto } from "./charts/buildVendorPareto";
+import { buildSavingsWaterfall } from "./charts/buildSavingsWaterfall";
 
 export const RATIONALIZATION_TEMPLATE_VERSION = "3.0";
 export const RATIONALIZATION_TEMPLATE_LABEL = `EAM Rationalization Template v${RATIONALIZATION_TEMPLATE_VERSION}`;
@@ -218,21 +227,128 @@ export async function buildRationalizationDocx(
     input.clientName
   );
 
-  // Four LLM calls in parallel:
-  //   - Five Key Findings (synthesis layer)
-  //   - Executive Summary
-  //   - Bucket Narratives (1 call, all 4 buckets)
-  //   - Per-app Deep Dives (1 call, top 5 by cost)
-  // All four go through the same fact-grounding tolerance check.
-  // Cost ceiling per generation: ~$0.20 on Sonnet. All four have
-  // deterministic fallbacks; X-Llm-Source aggregates the worst.
-  const [execSummary, bucketNarratives, keyFindings, deepDives] =
-    await Promise.all([
-      generateExecutiveSummary(facts),
-      generateBucketNarratives(bucketFacts, m, fmt),
-      generateKeyFindings(keyFindingsFacts, fmt, fmtCompact, m),
-      generateDeepDives(deepDivesFacts),
-    ]);
+  // Build chart inputs from metrics. Charts are deterministic;
+  // they render in parallel with the LLM calls below.
+  const quadrantPoints: QuadrantPoint[] = [
+    ...(m.byClassification.ELIMINATE?.apps ?? []),
+    ...(m.byClassification.MIGRATE?.apps ?? []),
+    ...(m.byClassification.INVEST?.apps ?? []),
+    ...(m.byClassification.TOLERATE?.apps ?? []),
+  ].map((a) => ({
+    x: bvToScore(a.businessValue),
+    y: thToScore(a.technicalHealth),
+    label: a.name,
+    size: a.annualCostUsd,
+    disposition: a.rationalizationStatus as
+      | "ELIMINATE"
+      | "MIGRATE"
+      | "INVEST"
+      | "TOLERATE",
+  }));
+
+  const lifecycleSegments = Object.entries(m.lifecycleDistribution)
+    .map(([key, v]) => ({
+      label: key,
+      count: v.count,
+      cost: v.annualCostUsd,
+      tone: lifecycleToTone(key),
+    }))
+    .sort((a, b) => b.cost - a.cost);
+
+  const vendorBars = m.vendorConcentration.map((v) => ({
+    vendor: v.vendor,
+    cost: v.annualCostUsd,
+    appCount: v.count,
+  }));
+
+  // Four LLM calls + four chart renders in parallel.
+  //   LLM:
+  //     - Five Key Findings (synthesis layer)
+  //     - Executive Summary
+  //     - Bucket Narratives (1 call, all 4 buckets)
+  //     - Per-app Deep Dives (1 call, top 5 by cost)
+  //   Charts (resvg-wasm, ~50-200ms each, embarrassingly parallel):
+  //     - TIME 2×2 scatter
+  //     - Lifecycle donut
+  //     - Vendor Pareto
+  //     - Savings waterfall
+  // All eight kicked off in one Promise.all. LLM cost ceiling per
+  // generation: ~$0.20 on Sonnet. All LLM calls have deterministic
+  // fallbacks; X-Llm-Source aggregates the worst.
+  const [
+    execSummary,
+    bucketNarratives,
+    keyFindings,
+    deepDives,
+    timeQuadrantChart,
+    lifecycleDonutChart,
+    vendorParetoChart,
+    savingsWaterfallChart,
+  ] = await Promise.all([
+    generateExecutiveSummary(facts),
+    generateBucketNarratives(bucketFacts, m, fmt),
+    generateKeyFindings(keyFindingsFacts, fmt, fmtCompact, m),
+    generateDeepDives(deepDivesFacts),
+    buildTimeQuadrantChart({ points: quadrantPoints, brandHex }).catch(
+      (err: unknown) => {
+        console.warn(
+          JSON.stringify({
+            evt: "chart_render_error",
+            chart: "time_quadrant",
+            message: err instanceof Error ? err.message : String(err),
+          })
+        );
+        return null;
+      }
+    ),
+    buildLifecycleDonut({
+      segments: lifecycleSegments,
+      totalCost: m.totalAnnualCostUsd,
+      totalApps: m.totalApps,
+      costCurrency: m.costCurrency,
+      brandHex,
+    }).catch((err: unknown) => {
+      console.warn(
+        JSON.stringify({
+          evt: "chart_render_error",
+          chart: "lifecycle_donut",
+          message: err instanceof Error ? err.message : String(err),
+        })
+      );
+      return null;
+    }),
+    buildVendorPareto({
+      vendors: vendorBars,
+      totalCost: m.totalAnnualCostUsd,
+      costCurrency: m.costCurrency,
+      brandHex,
+    }).catch((err: unknown) => {
+      console.warn(
+        JSON.stringify({
+          evt: "chart_render_error",
+          chart: "vendor_pareto",
+          message: err instanceof Error ? err.message : String(err),
+        })
+      );
+      return null;
+    }),
+    buildSavingsWaterfall({
+      totalAnnualCostUsd: m.totalAnnualCostUsd,
+      eliminate3yrUsd: m.projectedSavings.eliminate3yrUsd,
+      migrate3yrUsd: m.projectedSavings.migrate3yrUsd,
+      costCurrency: m.costCurrency,
+      brandHex,
+    }).catch((err: unknown) => {
+      console.warn(
+        JSON.stringify({
+          evt: "chart_render_error",
+          chart: "savings_waterfall",
+          message: err instanceof Error ? err.message : String(err),
+        })
+      );
+      return null;
+    }),
+  ]);
 
   // Aggregate llmSource: "llm" when all four passed; "deterministic_
   // fallback" when all four failed; "partial_fallback" otherwise.
@@ -375,6 +491,13 @@ export async function buildRationalizationDocx(
       ],
     })
   );
+
+  // Lifecycle donut chart — visual summary of the portfolio's
+  // disposition pressure. Anchors the synthesis layer with the
+  // first chart a partner-skim reader sees.
+  if (lifecycleDonutChart) {
+    children.push(lifecycleDonutChart);
+  }
 
   // ─── Five Key Findings ─────────────────────────────────────
   children.push(
@@ -524,6 +647,13 @@ export async function buildRationalizationDocx(
       brandHex
     )
   );
+  // TIME 2×2 scatter chart — bubble per app, size = annual cost,
+  // quadrant tints by disposition. Replaces the v2 text-table
+  // rendering (which we keep below as a print/accessibility
+  // fallback so screen readers still see the app placements).
+  if (timeQuadrantChart) {
+    children.push(timeQuadrantChart);
+  }
   children.push(buildQuadrantTable(m, brandHex));
   children.push(
     new Paragraph({
@@ -540,7 +670,14 @@ export async function buildRationalizationDocx(
   );
 
   // ─── Vendor & Sourcing Analysis ────────────────────────────
-  pushVendorSourcingSection(children, m, fmt, fmtCompact, brandHex);
+  pushVendorSourcingSection(
+    children,
+    m,
+    fmt,
+    fmtCompact,
+    brandHex,
+    vendorParetoChart
+  );
 
   // ─── Redundancy Map ────────────────────────────────────────
   children.push(
@@ -714,6 +851,12 @@ export async function buildRationalizationDocx(
       brandHex
     )
   );
+  // Savings waterfall — shows the three-year run-cost reduction as
+  // a budget reconciliation: baseline → ELIMINATE avoidance →
+  // MIGRATE avoidance → net post-programme spend.
+  if (savingsWaterfallChart) {
+    children.push(savingsWaterfallChart);
+  }
   children.push(
     buildTable({
       headers: ["Component", "3-year savings", "Basis"],
@@ -1404,7 +1547,8 @@ function pushVendorSourcingSection(
   m: RationalizationMetrics,
   fmt: (n: number) => string,
   fmtCompact: (n: number) => string,
-  brandHex: string
+  brandHex: string,
+  paretoChart: Paragraph | null
 ): void {
   children.push(
     buildHeading(
@@ -1530,6 +1674,9 @@ function pushVendorSourcingSection(
         brandHex
       )
     );
+    if (paretoChart) {
+      children.push(paretoChart);
+    }
     children.push(
       buildTable({
         headers: ["Vendor", "Apps", "Annual cost", "% of total"],
