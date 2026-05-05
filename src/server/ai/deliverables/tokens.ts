@@ -30,6 +30,7 @@ export const T = {
   tocEntry: 24, // 12pt — TOC entries
   tocPageNumber: 22, // 11pt — TOC page number column
   disclaimer: 22, // 11pt italic grey — inside-cover disclaimer
+  heatmapValue: 22, // 11pt — count overlay in heatmap cells
 } as const;
 
 // ─── Spacing (twentieths-of-a-point, "twips") ────────────────
@@ -66,4 +67,34 @@ export const LIFECYCLE_TONE: Record<string, Tone> = {
   RETIRED: "danger",
   PLANNED: "info",
   SUNSET: "danger",
+};
+
+/** Maturity-level → tone mapping for status pills. Tones progress
+ *  from danger (lowest) → success (mid) → auth (highest) so the
+ *  visual heat reads as "lift required" left-to-right. The OPTIMIZING
+ *  tone uses auth (violet) to signal "leading-edge / rare," distinct
+ *  from the success tone of MANAGED so readers can see the gap
+ *  between baseline competence (MANAGED) and industry-leading
+ *  (OPTIMIZING). NOT_ASSESSED gets info (neutral) — explicitly not
+ *  danger, since unknown ≠ failing. */
+export const MATURITY_TONE: Record<string, Tone> = {
+  INITIAL: "danger",
+  DEVELOPING: "warn",
+  DEFINED: "info",
+  MANAGED: "success",
+  OPTIMIZING: "auth",
+  NOT_ASSESSED: "info",
+};
+
+/** Strategic-importance → tone mapping. Separate scale from
+ *  maturity. CRITICAL and HIGH read as urgency-tier on unfilled
+ *  gaps. LOW reads as "success" because LOW importance + high
+ *  maturity = over-served signal worth surfacing in the Reassess
+ *  Strategy band. */
+export const IMPORTANCE_TONE: Record<string, Tone> = {
+  CRITICAL: "danger",
+  HIGH: "warn",
+  MEDIUM: "info",
+  LOW: "success",
+  NOT_ASSESSED: "info",
 };

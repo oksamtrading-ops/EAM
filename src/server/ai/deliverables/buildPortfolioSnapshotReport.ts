@@ -13,8 +13,8 @@ import {
   WidthType,
 } from "docx";
 import {
-  actionTitle,
-  brandedHeading,
+  buildActionTitle,
+  buildHeading,
   buildCallout,
   buildKpiRow,
   buildStatusPillCell,
@@ -94,7 +94,7 @@ export async function buildPortfolioSnapshotReport(
 
   // ─── 2. Portfolio at a Glance — KPI tile row ─────────────────
   children.push(
-    brandedHeading("Portfolio at a Glance", HeadingLevel.HEADING_1, brandHex, {
+    buildHeading("Portfolio at a Glance", HeadingLevel.HEADING_1, brandHex, {
       spacingBefore: 0,
     })
   );
@@ -133,7 +133,7 @@ export async function buildPortfolioSnapshotReport(
 
   // ─── 3. Executive Summary — Pyramid Principle ────────────────
   children.push(
-    brandedHeading("Executive Summary", HeadingLevel.HEADING_1, brandHex)
+    buildHeading("Executive Summary", HeadingLevel.HEADING_1, brandHex)
   );
   // Lead with the finding, not the meta description.
   const phasingOutShare = Math.round(m.phasingOut.shareOfTotal * 100);
@@ -217,7 +217,7 @@ export async function buildPortfolioSnapshotReport(
   children.push(spacer());
 
   // ─── 5. Cost Overview ────────────────────────────────────────
-  children.push(brandedHeading("Cost Overview", HeadingLevel.HEADING_1, brandHex));
+  children.push(buildHeading("Cost Overview", HeadingLevel.HEADING_1, brandHex));
   const top10Share = Math.round(m.topNConcentration.top10Share * 100);
   const phasingInTop10 = m.topAppsByCost.filter(
     (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
@@ -239,7 +239,7 @@ export async function buildPortfolioSnapshotReport(
     );
   } else {
     children.push(
-      actionTitle(
+      buildActionTitle(
         phasingInTop10.length >= 1
           ? `The top 10 applications carry ${fmt(m.topAppsByCost.reduce((s, a) => s + a.annualCostUsd, 0))} (${top10Share}%) of annual run-cost; ${phasingInTop10.length} of them are PHASING_OUT or RETIRED, concentrating ${fmt(phasingInTop10Cost)} on a sunset path with no end date set.`
           : `The top 10 applications carry ${fmt(m.topAppsByCost.reduce((s, a) => s + a.annualCostUsd, 0))} (${top10Share}%) of annual run-cost; spend optimization on this decile alone touches the majority of the portfolio.`,
@@ -271,7 +271,7 @@ export async function buildPortfolioSnapshotReport(
 
   // ─── 6. Lifecycle Distribution ───────────────────────────────
   children.push(
-    brandedHeading("Lifecycle Distribution", HeadingLevel.HEADING_1, brandHex)
+    buildHeading("Lifecycle Distribution", HeadingLevel.HEADING_1, brandHex)
   );
   const lifecycleEntries = Object.entries(m.lifecycleDistribution).sort(
     (a, b) => b[1].annualCostUsd - a[1].annualCostUsd
@@ -287,14 +287,14 @@ export async function buildPortfolioSnapshotReport(
     if (m.phasingOut.count > 0) {
       const quarterlySlip = m.phasingOut.annualCostUsd / 4;
       children.push(
-        actionTitle(
+        buildActionTitle(
           `${m.phasingOut.count} PHASING_OUT or RETIRED application${m.phasingOut.count === 1 ? "" : "s"} carry ${fmt(m.phasingOut.annualCostUsd)} in run-cost (${phasingOutShare}% of total). A single-quarter slip on the retirement calendar leaks ${fmt(quarterlySlip)} into the next fiscal year.`,
           brandHex
         )
       );
     } else {
       children.push(
-        actionTitle(
+        buildActionTitle(
           `Every application sits in ACTIVE or PLANNED lifecycle; no immediate retirement queue. The portfolio's optimization lever is consolidation, not retirement.`,
           brandHex
         )
@@ -314,7 +314,7 @@ export async function buildPortfolioSnapshotReport(
 
   // ─── 7. Vendor & Sourcing Analysis ───────────────────────────
   children.push(
-    brandedHeading(
+    buildHeading(
       "Vendor & Sourcing Analysis",
       HeadingLevel.HEADING_1,
       brandHex
@@ -332,7 +332,7 @@ export async function buildPortfolioSnapshotReport(
       .map((v) => v.vendor)
       .join(", ");
     children.push(
-      actionTitle(
+      buildActionTitle(
         `${fmt(multiCost)} of run-cost concentrates in ${m.multiProductVendors.length} multi-product vendor${m.multiProductVendors.length === 1 ? "" : "s"} (${multiNames}); a single commercial event with any one of them materially impacts multiple capability areas at once.`,
         brandHex
       )
@@ -368,11 +368,11 @@ export async function buildPortfolioSnapshotReport(
   ) {
     const inHousePct = Math.round(m.sourcing.inHouseShare * 100);
     children.push(
-      brandedHeading("Sourcing split", HeadingLevel.HEADING_2, brandHex)
+      buildHeading("Sourcing split", HeadingLevel.HEADING_2, brandHex)
     );
     if (m.sourcing.inHouse.annualCostUsd > 0) {
       children.push(
-        actionTitle(
+        buildActionTitle(
           `${fmt(m.sourcing.inHouse.annualCostUsd)} (${inHousePct}%) of annual spend is in-house-built across ${m.sourcing.inHouse.count} system${m.sourcing.inHouse.count === 1 ? "" : "s"}; without per-capability allocation this spend is invisible to vendor-driven optimization levers.`,
           brandHex
         )
@@ -412,11 +412,11 @@ export async function buildPortfolioSnapshotReport(
   // 7c. Top vendor concentration (existing flat list)
   if (m.vendorConcentration.length > 0) {
     children.push(
-      brandedHeading("Top vendors by run-cost", HeadingLevel.HEADING_2, brandHex)
+      buildHeading("Top vendors by run-cost", HeadingLevel.HEADING_2, brandHex)
     );
     const topVendor = m.vendorConcentration[0]!;
     children.push(
-      actionTitle(
+      buildActionTitle(
         `Single-vendor exposure of ${fmt(topVendor.annualCostUsd)} (${pctOf(topVendor.annualCostUsd, m.totalAnnualCostUsd)}%) on ${topVendor.vendor} requires contract-cliff analysis before any commercial decision is delegated.`,
         brandHex
       )
@@ -446,14 +446,14 @@ export async function buildPortfolioSnapshotReport(
   // ─── 8. Capability Coverage Gap (skipped if no orphans) ──────
   if (m.capabilityGap.unmappedAppCount > 0) {
     children.push(
-      brandedHeading(
+      buildHeading(
         "Capability Coverage Gap",
         HeadingLevel.HEADING_1,
         brandHex
       )
     );
     children.push(
-      actionTitle(
+      buildActionTitle(
         `${m.capabilityGap.unmappedAppCount} application${m.capabilityGap.unmappedAppCount === 1 ? "" : "s"} carrying ${fmt(m.capabilityGap.unmappedAnnualCostUsd)} in annual run-cost have no capability mapping. Until they're mapped, the redundancy and consolidation analyses that drive savings cannot run.`,
         brandHex
       )
@@ -478,7 +478,7 @@ export async function buildPortfolioSnapshotReport(
 
   // ─── 9. Recommended Next Steps — bug fixed ───────────────────
   children.push(
-    brandedHeading(
+    buildHeading(
       "Recommended Next Steps",
       HeadingLevel.HEADING_1,
       brandHex
@@ -490,7 +490,7 @@ export async function buildPortfolioSnapshotReport(
     // contradicted the cover-page coverage callout when coverage
     // was 0%. New copy is factually correct in every case.
     children.push(
-      actionTitle(
+      buildActionTitle(
         unclassifiedCount === 0
           ? `Every active application carries a TIME disposition. Re-run as a full Rationalization Plan to unlock the bucket narratives, redundancy mapping, and decommission roadmap.`
           : `Disposition decisions remain outstanding on ${unclassifiedCount} application${unclassifiedCount === 1 ? "" : "s"}. Classify the highest-cost active applications first to unlock the full rationalization plan.`,
@@ -499,7 +499,7 @@ export async function buildPortfolioSnapshotReport(
     );
   } else {
     children.push(
-      actionTitle(
+      buildActionTitle(
         `Classifying the ${m.classifyFirst.length} application${m.classifyFirst.length === 1 ? "" : "s"} below — sequenced by retirement urgency and cost — closes the largest gap in disposition coverage and unlocks the full plan.`,
         brandHex
       )
@@ -573,7 +573,7 @@ export async function buildPortfolioSnapshotReport(
   }
   if (riskRows.length > 0) {
     children.push(
-      brandedHeading("Risks & Watchouts", HeadingLevel.HEADING_1, brandHex)
+      buildHeading("Risks & Watchouts", HeadingLevel.HEADING_1, brandHex)
     );
     children.push(
       buildCallout({
@@ -599,7 +599,7 @@ export async function buildPortfolioSnapshotReport(
 
   // ─── 11. Methodology ─────────────────────────────────────────
   children.push(
-    brandedHeading(
+    buildHeading(
       "Methodology and Data Sources",
       HeadingLevel.HEADING_1,
       brandHex

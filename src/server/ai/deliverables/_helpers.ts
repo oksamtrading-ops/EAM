@@ -15,7 +15,15 @@ import {
   ImageRun,
   type IShadingAttributesProperties,
 } from "docx";
-import { T, TONE, TONE_TINT, LIFECYCLE_TONE, type Tone } from "./tokens";
+import {
+  T,
+  TONE,
+  TONE_TINT,
+  LIFECYCLE_TONE,
+  MATURITY_TONE,
+  IMPORTANCE_TONE,
+  type Tone,
+} from "./tokens";
 
 /** Default brand color when the workspace hasn't set one. Matches
  *  the platform's --ai token (violet). docx wants hex without `#`. */
@@ -917,15 +925,108 @@ export function lifecycleToTone(lifecycle: string): Tone {
   return LIFECYCLE_TONE[lifecycle] ?? "info";
 }
 
-// ─── Back-compat aliases (deprecated) ────────────────────────
-// Preserve callers that imported the pre-rename names. New code
-// uses buildActionTitle / buildHeading (build* convention). Drop
-// these aliases in the next release.
+/** Map a maturity-level enum (INITIAL / DEVELOPING / DEFINED /
+ *  MANAGED / OPTIMIZING / NOT_ASSESSED) to a Tone. Used by the
+ *  capability maturity deliverable's status pills + heatmap fills. */
+export function maturityToTone(level: string | null | undefined): Tone {
+  if (!level) return "info";
+  return MATURITY_TONE[level] ?? "info";
+}
 
-/** @deprecated Use `buildActionTitle` instead. */
-export const actionTitle = buildActionTitle;
-/** @deprecated Use `buildHeading` instead. */
-export const brandedHeading = buildHeading;
+/** Map a strategic-importance enum (CRITICAL / HIGH / MEDIUM /
+ *  LOW / NOT_ASSESSED) to a Tone. Note: LOW maps to success — that's
+ *  intentional for the Reassess Strategy band where LOW + high
+ *  maturity surfaces as "over-served." */
+export function importanceToTone(
+  importance: string | null | undefined
+): Tone {
+  if (!importance) return "info";
+  return IMPORTANCE_TONE[importance] ?? "info";
+}
+
+/** Heatmap cell — a TableCell tinted by a numeric intensity (0-1)
+ *  with the count overlaid. Used by importance × maturity 2×2 +
+ *  L1 maturity heatmap charts (rendered via the SVG pipeline) AND
+ *  by tabular heatmap representations inside docx tables. The
+ *  same primitive serves both rendering paths.
+ *
+ *  Tint depth scales with `count / maxCount` so cells with
+ *  high concentration read as denser. Empty cells (`count == 0`)
+ *  render as a faint background with a "—" placeholder. */
+export function buildHeatmapCell(opts: {
+  count: number;
+  maxCount: number;
+  brandHex: string;
+  /** Optional tone override; default uses brand color for the tint. */
+  tone?: Tone;
+}): TableCell {
+  const noBorder = {
+    style: BorderStyle.NONE,
+    size: 0,
+    color: "FFFFFF",
+  };
+  const baseColor = opts.tone ? TONE[opts.tone] : opts.brandHex;
+  // Empty cell: faint background, em-dash placeholder.
+  if (opts.count === 0 || opts.maxCount === 0) {
+    return new TableCell({
+      shading: { fill: "FAFAFA" },
+      borders: {
+        top: noBorder,
+        bottom: noBorder,
+        left: noBorder,
+        right: noBorder,
+      },
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 80, after: 80 },
+          children: [
+            new TextRun({
+              text: "—",
+              size: T.heatmapValue,
+              color: "9CA3AF",
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+  // Filled cell: tint depth ∝ count / maxCount.
+  // Range: 0.85 (lightest visible tint) → 0.15 (darkest).
+  const intensity = Math.max(0.05, opts.count / opts.maxCount);
+  const tintAmount = 0.85 - intensity * 0.7; // 0.15 .. 0.85
+  const fill = tintHex(baseColor, tintAmount);
+  // Text contrast: dark text on light tint, white text on dark tint.
+  const textColor = tintAmount < 0.4 ? "FFFFFF" : "1F2937";
+  return new TableCell({
+    shading: { fill },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+    },
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 80 },
+        children: [
+          new TextRun({
+            text: String(opts.count),
+            bold: true,
+            size: T.heatmapValue,
+            color: textColor,
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+// Deprecated aliases (`actionTitle`, `brandedHeading`) removed
+// in this release after sweeping all call sites to the canonical
+// `buildActionTitle` / `buildHeading` names. Naming consistency
+// before scaling to the second deliverable type.
 
 // ─── Front-matter primitives ─────────────────────────────────
 
