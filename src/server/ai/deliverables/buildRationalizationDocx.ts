@@ -2285,7 +2285,7 @@ type ExecSummaryFacts = {
   costCurrency: string;
 };
 
-function buildExecSummaryFacts(
+export function buildExecSummaryFacts(
   m: RationalizationMetrics,
   fmt: (n: number) => string,
   fmtCompact: (n: number) => string,
@@ -2319,7 +2319,7 @@ function buildExecSummaryFacts(
   };
 }
 
-async function generateExecutiveSummary(
+export async function generateExecutiveSummary(
   facts: ExecSummaryFacts
 ): Promise<{ text: string; source: "llm" | "deterministic_fallback" }> {
   if (facts.classifiedApps === 0) {
@@ -2437,7 +2437,7 @@ type BucketFacts = {
   >;
 };
 
-function buildBucketFacts(
+export function buildBucketFacts(
   m: RationalizationMetrics,
   fmt: (n: number) => string,
   fmtCompact: (n: number) => string,
@@ -2486,7 +2486,7 @@ function buildBucketFacts(
   };
 }
 
-async function generateBucketNarratives(
+export async function generateBucketNarratives(
   facts: BucketFacts,
   m: RationalizationMetrics,
   fmt: (n: number) => string
@@ -2788,7 +2788,7 @@ type KeyFindingsFacts = {
   inHouseShare: string; // "23%"
 };
 
-function buildKeyFindingsFacts(
+export function buildKeyFindingsFacts(
   m: RationalizationMetrics,
   fmt: (n: number) => string,
   fmtCompact: (n: number) => string,
@@ -2853,7 +2853,7 @@ function buildKeyFindingsFacts(
   };
 }
 
-async function generateKeyFindings(
+export async function generateKeyFindings(
   facts: KeyFindingsFacts,
   fmt: (n: number) => string,
   fmtCompact: (n: number) => string,
@@ -3046,7 +3046,7 @@ type DeepDivesFacts = {
   }>;
 };
 
-function buildDeepDivesFacts(
+export function buildDeepDivesFacts(
   m: RationalizationMetrics,
   topApps: AppSummary[],
   fmt: (n: number) => string,
@@ -3090,7 +3090,7 @@ function buildDeepDivesFacts(
   };
 }
 
-async function generateDeepDives(
+export async function generateDeepDives(
   facts: DeepDivesFacts
 ): Promise<{
   byId: Record<string, DeepDive>;
