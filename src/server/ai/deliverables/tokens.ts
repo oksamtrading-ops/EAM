@@ -25,6 +25,11 @@ export const T = {
   kpiLabel: 18, // 9pt grey
   footer: 16, // 8pt grey
   pill: 16, // 8pt small-caps tag
+  sectionNumber: 240, // 120pt — section divider page
+  sectionDividerTitle: 72, // 36pt — section divider title
+  tocEntry: 24, // 12pt — TOC entries
+  tocPageNumber: 22, // 11pt — TOC page number column
+  disclaimer: 22, // 11pt italic grey — inside-cover disclaimer
 } as const;
 
 // ─── Spacing (twentieths-of-a-point, "twips") ────────────────

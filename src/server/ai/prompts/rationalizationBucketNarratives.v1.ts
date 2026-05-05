@@ -65,6 +65,14 @@ For each of ELIMINATE, MIGRATE, INVEST, TOLERATE, produce four fields:
   right call, not what's broken.
 - For INVEST: emphasize the strategic case for spending more, not
   the cost. The number is the size of the bet, not the waste.
+- LIFECYCLE-DISPOSITION TENSION: when MIGRATE or ELIMINATE buckets
+  contain apps in PHASING_OUT lifecycle, the whyNow MUST surface
+  the asymmetry — PHASING_OUT × MIGRATE means the capability
+  continues but the app changes; PHASING_OUT × ELIMINATE means the
+  capability retires with the app. This split is the strategic
+  story of the portfolio and a partner reading the doc expects
+  to see it explicitly named. Cite the count from the input
+  (phasingOutCount field per bucket).
 
 ## OUTPUT
 

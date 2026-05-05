@@ -83,7 +83,7 @@ export function renderInline(text: string): TextRun[] {
  *  a number ("Eleven apps drive 38% of run-cost..."), not topic
  *  labels ("Elimination Candidates"). The caller is responsible
  *  for that — this helper just renders. */
-export function actionTitle(text: string, brandHex: string): Paragraph {
+export function buildActionTitle(text: string, brandHex: string): Paragraph {
   return new Paragraph({
     spacing: { before: 80, after: 240 },
     indent: { left: 200 },
@@ -107,7 +107,7 @@ export function actionTitle(text: string, brandHex: string): Paragraph {
 }
 
 /** Build a brand-tinted heading paragraph. */
-export function brandedHeading(
+export function buildHeading(
   text: string,
   level: typeof HeadingLevel[keyof typeof HeadingLevel],
   brandHex: string,
@@ -915,4 +915,240 @@ export function buildStatusPillCell(opts: {
  *  in tokens.ts. Falls back to "info" for unknown lifecycles. */
 export function lifecycleToTone(lifecycle: string): Tone {
   return LIFECYCLE_TONE[lifecycle] ?? "info";
+}
+
+// ─── Back-compat aliases (deprecated) ────────────────────────
+// Preserve callers that imported the pre-rename names. New code
+// uses buildActionTitle / buildHeading (build* convention). Drop
+// these aliases in the next release.
+
+/** @deprecated Use `buildActionTitle` instead. */
+export const actionTitle = buildActionTitle;
+/** @deprecated Use `buildHeading` instead. */
+export const brandedHeading = buildHeading;
+
+// ─── Front-matter primitives ─────────────────────────────────
+
+/** Inside-cover disclaimer page. Single page between cover and
+ *  the synthesis layer. Centered grey italic body at ~40% page
+ *  height. Standard distribution boilerplate; `body` overrides
+ *  for legal teams that want bespoke language.
+ *
+ *  Returns a multi-paragraph block ending with a page break,
+ *  matching the renderCoverPage convention. */
+export function renderInsideCoverDisclaimer(opts: {
+  clientName: string;
+  date: string;
+  body?: string;
+  brandHex: string;
+}): Paragraph[] {
+  const out: Paragraph[] = [];
+  // Top spacer to push content down the page.
+  out.push(
+    new Paragraph({
+      spacing: { before: 4800, after: 0 },
+      children: [],
+    })
+  );
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240 },
+      children: [
+        new TextRun({
+          text: "CONFIDENTIAL",
+          bold: true,
+          size: T.small,
+          color: clampForContrast({ hex: opts.brandHex }),
+          characterSpacing: 40,
+        }),
+      ],
+    })
+  );
+  const body =
+    opts.body ??
+    `Prepared for ${opts.clientName} on ${opts.date}. This deliverable contains strategic recommendations derived from the live application portfolio in the EAM platform. Distribution is restricted to ${opts.clientName} steering committee and engagement team. Page-references in this document are stable for the version published; subsequent re-runs may re-paginate.`;
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240, line: 360 },
+      indent: { left: 1440, right: 1440 },
+      children: [
+        new TextRun({
+          text: body,
+          italics: true,
+          size: T.disclaimer,
+          color: "555555",
+        }),
+      ],
+    })
+  );
+  out.push(
+    new Paragraph({
+      pageBreakBefore: true,
+      children: [new TextRun({ text: "" })],
+    })
+  );
+  return out;
+}
+
+/** Static deterministic Table-of-Contents. Two-column layout
+ *  (title left, page right) with leader dots between. We do NOT
+ *  use Word's auto-TOC because it requires "click to update fields"
+ *  on first open — embarrassing in a deliverable. Page numbers are
+ *  best-guess from the section sequence; an off-by-one is
+ *  acceptable, "click to update" is not.
+ *
+ *  Indent levels: 0 = chapter; 1 = sub-section; 2 = sub-sub. */
+export function buildStaticTOC(opts: {
+  entries: Array<{
+    title: string;
+    pageNumber: number;
+    indent?: 0 | 1 | 2;
+  }>;
+  brandHex: string;
+}): Paragraph[] {
+  const out: Paragraph[] = [];
+  out.push(
+    new Paragraph({
+      spacing: { before: 480, after: 240 },
+      children: [
+        new TextRun({
+          text: "CONTENTS",
+          bold: true,
+          size: T.h2,
+          color: clampForContrast({ hex: opts.brandHex }),
+          characterSpacing: 40,
+        }),
+      ],
+    })
+  );
+
+  for (const entry of opts.entries) {
+    const indent = entry.indent ?? 0;
+    // Tab-leader-tab pattern: title, leader dots fill, page number
+    // right-aligned. docx supports this via tab stops with
+    // `leader: TabStopType.DOT`.
+    out.push(
+      new Paragraph({
+        tabStops: [
+          {
+            type: "right" as never,
+            position: 9000,
+            leader: "dot" as never,
+          },
+        ],
+        indent: { left: indent * 360 },
+        spacing: { before: indent === 0 ? 120 : 40, after: 0 },
+        children: [
+          new TextRun({
+            text: entry.title,
+            size: T.tocEntry,
+            bold: indent === 0,
+            color: indent === 0 ? "1F2937" : "4B5563",
+          }),
+          new TextRun({
+            text: `\t${entry.pageNumber}`,
+            size: T.tocPageNumber,
+            color: indent === 0 ? "1F2937" : "6B7280",
+          }),
+        ],
+      })
+    );
+  }
+
+  out.push(
+    new Paragraph({
+      pageBreakBefore: true,
+      children: [new TextRun({ text: "" })],
+    })
+  );
+  return out;
+}
+
+/** Section divider page. Full-page brand-color section number +
+ *  title. Used between major chapters (Synthesis, Analysis,
+ *  Recommendations, Risks, Appendices) — not every H1; only
+ *  the ~5 conceptual chapters. Page break before and after. */
+export function renderSectionDivider(opts: {
+  number: string;
+  title: string;
+  subtitle?: string;
+  brandHex: string;
+}): Paragraph[] {
+  const out: Paragraph[] = [];
+  const safeBrand = clampForContrast({ hex: opts.brandHex });
+
+  // Page break before. Top vertical spacer to push to ~40%.
+  out.push(
+    new Paragraph({
+      pageBreakBefore: true,
+      spacing: { before: 3600, after: 0 },
+      children: [],
+    })
+  );
+
+  // Section number — huge brand color
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 0, after: 80 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: opts.number,
+          bold: true,
+          size: T.sectionNumber,
+          color: safeBrand,
+          font: "Calibri",
+        }),
+      ],
+    })
+  );
+
+  // Title — large all-caps with letter spacing
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 0, after: 200 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: opts.title.toUpperCase(),
+          bold: true,
+          size: T.sectionDividerTitle,
+          color: safeBrand,
+          characterSpacing: 60,
+        }),
+      ],
+    })
+  );
+
+  // Optional subtitle
+  if (opts.subtitle) {
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.LEFT,
+        spacing: { before: 120, after: 0, line: 360 },
+        indent: { left: 1440, right: 2880 },
+        children: [
+          new TextRun({
+            text: opts.subtitle,
+            italics: true,
+            size: T.h3,
+            color: "4B5563",
+          }),
+        ],
+      })
+    );
+  }
+
+  // Page break after
+  out.push(
+    new Paragraph({
+      pageBreakBefore: true,
+      children: [new TextRun({ text: "" })],
+    })
+  );
+  return out;
 }

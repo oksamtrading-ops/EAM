@@ -1,5 +1,17 @@
 import "server-only";
-import { Document, Packer, Paragraph, HeadingLevel, TextRun } from "docx";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  HeadingLevel,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  AlignmentType,
+  BorderStyle,
+  WidthType,
+} from "docx";
 import { anthropic } from "@/server/ai/client";
 import { MODEL_SONNET } from "@/server/ai/models";
 import {
@@ -11,20 +23,36 @@ import {
   RATIONALIZATION_BUCKET_NARRATIVES_VERSION,
 } from "@/server/ai/prompts/rationalizationBucketNarratives.v1";
 import {
-  actionTitle,
-  brandedHeading,
+  RATIONALIZATION_KEY_FINDINGS_PROMPT,
+  RATIONALIZATION_KEY_FINDINGS_VERSION,
+} from "@/server/ai/prompts/rationalizationKeyFindings.v1";
+import {
+  RATIONALIZATION_DEEP_DIVES_PROMPT,
+  RATIONALIZATION_DEEP_DIVES_VERSION,
+} from "@/server/ai/prompts/rationalizationDeepDives.v1";
+import {
+  buildActionTitle,
+  buildHeading,
   buildCallout,
+  buildKpiRow,
+  buildStaticTOC,
+  buildStatusPillCell,
   buildTable,
+  clampForContrast,
   formatCurrency,
   formatCurrencyCompact,
   formatDateISO,
+  lifecycleToTone,
   makeFooter,
   normalizeHex,
   renderCoverPage,
   renderInline,
+  renderInsideCoverDisclaimer,
+  renderSectionDivider,
 } from "./_helpers";
+import { T, TONE, type Tone } from "./tokens";
 
-export const RATIONALIZATION_TEMPLATE_VERSION = "2.0";
+export const RATIONALIZATION_TEMPLATE_VERSION = "3.0";
 export const RATIONALIZATION_TEMPLATE_LABEL = `EAM Rationalization Template v${RATIONALIZATION_TEMPLATE_VERSION}`;
 export const RATIONALIZATION_PROJECT_LABEL = "Application Rationalization Plan";
 
@@ -123,6 +151,9 @@ export type RationalizationDocxInput = {
   logoBytes?: Buffer | null;
   logoMimeType?: string | null;
   preparedBy?: string | null;
+  /** Optional engagement metadata for the cover engagement-bar. */
+  engagementCode?: string | null;
+  contactLine?: string | null;
   metrics: RationalizationMetrics;
 };
 
@@ -167,28 +198,74 @@ export async function buildRationalizationDocx(
   // naturally; the post-check accepts either.
   const facts = buildExecSummaryFacts(m, fmt, fmtCompact, input.clientName);
   const bucketFacts = buildBucketFacts(m, fmt, fmtCompact, input.clientName);
+  const keyFindingsFacts = buildKeyFindingsFacts(
+    m,
+    fmt,
+    fmtCompact,
+    input.clientName
+  );
 
-  // Two LLM calls (exec summary + bucket narratives in one).
-  const [execSummary, bucketNarratives] = await Promise.all([
-    generateExecutiveSummary(facts),
-    generateBucketNarratives(bucketFacts, m, fmt),
-  ]);
+  // Top-5 apps by cost get per-app deep-dive prose. Selection is
+  // deterministic; the LLM only writes about apps surfaced here.
+  const topAppsForDeepDives = m.topAppsByCost
+    .filter((a) => !!a.rationalizationStatus)
+    .slice(0, 5);
+  const deepDivesFacts = buildDeepDivesFacts(
+    m,
+    topAppsForDeepDives,
+    fmt,
+    fmtCompact,
+    input.clientName
+  );
 
+  // Four LLM calls in parallel:
+  //   - Five Key Findings (synthesis layer)
+  //   - Executive Summary
+  //   - Bucket Narratives (1 call, all 4 buckets)
+  //   - Per-app Deep Dives (1 call, top 5 by cost)
+  // All four go through the same fact-grounding tolerance check.
+  // Cost ceiling per generation: ~$0.20 on Sonnet. All four have
+  // deterministic fallbacks; X-Llm-Source aggregates the worst.
+  const [execSummary, bucketNarratives, keyFindings, deepDives] =
+    await Promise.all([
+      generateExecutiveSummary(facts),
+      generateBucketNarratives(bucketFacts, m, fmt),
+      generateKeyFindings(keyFindingsFacts, fmt, fmtCompact, m),
+      generateDeepDives(deepDivesFacts),
+    ]);
+
+  // Aggregate llmSource: "llm" when all four passed; "deterministic_
+  // fallback" when all four failed; "partial_fallback" otherwise.
+  // The deep-dives call is excluded from the aggregate when there
+  // are no top apps (empty input → trivial "deterministic" by
+  // construction, not a regression).
+  const sourceVotes: Array<"llm" | "deterministic_fallback"> = [
+    execSummary.source,
+    bucketNarratives.source,
+    keyFindings.source,
+  ];
+  if (topAppsForDeepDives.length > 0) sourceVotes.push(deepDives.source);
   const llmSource: RationalizationDocxResult["llmSource"] =
-    execSummary.source === "llm" && bucketNarratives.source === "llm"
+    sourceVotes.every((s) => s === "llm")
       ? "llm"
-      : execSummary.source === "deterministic_fallback" &&
-          bucketNarratives.source === "deterministic_fallback"
+      : sourceVotes.every((s) => s === "deterministic_fallback")
         ? "deterministic_fallback"
         : "partial_fallback";
 
-  const children: (
-    | Paragraph
-    | ReturnType<typeof buildTable>
-    | ReturnType<typeof buildCallout>
-  )[] = [];
+  const children: Array<Paragraph | Table> = [];
 
-  // ─── Cover ──────────────────────────────────────────────────
+  const today = formatDateISO();
+  const phasingOutEliminate =
+    (m.byClassification.ELIMINATE?.apps ?? []).filter(
+      (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
+    ).length;
+  const phasingOutMigrate =
+    (m.byClassification.MIGRATE?.apps ?? []).filter(
+      (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
+    ).length;
+  const wave1Count = phasingOutEliminate + phasingOutMigrate;
+
+  // ─── Cover (with engagement bar) ────────────────────────────
   children.push(
     ...renderCoverPage({
       documentTitle: "Application Rationalization Plan",
@@ -198,22 +275,179 @@ export async function buildRationalizationDocx(
       preparedBy: input.preparedBy ?? null,
       logoBytes: input.logoBytes ?? null,
       logoMimeType: input.logoMimeType ?? null,
+      engagementCode: input.engagementCode ?? null,
+      contactLine: input.contactLine ?? null,
+      confidentialityLabel: `Strictly Confidential — Prepared for ${input.clientName}`,
     })
   );
 
-  // ─── 1. Executive Summary ──────────────────────────────────
-  const eliminatePctOfRunCost = pctOf(
-    m.byClassification.ELIMINATE?.annualCostUsd ?? 0,
-    m.totalAnnualCostUsd
+  // ─── Inside-cover disclaimer ───────────────────────────────
+  children.push(
+    ...renderInsideCoverDisclaimer({
+      clientName: input.clientName,
+      date: today,
+      brandHex,
+    })
+  );
+
+  // ─── Static Table of Contents ──────────────────────────────
+  // Page numbers are best-guess from the section sequence; an
+  // off-by-one is acceptable. Word's auto-TOC requires "click to
+  // update fields" on first open which is unprofessional.
+  children.push(
+    ...buildStaticTOC({
+      brandHex,
+      entries: [
+        { title: "1. Synthesis", pageNumber: 4, indent: 0 },
+        { title: "Portfolio at a Glance", pageNumber: 4, indent: 1 },
+        { title: "Five Key Findings", pageNumber: 5, indent: 1 },
+        { title: "Portfolio Dashboard", pageNumber: 6, indent: 1 },
+        { title: "2. Analysis", pageNumber: 7, indent: 0 },
+        { title: "Executive Summary", pageNumber: 7, indent: 1 },
+        { title: "Portfolio Snapshot", pageNumber: 8, indent: 1 },
+        { title: "TIME Quadrant Analysis", pageNumber: 9, indent: 1 },
+        { title: "Vendor & Sourcing Analysis", pageNumber: 10, indent: 1 },
+        { title: "Redundancy Map", pageNumber: 12, indent: 1 },
+        { title: "3. Bucket Plans", pageNumber: 13, indent: 0 },
+        { title: "ELIMINATE — Decommission Candidates", pageNumber: 13, indent: 1 },
+        { title: "MIGRATE — Replacement Candidates", pageNumber: 14, indent: 1 },
+        { title: "INVEST — Strategic Spend", pageNumber: 15, indent: 1 },
+        { title: "TOLERATE — Hold Position", pageNumber: 16, indent: 1 },
+        { title: "4. Application Deep Dives", pageNumber: 17, indent: 0 },
+        { title: "5. Recommendations", pageNumber: 22, indent: 0 },
+        { title: "Decommission Roadmap", pageNumber: 22, indent: 1 },
+        { title: "Financial Impact", pageNumber: 23, indent: 1 },
+        { title: "Risks & Considerations", pageNumber: 24, indent: 1 },
+        { title: "Next Steps", pageNumber: 25, indent: 1 },
+        { title: "6. Appendices", pageNumber: 26, indent: 0 },
+        { title: "Appendix A — Classified Applications", pageNumber: 26, indent: 1 },
+        { title: "Appendix B — Methodology & Data Sources", pageNumber: 27, indent: 1 },
+        { title: "Appendix C — Glossary", pageNumber: 28, indent: 1 },
+      ],
+    })
+  );
+
+  // ═══ 1. SYNTHESIS ═══════════════════════════════════════════
+  children.push(
+    ...renderSectionDivider({
+      number: "1",
+      title: "Synthesis",
+      subtitle:
+        "The headline number, the disposition mix, the largest single risk, and the recommended Wave-1 action — answered before the analysis begins.",
+      brandHex,
+    })
+  );
+
+  // ─── Portfolio at a Glance — KPI hero row ──────────────────
+  children.push(
+    buildHeading(
+      "Portfolio at a Glance",
+      HeadingLevel.HEADING_1,
+      brandHex,
+      { spacingBefore: 0 }
+    )
   );
   children.push(
-    brandedHeading("Executive Summary", HeadingLevel.HEADING_1, brandHex, {
+    buildActionTitle(
+      `${m.totalApps} applications carry ${fmt(m.totalAnnualCostUsd)} in annual run-cost; the recommended programme avoids ${fmt(m.projectedSavings.totalCandidate3yrUsd)} over three years and anchors on ${wave1Count} Wave-1 retirements.`,
+      brandHex
+    )
+  );
+  children.push(
+    buildKpiRow({
+      brandHex,
+      tiles: [
+        { value: String(m.totalApps), label: "Active applications" },
+        { value: fmtCompact(m.totalAnnualCostUsd), label: "Annual run-cost" },
+        {
+          value: fmtCompact(m.projectedSavings.totalCandidate3yrUsd),
+          label: "3-yr savings",
+        },
+        {
+          value: `${Math.round(m.coverageRatio * 100)}%`,
+          label: "Disposition coverage",
+        },
+        {
+          value: String(m.redundancyMatrix.length),
+          label: "Multi-served capabilities",
+        },
+        { value: String(wave1Count), label: "Wave-1 candidates" },
+      ],
+    })
+  );
+
+  // ─── Five Key Findings ─────────────────────────────────────
+  children.push(
+    buildHeading("Five Key Findings", HeadingLevel.HEADING_1, brandHex)
+  );
+  children.push(
+    buildActionTitle(
+      `Five findings frame the engagement; each leads with the answer and closes with the recommended sequence.`,
+      brandHex
+    )
+  );
+  for (let i = 0; i < keyFindings.findings.length; i++) {
+    const f = keyFindings.findings[i]!;
+    children.push(
+      new Paragraph({
+        spacing: { before: 160, after: 60 },
+        children: [
+          new TextRun({
+            text: `${i + 1}. `,
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+          new TextRun({
+            text: f.title,
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+        ],
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 120, line: 320 },
+        indent: { left: 360 },
+        children: renderInline(f.body),
+      })
+    );
+  }
+
+  // ─── Portfolio Dashboard — synthesis table with status pills ─
+  children.push(
+    buildHeading("Portfolio Dashboard", HeadingLevel.HEADING_1, brandHex)
+  );
+  children.push(
+    buildActionTitle(
+      `The disposition mix at a glance: which buckets, how much spend, what saving, and which application anchors each.`,
+      brandHex
+    )
+  );
+  children.push(buildPortfolioDashboard(m, fmt, fmtCompact, brandHex));
+
+  // ═══ 2. ANALYSIS ════════════════════════════════════════════
+  children.push(
+    ...renderSectionDivider({
+      number: "2",
+      title: "Analysis",
+      subtitle:
+        "How the portfolio looks today: cost concentration, business-value vs technical-health, vendor exposure, and capability redundancy.",
+      brandHex,
+    })
+  );
+
+  // ─── Executive Summary (LLM) ───────────────────────────────
+  children.push(
+    buildHeading("Executive Summary", HeadingLevel.HEADING_1, brandHex, {
       spacingBefore: 0,
     })
   );
   children.push(
-    actionTitle(
-      `Of ${m.totalApps} applications, ${m.classifiedApps} carry a TIME disposition; the recommended programme delivers ${fmt(m.projectedSavings.totalCandidate3yrUsd)} in run-cost savings over three years against a current portfolio cost of ${fmt(m.totalAnnualCostUsd)} per year.`,
+    buildActionTitle(
+      `The portfolio carries ${fmt(m.totalAnnualCostUsd)} in annual run-cost; ${m.classifiedApps} of ${m.totalApps} applications carry a TIME disposition, releasing ${fmt(m.projectedSavings.totalCandidate3yrUsd)} of run-cost over three years under the assumptions on the next page.`,
       brandHex
     )
   );
@@ -222,35 +456,23 @@ export async function buildRationalizationDocx(
     if (!trimmed) continue;
     children.push(
       new Paragraph({
-        spacing: { after: 160 },
+        spacing: { after: 160, line: 320 },
         children: renderInline(trimmed),
       })
     );
   }
 
-  // ─── 2. Methodology and Assumptions ────────────────────────
-  children.push(
-    brandedHeading(
-      "Methodology and Assumptions",
-      HeadingLevel.HEADING_1,
-      brandHex
-    )
+  // ─── Portfolio Snapshot ────────────────────────────────────
+  const eliminatePctOfRunCost = pctOf(
+    m.byClassification.ELIMINATE?.annualCostUsd ?? 0,
+    m.totalAnnualCostUsd
   );
   children.push(
-    buildCallout({
-      title: "Assumptions used to compute projected savings",
-      bullets: m.projectedSavings.assumptions,
-      brandHex,
-    })
-  );
-
-  // ─── 3. Portfolio Snapshot ─────────────────────────────────
-  children.push(
-    brandedHeading("Portfolio Snapshot", HeadingLevel.HEADING_1, brandHex)
+    buildHeading("Portfolio Snapshot", HeadingLevel.HEADING_1, brandHex)
   );
   children.push(
-    actionTitle(
-      `${m.classifiedApps} of ${m.totalApps} applications carry a disposition; ELIMINATE candidates alone represent ${eliminatePctOfRunCost}% of total annual run-cost.`,
+    buildActionTitle(
+      `Full disposition coverage on a ${fmtCompact(m.totalAnnualCostUsd)} portfolio surfaces a ${fmtCompact(m.projectedSavings.totalCandidate3yrUsd)} three-year programme; ELIMINATE alone returns ${eliminatePctOfRunCost}% of annual run-cost across the horizon.`,
       brandHex
     )
   );
@@ -267,16 +489,38 @@ export async function buildRationalizationDocx(
       ),
       brandHex,
       columnWidthsPct: [30, 18, 30, 22],
+      numericColumns: [1, 2, 3],
+      barColumns: [
+        { index: 3, valueOf: (row) => parseInt(row[3]!, 10) / 100 },
+      ],
     })
   );
 
-  // ─── 4. TIME Quadrant Analysis ─────────────────────────────
+  // ─── TIME Quadrant Analysis ────────────────────────────────
+  const highPoorCount = (m.byClassification.MIGRATE?.apps ?? []).filter(
+    (a) =>
+      (a.businessValue === "HIGH" || a.businessValue === "CRITICAL") &&
+      (a.technicalHealth === "FAIR" ||
+        a.technicalHealth === "POOR" ||
+        a.technicalHealth === "TH_CRITICAL")
+  ).length;
+  const highPoorCost = (m.byClassification.MIGRATE?.apps ?? [])
+    .filter(
+      (a) =>
+        (a.businessValue === "HIGH" || a.businessValue === "CRITICAL") &&
+        (a.technicalHealth === "FAIR" ||
+          a.technicalHealth === "POOR" ||
+          a.technicalHealth === "TH_CRITICAL")
+    )
+    .reduce((s, a) => s + a.annualCostUsd, 0);
   children.push(
-    brandedHeading("TIME Quadrant Analysis", HeadingLevel.HEADING_1, brandHex)
+    buildHeading("TIME Quadrant Analysis", HeadingLevel.HEADING_1, brandHex)
   );
   children.push(
-    actionTitle(
-      `The Business-Value × Technical-Health 2×2 surfaces where the portfolio is overfunded, underinvested, or genuinely sound; act on the high-value/poor-health quadrant first.`,
+    buildActionTitle(
+      highPoorCount > 0
+        ? `${highPoorCount} application${highPoorCount === 1 ? "" : "s"} carrying ${fmtCompact(highPoorCost)} sit in the high-value / poor-health quadrant — the migration backlog that justifies the platform-modernization budget.`
+        : `Applications cluster in the strategic-and-healthy quadrant; the lever in this portfolio is consolidation, not platform-debt remediation.`,
       brandHex
     )
   );
@@ -295,65 +539,27 @@ export async function buildRationalizationDocx(
     })
   );
 
-  // ─── 5–8. Per-bucket narratives ────────────────────────────
-  pushBucketSection(
-    children,
-    "ELIMINATE — Decommission Candidates",
-    bucketNarratives.narratives.ELIMINATE,
-    m.topEliminationCandidates,
-    m.byClassification.ELIMINATE,
-    fmt,
-    brandHex
-  );
-  pushBucketSection(
-    children,
-    "MIGRATE — Replacement Candidates",
-    bucketNarratives.narratives.MIGRATE,
-    m.topMigrationCandidates,
-    m.byClassification.MIGRATE,
-    fmt,
-    brandHex
-  );
-  pushBucketSection(
-    children,
-    "INVEST — Strategic Spend",
-    bucketNarratives.narratives.INVEST,
-    (m.byClassification.INVEST?.apps ?? [])
-      .slice()
-      .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
-      .slice(0, 10),
-    m.byClassification.INVEST,
-    fmt,
-    brandHex
-  );
-  pushBucketSection(
-    children,
-    "TOLERATE — Hold Position",
-    bucketNarratives.narratives.TOLERATE,
-    (m.byClassification.TOLERATE?.apps ?? [])
-      .slice()
-      .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
-      .slice(0, 10),
-    m.byClassification.TOLERATE,
-    fmt,
-    brandHex
-  );
+  // ─── Vendor & Sourcing Analysis ────────────────────────────
+  pushVendorSourcingSection(children, m, fmt, fmtCompact, brandHex);
 
-  // ─── 9. Redundancy Map ─────────────────────────────────────
+  // ─── Redundancy Map ────────────────────────────────────────
   children.push(
-    brandedHeading("Redundancy Map", HeadingLevel.HEADING_1, brandHex)
+    buildHeading("Redundancy Map", HeadingLevel.HEADING_1, brandHex)
   );
   if (m.redundancyMatrix.length === 0) {
     children.push(
-      actionTitle(
+      buildActionTitle(
         "No capability is served by more than one application; consolidation is not the lever in this portfolio.",
         brandHex
       )
     );
   } else {
+    const topClusterCount = m.redundancyMatrix[0]?.appsCovering.length ?? 0;
+    const topClusterName =
+      m.redundancyMatrix[0]?.capabilityName ?? "—";
     children.push(
-      actionTitle(
-        `${m.redundancyMatrix.length} capabilit${m.redundancyMatrix.length === 1 ? "y is" : "ies are"} served by multiple applications; consolidation onto the strongest retained app surfaces savings beyond the bucket-level totals.`,
+      buildActionTitle(
+        `${m.redundancyMatrix.length} multi-served capabilit${m.redundancyMatrix.length === 1 ? "y" : "ies"} cluster across the portfolio; the densest cluster (${topClusterName}, ${topClusterCount} apps) anchors the consolidation case beyond bucket-level totals.`,
         brandHex
       )
     );
@@ -367,26 +573,123 @@ export async function buildRationalizationDocx(
         ]),
         brandHex,
         columnWidthsPct: [30, 12, 58],
+        numericColumns: [1],
       })
     );
   }
 
-  // ─── 10. Decommission Roadmap ──────────────────────────────
+  // ═══ 3. BUCKET PLANS ════════════════════════════════════════
   children.push(
-    brandedHeading("Decommission Roadmap", HeadingLevel.HEADING_1, brandHex)
+    ...renderSectionDivider({
+      number: "3",
+      title: "Bucket Plans",
+      subtitle:
+        "Each TIME bucket gets its own governing thought, evidence, implication, and recommended action.",
+      brandHex,
+    })
+  );
+
+  pushBucketSection(
+    children,
+    "ELIMINATE — Decommission Candidates",
+    bucketNarratives.narratives.ELIMINATE,
+    m.topEliminationCandidates,
+    m.byClassification.ELIMINATE,
+    fmt,
+    fmtCompact,
+    brandHex
+  );
+  pushBucketSection(
+    children,
+    "MIGRATE — Replacement Candidates",
+    bucketNarratives.narratives.MIGRATE,
+    m.topMigrationCandidates,
+    m.byClassification.MIGRATE,
+    fmt,
+    fmtCompact,
+    brandHex
+  );
+  pushBucketSection(
+    children,
+    "INVEST — Strategic Spend",
+    bucketNarratives.narratives.INVEST,
+    (m.byClassification.INVEST?.apps ?? [])
+      .slice()
+      .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
+      .slice(0, 10),
+    m.byClassification.INVEST,
+    fmt,
+    fmtCompact,
+    brandHex
+  );
+  pushBucketSection(
+    children,
+    "TOLERATE — Hold Position",
+    bucketNarratives.narratives.TOLERATE,
+    (m.byClassification.TOLERATE?.apps ?? [])
+      .slice()
+      .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
+      .slice(0, 10),
+    m.byClassification.TOLERATE,
+    fmt,
+    fmtCompact,
+    brandHex
+  );
+
+  // ═══ 4. APPLICATION DEEP DIVES ══════════════════════════════
+  if (topAppsForDeepDives.length > 0) {
+    children.push(
+      ...renderSectionDivider({
+        number: "4",
+        title: "Application Deep Dives",
+        subtitle: `One page per top-cost application. Disposition rationale, capability mapping, recommended path, and wave assignment.`,
+        brandHex,
+      })
+    );
+    for (const app of topAppsForDeepDives) {
+      pushDeepDiveSection(
+        children,
+        app,
+        deepDives.byId[app.id] ?? null,
+        m,
+        fmt,
+        fmtCompact,
+        brandHex
+      );
+    }
+  }
+
+  // ═══ 5. RECOMMENDATIONS ═════════════════════════════════════
+  children.push(
+    ...renderSectionDivider({
+      number: topAppsForDeepDives.length > 0 ? "5" : "4",
+      title: "Recommendations",
+      subtitle: `The decommission roadmap, the financial case, the canonical risks, and the first thirty days of execution.`,
+      brandHex,
+    })
+  );
+
+  // ─── Decommission Roadmap ──────────────────────────────────
+  children.push(
+    buildHeading("Decommission Roadmap", HeadingLevel.HEADING_1, brandHex, {
+      spacingBefore: 0,
+    })
   );
   const roadmapRows = buildRoadmapRows(m, fmt);
   if (roadmapRows.length === 0) {
     children.push(
-      actionTitle(
+      buildActionTitle(
         "No ELIMINATE or MIGRATE candidates carry costs to schedule; the roadmap is empty by construction.",
         brandHex
       )
     );
   } else {
+    const nowCount = roadmapRows.filter((r) => r[2] === "NOW (<12mo)").length;
     children.push(
-      actionTitle(
-        `${roadmapRows.length} application${roadmapRows.length === 1 ? "" : "s"} are sequenced across NOW (<12mo), NEXT (12–24mo), and LATER (24–36mo) horizons; lifecycle state and cost magnitude drive the placement.`,
+      buildActionTitle(
+        nowCount > 0
+          ? `${nowCount} of ${roadmapRows.length} retirement${roadmapRows.length === 1 ? "" : "s"} sit in the NOW horizon (<12 months); their sequencing anchors change-fatigue management across the downstream waves.`
+          : `${roadmapRows.length} retirement${roadmapRows.length === 1 ? "" : "s"} are sequenced across NEXT and LATER horizons; lifecycle and cost magnitude drive placement.`,
         brandHex
       )
     );
@@ -396,17 +699,18 @@ export async function buildRationalizationDocx(
         rows: roadmapRows,
         brandHex,
         columnWidthsPct: [38, 18, 18, 26],
+        numericColumns: [3],
       })
     );
   }
 
-  // ─── 11. Financial Impact ──────────────────────────────────
+  // ─── Financial Impact ──────────────────────────────────────
   children.push(
-    brandedHeading("Financial Impact", HeadingLevel.HEADING_1, brandHex)
+    buildHeading("Financial Impact", HeadingLevel.HEADING_1, brandHex)
   );
   children.push(
-    actionTitle(
-      `The recommended programme avoids ${fmt(m.projectedSavings.totalCandidate3yrUsd)} of run-cost across a three-year horizon; one-time decommission and migration costs are excluded and surface separately when building the business case.`,
+    buildActionTitle(
+      `The recommended programme avoids ${fmtCompact(m.projectedSavings.totalCandidate3yrUsd)} of run-cost across a three-year horizon; one-time decommission and migration costs are excluded and surface separately when building the business case.`,
       brandHex
     )
   );
@@ -432,49 +736,67 @@ export async function buildRationalizationDocx(
       ],
       brandHex,
       columnWidthsPct: [34, 22, 44],
+      numericColumns: [1],
+    })
+  );
+  // Methodology callout (info-tone)
+  children.push(
+    buildCallout({
+      title: "Assumptions used to compute projected savings",
+      tone: "info",
+      bullets: m.projectedSavings.assumptions,
+      brandHex,
     })
   );
 
-  // ─── 12. Risks and Considerations ──────────────────────────
+  // ─── Risks & Considerations ────────────────────────────────
   children.push(
-    brandedHeading(
-      "Risks and Considerations",
-      HeadingLevel.HEADING_1,
-      brandHex
-    )
+    buildHeading("Risks & Considerations", HeadingLevel.HEADING_1, brandHex)
   );
   children.push(
-    actionTitle(
-      "Seven canonical risks attend any application rationalization programme; mitigation owners and gating events are named below to make execution discoverable.",
+    buildActionTitle(
+      "Seven canonical risks attend any rationalization programme; each carries a likelihood, impact, and named mitigation gating event.",
       brandHex
     )
   );
   children.push(buildRisksTable(brandHex));
 
-  // ─── 13. Next Steps ────────────────────────────────────────
-  children.push(brandedHeading("Next Steps", HeadingLevel.HEADING_1, brandHex));
+  // ─── Next Steps ────────────────────────────────────────────
+  children.push(buildHeading("Next Steps", HeadingLevel.HEADING_1, brandHex));
   children.push(
-    actionTitle(
+    buildActionTitle(
       "Six actions move the programme from analysis to execution within twelve weeks; owners and dependencies are placeholders for engagement-team override.",
       brandHex
     )
   );
   children.push(
     new Paragraph({
-      spacing: { after: 160 },
+      spacing: { after: 160, line: 320 },
       children: renderInline(
-        `Over the next 30 days, capability owners validate the ${m.byClassification.ELIMINATE?.count ?? 0} ELIMINATE candidates against the redundancy map and confirm the contract cliffs called out in the financial section. The technical architecture team load-tests retained platforms before the first MIGRATE wave opens.`
+        `**Over the next 30 days,** capability owners validate the ${m.byClassification.ELIMINATE?.count ?? 0} ELIMINATE candidates against the redundancy map and confirm contract cliffs called out in the financial section. The technical-architecture team load-tests retained platforms before the first MIGRATE wave opens. Steerco approval gates the start of Wave 1 sunset by Week 12.`
       ),
     })
   );
   children.push(buildNextStepsTable(m, brandHex));
 
+  // ═══ 6. APPENDICES ══════════════════════════════════════════
+  children.push(
+    ...renderSectionDivider({
+      number: topAppsForDeepDives.length > 0 ? "6" : "5",
+      title: "Appendices",
+      subtitle:
+        "Full classified-applications listing, methodology and data lineage, and a glossary of the framework terminology.",
+      brandHex,
+    })
+  );
+
   // ─── Appendix A — Classified Applications ──────────────────
   children.push(
-    brandedHeading(
+    buildHeading(
       "Appendix A — Classified Applications",
       HeadingLevel.HEADING_1,
-      brandHex
+      brandHex,
+      { spacingBefore: 0 }
     )
   );
   const allClassified: AppSummary[] = [
@@ -511,26 +833,41 @@ export async function buildRationalizationDocx(
         ]),
         brandHex,
         columnWidthsPct: [32, 18, 16, 14, 20],
+        numericColumns: [4],
       })
     );
   }
 
   // ─── Appendix B — Methodology and Data Sources ─────────────
   children.push(
-    brandedHeading(
-      "Appendix B — Methodology and Data Sources",
+    buildHeading(
+      "Appendix B — Methodology & Data Sources",
       HeadingLevel.HEADING_1,
       brandHex
     )
   );
   children.push(
     new Paragraph({
-      spacing: { after: 120 },
+      spacing: { after: 120, line: 320 },
       children: renderInline(
-        `This deliverable was generated on ${formatDateISO()} from the live application portfolio in the EAM platform. Counts and costs reflect the values stored on each Application record at the time of generation; the source fields are *rationalizationStatus*, *lifecycle*, *businessValue*, *technicalHealth*, *annualCostUsd*, and the application-capability mapping table. The Risks and Next Steps sections are template defaults intended for engagement-team override.`
+        `This deliverable was generated on ${today} from the live application portfolio in the EAM platform. Counts and costs reflect the values stored on each Application record at the time of generation; the source fields are *rationalizationStatus*, *lifecycle*, *businessValue*, *technicalHealth*, *annualCostUsd*, and the application-capability mapping table.`
       ),
     })
   );
+  children.push(
+    new Paragraph({
+      spacing: { after: 120, line: 320 },
+      children: renderInline(
+        `**Formulas.** Three-year savings = (ELIMINATE annual run-cost × 3) + (MIGRATE annual run-cost × 0.5 × 3). In-house detection: vendor null/empty OR matches /^in[- ]house|internal|bespoke|custom|self[- ]built/. Multi-product vendor: vendor count ≥ 2. The Risks and Next Steps sections are template defaults intended for engagement-team override.`
+      ),
+    })
+  );
+
+  // ─── Appendix C — Glossary ─────────────────────────────────
+  children.push(
+    buildHeading("Appendix C — Glossary", HeadingLevel.HEADING_1, brandHex)
+  );
+  children.push(buildGlossaryTable(brandHex));
 
   const doc = new Document({
     creator: input.clientName,
@@ -561,22 +898,22 @@ export async function buildRationalizationDocx(
 // ─── Helpers ───────────────────────────────────────────────────
 
 function pushBucketSection(
-  children: Array<
-    Paragraph | ReturnType<typeof buildTable> | ReturnType<typeof buildCallout>
-  >,
+  children: Array<Paragraph | Table>,
   title: string,
   narrative: BucketNarrative,
   apps: AppSummary[],
   bucket: Bucket | undefined,
   fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
   brandHex: string
 ): void {
-  children.push(brandedHeading(title, HeadingLevel.HEADING_1, brandHex));
+  children.push(buildHeading(title, HeadingLevel.HEADING_1, brandHex));
 
   if (!bucket || bucket.count === 0) {
     children.push(
       buildCallout({
         title: "No applications in this bucket",
+        tone: "info",
         bullets: [
           "Applications classified into this disposition will populate this section in future runs.",
         ],
@@ -586,10 +923,19 @@ function pushBucketSection(
     return;
   }
 
-  // Action title — combines bucket count + cost as a leading hook.
+  // Action title — prescriptive (Pyramid Principle): the bucket
+  // count + cost is metadata, not a finding. The narrative.action
+  // line carries the recommendation; surface it here.
+  const phasingOutCount = apps.filter(
+    (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
+  ).length;
+  const phaseFragment =
+    phasingOutCount > 0
+      ? ` ${phasingOutCount} of these sit in PHASING_OUT lifecycle, anchoring the Wave-1 sequence.`
+      : "";
   children.push(
-    actionTitle(
-      `${bucket.count} application${bucket.count === 1 ? "" : "s"} totaling ${fmt(bucket.annualCostUsd)} in annual run-cost.`,
+    buildActionTitle(
+      `${bucket.count} application${bucket.count === 1 ? "" : "s"} carrying ${fmtCompact(bucket.annualCostUsd)} in annual run-cost — see governing thought below for the disposition rationale.${phaseFragment}`,
       brandHex
     )
   );
@@ -597,7 +943,7 @@ function pushBucketSection(
   // Governing thought (bold paragraph)
   children.push(
     new Paragraph({
-      spacing: { after: 160 },
+      spacing: { after: 160, line: 320 },
       children: [
         new TextRun({ text: narrative.governingThought, bold: true, size: 24 }),
       ],
@@ -609,7 +955,7 @@ function pushBucketSection(
     new Paragraph({
       spacing: { before: 80, after: 80 },
       children: [
-        new TextRun({ text: "Why now", bold: true, color: brandHex, size: 22 }),
+        new TextRun({ text: "Why now", bold: true, color: clampForContrastSafe(brandHex), size: 22 }),
       ],
     })
   );
@@ -617,7 +963,7 @@ function pushBucketSection(
     children.push(
       new Paragraph({
         bullet: { level: 0 },
-        spacing: { after: 60 },
+        spacing: { after: 60, line: 320 },
         children: renderInline(bullet),
       })
     );
@@ -631,7 +977,7 @@ function pushBucketSection(
         new TextRun({
           text: "What it means",
           bold: true,
-          color: brandHex,
+          color: clampForContrastSafe(brandHex),
           size: 22,
         }),
       ],
@@ -639,7 +985,7 @@ function pushBucketSection(
   );
   children.push(
     new Paragraph({
-      spacing: { after: 160 },
+      spacing: { after: 160, line: 320 },
       children: renderInline(narrative.whatItMeans),
     })
   );
@@ -652,7 +998,7 @@ function pushBucketSection(
         new TextRun({
           text: "Recommended action",
           bold: true,
-          color: brandHex,
+          color: clampForContrastSafe(brandHex),
           size: 22,
         }),
       ],
@@ -660,7 +1006,7 @@ function pushBucketSection(
   );
   children.push(
     new Paragraph({
-      spacing: { after: 200 },
+      spacing: { after: 200, line: 320 },
       children: [
         new TextRun({
           text: narrative.action,
@@ -671,31 +1017,776 @@ function pushBucketSection(
     })
   );
 
-  // Apps table
-  children.push(
-    buildTable({
-      headers: [
-        "Application",
-        "Vendor",
-        "Lifecycle",
-        "BV",
-        "TH",
-        "Annual cost",
-        "Primary capability",
+  // Apps table — with status pills on Lifecycle/BV/TH and brand-
+  // tinted bar on the cost column.
+  children.push(buildBucketAppsTable(apps, fmt, brandHex));
+}
+
+/** Bucket-level apps table with status pills on Lifecycle / BV / TH
+ *  columns. Hand-built so cells can mix pills and text. Numeric
+ *  columns get tabular nums via Consolas. */
+function buildBucketAppsTable(
+  apps: AppSummary[],
+  fmt: (n: number) => string,
+  brandHex: string
+): Table {
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const headerBottom = {
+    style: BorderStyle.SINGLE,
+    size: 12,
+    color: brandHex,
+  };
+  const widths = [24, 16, 12, 9, 9, 14, 16];
+  const headers = [
+    "Application",
+    "Vendor",
+    "Lifecycle",
+    "BV",
+    "TH",
+    "Annual cost",
+    "Primary capability",
+  ];
+  const headerCells = headers.map(
+    (h, i) =>
+      new TableCell({
+        width: { size: widths[i]!, type: WidthType.PERCENTAGE },
+        shading: { fill: "FFFFFF" },
+        borders: {
+          top: noBorder,
+          bottom: headerBottom,
+          left: noBorder,
+          right: noBorder,
+        },
+        children: [
+          new Paragraph({
+            alignment: i === 5 ? AlignmentType.RIGHT : AlignmentType.LEFT,
+            spacing: { before: 60, after: 60 },
+            children: [
+              new TextRun({
+                text: h,
+                bold: true,
+                size: T.small,
+                color: clampForContrastSafe(brandHex),
+              }),
+            ],
+          }),
+        ],
+      })
+  );
+
+  const bodyRows = apps.map((a, rowIdx) => {
+    const baseFill = rowIdx % 2 === 1 ? "FAFAFA" : "FFFFFF";
+    const bvLabel = (a.businessValue ?? "—").replace(/^BV_/, "");
+    const thLabel = (a.technicalHealth ?? "—").replace(/^TH_/, "");
+    const bvTone = bvToTone(a.businessValue);
+    const thTone = thToTone(a.technicalHealth);
+    return new TableRow({
+      children: [
+        // Application
+        cellText({
+          text: a.name,
+          fill: baseFill,
+          align: AlignmentType.LEFT,
+        }),
+        // Vendor
+        cellText({
+          text: a.vendor ?? "—",
+          fill: baseFill,
+          align: AlignmentType.LEFT,
+        }),
+        // Lifecycle pill
+        buildStatusPillCell({
+          text: a.lifecycle.replace(/_/g, " "),
+          tone: lifecycleToTone(a.lifecycle),
+        }),
+        // BV pill
+        buildStatusPillCell({ text: bvLabel, tone: bvTone }),
+        // TH pill
+        buildStatusPillCell({ text: thLabel, tone: thTone }),
+        // Annual cost (right-aligned tabular)
+        cellText({
+          text: fmt(a.annualCostUsd),
+          fill: baseFill,
+          align: AlignmentType.RIGHT,
+          font: "Consolas",
+        }),
+        // Primary capability
+        cellText({
+          text: a.capabilityNames[0] ?? "—",
+          fill: baseFill,
+          align: AlignmentType.LEFT,
+        }),
       ],
-      rows: apps.map((a) => [
-        a.name,
-        a.vendor ?? "—",
-        a.lifecycle.replace(/_/g, " "),
-        (a.businessValue ?? "—").replace(/^BV_/, ""),
-        (a.technicalHealth ?? "—").replace(/^TH_/, ""),
-        fmt(a.annualCostUsd),
-        a.capabilityNames[0] ?? "—",
-      ]),
+    });
+  });
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+      insideHorizontal: noBorder,
+      insideVertical: noBorder,
+    },
+    rows: [new TableRow({ tableHeader: true, children: headerCells }), ...bodyRows],
+  });
+}
+
+/** Map businessValue enum to a Tone for status-pill rendering. */
+function bvToTone(bv: string | null): Tone {
+  switch (bv) {
+    case "CRITICAL":
+      return "danger";
+    case "HIGH":
+      return "warn";
+    case "MEDIUM":
+      return "info";
+    case "LOW":
+    case "BV_UNKNOWN":
+    default:
+      return "info";
+  }
+}
+
+/** Map technicalHealth enum to a Tone for status-pill rendering. */
+function thToTone(th: string | null): Tone {
+  switch (th) {
+    case "EXCELLENT":
+    case "GOOD":
+      return "success";
+    case "FAIR":
+      return "warn";
+    case "POOR":
+    case "TH_CRITICAL":
+      return "danger";
+    default:
+      return "info";
+  }
+}
+
+/** Plain text TableCell — used inside hand-built tables that mix
+ *  text and status pills. Right-align numeric content; pass
+ *  font="Consolas" for tabular nums on cost columns. */
+function cellText(opts: {
+  text: string;
+  fill: string;
+  align: typeof AlignmentType[keyof typeof AlignmentType];
+  font?: string;
+}): TableCell {
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  return new TableCell({
+    shading: { fill: opts.fill },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+    },
+    children: [
+      new Paragraph({
+        alignment: opts.align,
+        spacing: { before: 60, after: 60 },
+        children: [
+          new TextRun({ text: opts.text, size: T.small, font: opts.font }),
+        ],
+      }),
+    ],
+  });
+}
+
+/** Wrapper around clampForContrast that returns a brand color
+ *  guaranteed to clear WCAG AA against white. Brand color stays
+ *  as-is for fills; only text uses get clamped. */
+function clampForContrastSafe(brandHex: string): string {
+  return clampForContrast({ hex: brandHex });
+}
+
+/** Portfolio Dashboard — synthesis-layer table that puts the
+ *  disposition mix on a single page with status pills, costs, and
+ *  a top-app anchor per bucket. */
+function buildPortfolioDashboard(
+  m: RationalizationMetrics,
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
+  brandHex: string
+): Table {
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const headerBottom = {
+    style: BorderStyle.SINGLE,
+    size: 12,
+    color: brandHex,
+  };
+  const widths = [16, 8, 18, 18, 28, 12];
+  const headers = [
+    "Bucket",
+    "Apps",
+    "Annual cost",
+    "3-yr saving",
+    "Top app",
+    "Wave",
+  ];
+  const headerCells = headers.map(
+    (h, i) =>
+      new TableCell({
+        width: { size: widths[i]!, type: WidthType.PERCENTAGE },
+        shading: { fill: "FFFFFF" },
+        borders: {
+          top: noBorder,
+          bottom: headerBottom,
+          left: noBorder,
+          right: noBorder,
+        },
+        children: [
+          new Paragraph({
+            alignment:
+              i === 1 || i === 2 || i === 3
+                ? AlignmentType.RIGHT
+                : AlignmentType.LEFT,
+            spacing: { before: 60, after: 60 },
+            children: [
+              new TextRun({
+                text: h,
+                bold: true,
+                size: T.small,
+                color: clampForContrastSafe(brandHex),
+              }),
+            ],
+          }),
+        ],
+      })
+  );
+
+  const bucketTone: Record<string, Tone> = {
+    ELIMINATE: "danger",
+    MIGRATE: "warn",
+    INVEST: "info",
+    TOLERATE: "success",
+  };
+  const buckets = ["ELIMINATE", "MIGRATE", "INVEST", "TOLERATE"] as const;
+  const bodyRows = buckets.map((key, idx) => {
+    const b = m.byClassification[key];
+    const apps = b?.apps ?? [];
+    const topApp = apps
+      .slice()
+      .sort((a, c) => c.annualCostUsd - a.annualCostUsd)[0];
+    const cost = b?.annualCostUsd ?? 0;
+    const saving =
+      key === "ELIMINATE"
+        ? cost * 3
+        : key === "MIGRATE"
+          ? cost * 0.5 * 3
+          : 0;
+    const phasingOut = apps.filter(
+      (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
+    ).length;
+    const wave =
+      key === "ELIMINATE" || key === "MIGRATE"
+        ? phasingOut > 0
+          ? "NOW"
+          : "NEXT"
+        : key === "INVEST"
+          ? "LATER"
+          : "—";
+    const baseFill = idx % 2 === 1 ? "FAFAFA" : "FFFFFF";
+    return new TableRow({
+      children: [
+        // Bucket pill
+        buildStatusPillCell({ text: key, tone: bucketTone[key]! }),
+        // Apps count
+        cellText({
+          text: String(b?.count ?? 0),
+          fill: baseFill,
+          align: AlignmentType.RIGHT,
+          font: "Consolas",
+        }),
+        // Annual cost
+        cellText({
+          text: fmtCompact(cost),
+          fill: baseFill,
+          align: AlignmentType.RIGHT,
+          font: "Consolas",
+        }),
+        // 3-yr saving
+        cellText({
+          text: saving > 0 ? fmtCompact(saving) : "—",
+          fill: baseFill,
+          align: AlignmentType.RIGHT,
+          font: "Consolas",
+        }),
+        // Top app
+        cellText({
+          text: topApp?.name ?? "—",
+          fill: baseFill,
+          align: AlignmentType.LEFT,
+        }),
+        // Wave pill
+        wave === "—"
+          ? cellText({
+              text: "—",
+              fill: baseFill,
+              align: AlignmentType.CENTER,
+            })
+          : buildStatusPillCell({
+              text: wave,
+              tone: wave === "NOW" ? "danger" : wave === "NEXT" ? "warn" : "info",
+            }),
+      ],
+    });
+  });
+
+  // Total row
+  const totalRow = new TableRow({
+    children: [
+      cellText({
+        text: "Total",
+        fill: "FFFFFF",
+        align: AlignmentType.LEFT,
+        font: undefined,
+      }),
+      cellText({
+        text: String(m.classifiedApps),
+        fill: "FFFFFF",
+        align: AlignmentType.RIGHT,
+        font: "Consolas",
+      }),
+      cellText({
+        text: fmtCompact(m.totalAnnualCostUsd),
+        fill: "FFFFFF",
+        align: AlignmentType.RIGHT,
+        font: "Consolas",
+      }),
+      cellText({
+        text: fmtCompact(m.projectedSavings.totalCandidate3yrUsd),
+        fill: "FFFFFF",
+        align: AlignmentType.RIGHT,
+        font: "Consolas",
+      }),
+      cellText({
+        text: "",
+        fill: "FFFFFF",
+        align: AlignmentType.LEFT,
+      }),
+      cellText({
+        text: "",
+        fill: "FFFFFF",
+        align: AlignmentType.CENTER,
+      }),
+    ],
+  });
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+      insideHorizontal: noBorder,
+      insideVertical: noBorder,
+    },
+    rows: [
+      new TableRow({ tableHeader: true, children: headerCells }),
+      ...bodyRows,
+      totalRow,
+    ],
+  });
+  // suppress unused warning for fmt
+  void fmt;
+}
+
+/** Vendor & Sourcing Analysis — three sub-blocks: multi-product
+ *  vendor table, in-house vs third-party split, vendor-event
+ *  exposure callout. */
+function pushVendorSourcingSection(
+  children: Array<Paragraph | Table>,
+  m: RationalizationMetrics,
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
+  brandHex: string
+): void {
+  children.push(
+    buildHeading(
+      "Vendor & Sourcing Analysis",
+      HeadingLevel.HEADING_1,
+      brandHex
+    )
+  );
+
+  // 1. Multi-product vendor exposure
+  if (m.multiProductVendors.length > 0) {
+    const multiCost = m.multiProductVendors.reduce(
+      (s, v) => s + v.annualCostUsd,
+      0
+    );
+    const multiNames = m.multiProductVendors
+      .slice(0, 2)
+      .map((v) => v.vendor)
+      .join(", ");
+    children.push(
+      buildActionTitle(
+        `${fmtCompact(multiCost)} of run-cost concentrates in ${m.multiProductVendors.length} multi-product vendor${m.multiProductVendors.length === 1 ? "" : "s"} (${multiNames}); a single commercial event with any one materially impacts multiple capability areas at once.`,
+        brandHex
+      )
+    );
+    children.push(
+      buildTable({
+        headers: [
+          "Vendor",
+          "Apps",
+          "Annual cost",
+          "% of total",
+          "Capabilities touched",
+        ],
+        rows: m.multiProductVendors.map((v) => [
+          v.vendor,
+          String(v.count),
+          fmt(v.annualCostUsd),
+          `${pctOf(v.annualCostUsd, m.totalAnnualCostUsd)}%`,
+          summarizeCapabilities(v.apps),
+        ]),
+        brandHex,
+        columnWidthsPct: [26, 10, 18, 12, 34],
+        numericColumns: [1, 2, 3],
+        barColumns: [
+          { index: 3, valueOf: (row) => parseInt(row[3]!, 10) / 100 },
+        ],
+      })
+    );
+
+    // Vendor-event exposure callout
+    const top = m.multiProductVendors[0]!;
+    children.push(
+      buildCallout({
+        title: `Single-vendor exposure — ${top.vendor}`,
+        tone: "warn",
+        bullets: [
+          `${top.vendor} carries ${fmt(top.annualCostUsd)} across ${top.count} application${top.count === 1 ? "" : "s"} in this portfolio.`,
+          `Map every ${top.vendor} application to its renewal date before any spend optimization decision; the FY procurement cycle is the natural anchor.`,
+        ],
+        brandHex,
+      })
+    );
+  }
+
+  // 2. In-house vs third-party split
+  if (
+    m.sourcing.inHouse.annualCostUsd > 0 ||
+    m.sourcing.thirdParty.annualCostUsd > 0
+  ) {
+    const inHousePct = Math.round(m.sourcing.inHouseShare * 100);
+    children.push(
+      buildHeading("Sourcing split", HeadingLevel.HEADING_2, brandHex)
+    );
+    if (m.sourcing.inHouse.annualCostUsd > 0) {
+      children.push(
+        buildActionTitle(
+          `${fmtCompact(m.sourcing.inHouse.annualCostUsd)} (${inHousePct}%) of annual spend is in-house-built across ${m.sourcing.inHouse.count} system${m.sourcing.inHouse.count === 1 ? "" : "s"}; without per-capability allocation this spend is invisible to vendor-driven optimization levers.`,
+          brandHex
+        )
+      );
+    }
+    children.push(
+      buildTable({
+        headers: ["Sourcing", "Apps", "Annual cost", "% of total"],
+        rows: [
+          [
+            "Third-party",
+            String(m.sourcing.thirdParty.count),
+            fmt(m.sourcing.thirdParty.annualCostUsd),
+            `${pctOf(m.sourcing.thirdParty.annualCostUsd, m.totalAnnualCostUsd)}%`,
+          ],
+          [
+            "In-house",
+            String(m.sourcing.inHouse.count),
+            fmt(m.sourcing.inHouse.annualCostUsd),
+            `${pctOf(m.sourcing.inHouse.annualCostUsd, m.totalAnnualCostUsd)}%`,
+          ],
+        ],
+        brandHex,
+        columnWidthsPct: [40, 16, 22, 22],
+        numericColumns: [1, 2, 3],
+        barColumns: [
+          { index: 3, valueOf: (row) => parseInt(row[3]!, 10) / 100 },
+        ],
+      })
+    );
+  }
+
+  // 3. Top vendor concentration (existing list, with table-bars)
+  if (m.vendorConcentration.length > 0) {
+    children.push(
+      buildHeading(
+        "Top vendors by run-cost",
+        HeadingLevel.HEADING_2,
+        brandHex
+      )
+    );
+    const topVendor = m.vendorConcentration[0]!;
+    children.push(
+      buildActionTitle(
+        `Single-vendor exposure of ${fmtCompact(topVendor.annualCostUsd)} (${pctOf(topVendor.annualCostUsd, m.totalAnnualCostUsd)}%) on ${topVendor.vendor} requires contract-cliff analysis before any commercial decision is delegated.`,
+        brandHex
+      )
+    );
+    children.push(
+      buildTable({
+        headers: ["Vendor", "Apps", "Annual cost", "% of total"],
+        rows: m.vendorConcentration.map((v) => [
+          v.vendor,
+          String(v.count),
+          fmt(v.annualCostUsd),
+          `${pctOf(v.annualCostUsd, m.totalAnnualCostUsd)}%`,
+        ]),
+        brandHex,
+        columnWidthsPct: [38, 14, 24, 24],
+        numericColumns: [1, 2, 3],
+        barColumns: [
+          { index: 3, valueOf: (row) => parseInt(row[3]!, 10) / 100 },
+        ],
+      })
+    );
+  }
+}
+
+function summarizeCapabilities(
+  apps: Array<{ name: string; capabilityNames: string[] }>
+): string {
+  const set = new Set<string>();
+  for (const app of apps) {
+    for (const cap of app.capabilityNames) set.add(cap);
+  }
+  if (set.size === 0) return "—";
+  const sorted = Array.from(set).sort();
+  const top = sorted.slice(0, 4).join(", ");
+  return sorted.length > 4 ? `${top} +${sorted.length - 4} more` : top;
+}
+
+/** Per-app deep-dive section. Hero box + capability list + LLM
+ *  rationale + recommended path + wave assignment. One per top
+ *  app by cost. */
+function pushDeepDiveSection(
+  children: Array<Paragraph | Table>,
+  app: AppSummary,
+  dive: DeepDive | null,
+  m: RationalizationMetrics,
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
+  brandHex: string
+): void {
+  // Title — app name as H2 (inside the chapter divider).
+  children.push(buildHeading(app.name, HeadingLevel.HEADING_1, brandHex));
+
+  // Action title — cost + disposition framing
+  children.push(
+    buildActionTitle(
+      `${fmt(app.annualCostUsd)} annual run-cost, ${app.rationalizationStatus} disposition; ${app.lifecycle.replace(/_/g, " ")} lifecycle on ${app.vendor ?? "an in-house"} platform.`,
+      brandHex
+    )
+  );
+
+  // Hero box — KPI tile row of app facts
+  children.push(
+    buildKpiRow({
       brandHex,
-      columnWidthsPct: [22, 14, 12, 8, 8, 14, 22],
+      tiles: [
+        { value: fmtCompact(app.annualCostUsd), label: "Annual cost" },
+        {
+          value: app.lifecycle.replace(/_/g, " "),
+          label: "Lifecycle",
+        },
+        {
+          value: (app.businessValue ?? "—").replace(/^BV_/, ""),
+          label: "Business value",
+        },
+        {
+          value: (app.technicalHealth ?? "—").replace(/^TH_/, ""),
+          label: "Technical health",
+        },
+        { value: app.rationalizationStatus, label: "Disposition" },
+        {
+          value: String(app.capabilityNames.length),
+          label: "Capabilities supported",
+        },
+      ],
     })
   );
+
+  // Capability mapping
+  if (app.capabilityNames.length > 0) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 240, after: 80 },
+        children: [
+          new TextRun({
+            text: "Capability mapping",
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+        ],
+      })
+    );
+    for (const cap of app.capabilityNames) {
+      const others = (
+        m.redundancyMatrix.find((r) => r.capabilityName === cap)
+          ?.appsCovering ?? []
+      )
+        .filter((a) => a.id !== app.id)
+        .map((a) => a.name);
+      const altLine =
+        others.length > 0
+          ? ` — also covered by ${others.slice(0, 3).join(", ")}${others.length > 3 ? `, +${others.length - 3} more` : ""}`
+          : " — no alternative app in the portfolio";
+      children.push(
+        new Paragraph({
+          bullet: { level: 0 },
+          spacing: { after: 40 },
+          children: [
+            new TextRun({ text: cap, size: T.body, bold: true }),
+            new TextRun({ text: altLine, size: T.body, color: "4B5563" }),
+          ],
+        })
+      );
+    }
+  } else {
+    children.push(
+      buildCallout({
+        title: "No capability mapping",
+        tone: "warn",
+        bullets: [
+          "This application carries no capability assignment; mapping it is a precondition for the redundancy and consolidation analyses.",
+        ],
+        brandHex,
+      })
+    );
+  }
+
+  // LLM-grounded rationale
+  if (dive) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 200, after: 80 },
+        children: [
+          new TextRun({
+            text: "Disposition rationale",
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+        ],
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 160, line: 320 },
+        children: renderInline(dive.dispositionRationale),
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        spacing: { before: 80, after: 80 },
+        children: [
+          new TextRun({
+            text: "Recommended path",
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+        ],
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 160, line: 320 },
+        children: renderInline(dive.migrationPath),
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        spacing: { before: 80, after: 80 },
+        children: [
+          new TextRun({
+            text: "Wave",
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+        ],
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 240, line: 320 },
+        children: [
+          new TextRun({
+            text: dive.waveJustification,
+            italics: true,
+            size: T.body,
+          }),
+        ],
+      })
+    );
+  }
+}
+
+/** Glossary appendix table. Documents the framework terminology
+ *  the doc uses so reviewers can audit the bucketing rules. */
+function buildGlossaryTable(brandHex: string): Table {
+  return buildTable({
+    headers: ["Term", "Definition"],
+    rows: [
+      [
+        "TIME framework",
+        "Tolerate / Invest / Migrate / Eliminate — Gartner's standard disposition framework for application portfolios.",
+      ],
+      [
+        "TOLERATE",
+        "Adequate business value, healthy technology, no cheaper alternative — hold position; revisit at the next portfolio review.",
+      ],
+      [
+        "INVEST",
+        "High business value, healthy or healthy-enough technology — fund the strategic capability bet; expand capacity or integration.",
+      ],
+      [
+        "MIGRATE",
+        "Strategic capability with deteriorating technical health — modernize the platform while preserving the capability.",
+      ],
+      [
+        "ELIMINATE",
+        "Insufficient business value or unsupported platform — decommission within 12 months once data archival and capability successor are confirmed.",
+      ],
+      [
+        "Business value (BV) scale",
+        "CRITICAL > HIGH > MEDIUM > LOW > UNKNOWN. CRITICAL and HIGH read as the strategic-spend tier; MEDIUM and LOW read as the candidates-for-cuts tier.",
+      ],
+      [
+        "Technical health (TH) scale",
+        "EXCELLENT > GOOD > FAIR > POOR > CRITICAL. EXCELLENT and GOOD are healthy; FAIR is a concern; POOR and CRITICAL are unhealthy.",
+      ],
+      [
+        "Lifecycle states",
+        "ACTIVE (in production), PLANNED (committed but not yet deployed), PHASING_OUT (forced timeline to retire or replace), RETIRED, SUNSET.",
+      ],
+      [
+        "Disposition coverage",
+        "Percentage of the active portfolio carrying a TIME disposition. ≥60% unlocks the full rationalization plan; below that, a Portfolio Snapshot Report is generated instead.",
+      ],
+      [
+        "Redundancy matrix",
+        "Capabilities served by ≥2 applications. The densest clusters are the consolidation candidates beyond the bucket-level totals.",
+      ],
+      [
+        "Wave",
+        "NOW (<12 months) / NEXT (12-24 months) / LATER (24-36 months). Lifecycle state and cost magnitude drive placement.",
+      ],
+    ],
+    brandHex,
+    columnWidthsPct: [22, 78],
+  });
 }
 
 function buildQuadrantTable(
@@ -1060,12 +2151,17 @@ type BucketFacts = {
       // best in prose. See ExecSummaryFacts for full rationale.
       cost: string;
       costCompact: string;
+      // Apps in this bucket whose lifecycle is PHASING_OUT or
+      // RETIRED — drives the LIFECYCLE-DISPOSITION TENSION rule
+      // in the bucket-narratives prompt.
+      phasingOutCount: number;
       top5: Array<{
         name: string;
         vendor: string;
         capability: string;
         cost: string;
         costCompact: string;
+        lifecycle: string;
         bv: string;
         th: string;
       }>;
@@ -1090,6 +2186,7 @@ function buildBucketFacts(
         capability: a.capabilityNames[0] ?? "—",
         cost: fmt(a.annualCostUsd),
         costCompact: fmtCompact(a.annualCostUsd),
+        lifecycle: a.lifecycle.replace(/_/g, " "),
         bv: (a.businessValue ?? "—").replace(/^BV_/, ""),
         th: (a.technicalHealth ?? "—").replace(/^TH_/, ""),
       }));
@@ -1097,11 +2194,16 @@ function buildBucketFacts(
     key: "ELIMINATE" | "MIGRATE" | "INVEST" | "TOLERATE"
   ) => {
     const cost = m.byClassification[key]?.annualCostUsd ?? 0;
+    const apps = m.byClassification[key]?.apps ?? [];
+    const phasingOutCount = apps.filter(
+      (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
+    ).length;
     return {
       count: m.byClassification[key]?.count ?? 0,
       cost: fmt(cost),
       costCompact: fmtCompact(cost),
-      top5: top5(m.byClassification[key]?.apps ?? []),
+      phasingOutCount,
+      top5: top5(apps),
     };
   };
   return {
@@ -1375,7 +2477,471 @@ function verifyDollarAmounts(
   return true;
 }
 
+// ─── Five Key Findings (synthesis layer LLM call) ──────────────
+
+type KeyFinding = { title: string; body: string };
+
+type KeyFindingsFacts = {
+  clientName: string;
+  costCurrency: string;
+  totals: {
+    apps: number;
+    classified: number;
+    annualCost: string;
+    annualCostCompact: string;
+    threeYearSavings: string;
+    threeYearSavingsCompact: string;
+  };
+  buckets: Array<{
+    name: "ELIMINATE" | "MIGRATE" | "INVEST" | "TOLERATE";
+    count: number;
+    cost: string;
+    costCompact: string;
+    phasingOutCount: number;
+    topApps: string[];
+  }>;
+  multiProductVendors: Array<{
+    vendor: string;
+    count: number;
+    cost: string;
+    costCompact: string;
+    capabilities: string[];
+  }>;
+  redundancyCapCount: number;
+  topRedundantCapabilities: Array<{
+    capability: string;
+    appCount: number;
+    apps: string[];
+  }>;
+  vendorTopName: string;
+  vendorTopShare: string; // "19%"
+  inHouseCost: string;
+  inHouseCostCompact: string;
+  inHouseShare: string; // "23%"
+};
+
+function buildKeyFindingsFacts(
+  m: RationalizationMetrics,
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
+  clientName: string
+): KeyFindingsFacts {
+  const buckets = (
+    ["ELIMINATE", "MIGRATE", "INVEST", "TOLERATE"] as const
+  ).map((name) => {
+    const apps = m.byClassification[name]?.apps ?? [];
+    const cost = m.byClassification[name]?.annualCostUsd ?? 0;
+    const phasingOutCount = apps.filter(
+      (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
+    ).length;
+    const topApps = apps
+      .slice()
+      .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
+      .slice(0, 3)
+      .map((a) => a.name);
+    return {
+      name,
+      count: m.byClassification[name]?.count ?? 0,
+      cost: fmt(cost),
+      costCompact: fmtCompact(cost),
+      phasingOutCount,
+      topApps,
+    };
+  });
+  return {
+    clientName,
+    costCurrency: m.costCurrency,
+    totals: {
+      apps: m.totalApps,
+      classified: m.classifiedApps,
+      annualCost: fmt(m.totalAnnualCostUsd),
+      annualCostCompact: fmtCompact(m.totalAnnualCostUsd),
+      threeYearSavings: fmt(m.projectedSavings.totalCandidate3yrUsd),
+      threeYearSavingsCompact: fmtCompact(
+        m.projectedSavings.totalCandidate3yrUsd
+      ),
+    },
+    buckets,
+    multiProductVendors: m.multiProductVendors.map((v) => ({
+      vendor: v.vendor,
+      count: v.count,
+      cost: fmt(v.annualCostUsd),
+      costCompact: fmtCompact(v.annualCostUsd),
+      capabilities: Array.from(
+        new Set(v.apps.flatMap((a) => a.capabilityNames))
+      ).slice(0, 6),
+    })),
+    redundancyCapCount: m.redundancyMatrix.length,
+    topRedundantCapabilities: m.redundancyMatrix.slice(0, 5).map((r) => ({
+      capability: r.capabilityName,
+      appCount: r.appsCovering.length,
+      apps: r.appsCovering.map((a) => a.name),
+    })),
+    vendorTopName: m.vendorTopName,
+    vendorTopShare: `${Math.round(m.vendorTopShare * 100)}%`,
+    inHouseCost: fmt(m.sourcing.inHouse.annualCostUsd),
+    inHouseCostCompact: fmtCompact(m.sourcing.inHouse.annualCostUsd),
+    inHouseShare: `${Math.round(m.sourcing.inHouseShare * 100)}%`,
+  };
+}
+
+async function generateKeyFindings(
+  facts: KeyFindingsFacts,
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
+  m: RationalizationMetrics
+): Promise<{
+  findings: KeyFinding[];
+  source: "llm" | "deterministic_fallback";
+}> {
+  if (facts.totals.classified === 0) {
+    return {
+      findings: deterministicKeyFindingsFallback(facts, fmt, fmtCompact, m),
+      source: "deterministic_fallback",
+    };
+  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await anthropic.messages.create({
+        model: MODEL_SONNET,
+        max_tokens: 1500,
+        system: RATIONALIZATION_KEY_FINDINGS_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: `Facts:\n${JSON.stringify(facts, null, 2)}\n\nReturn JSON only.`,
+          },
+        ],
+      });
+      const textBlock = response.content.find((b) => b.type === "text");
+      const raw =
+        textBlock && "text" in textBlock && typeof textBlock.text === "string"
+          ? textBlock.text
+          : "";
+      const parsed = parseJsonish(raw) as {
+        findings?: Array<{ title?: unknown; body?: unknown }>;
+      };
+      const findings: KeyFinding[] = (parsed.findings ?? [])
+        .filter(
+          (f): f is { title: string; body: string } =>
+            typeof f.title === "string" && typeof f.body === "string"
+        )
+        .slice(0, 5);
+      if (findings.length < 3) continue;
+
+      // Fact-grounding post-check across all 5 findings.
+      const allowedCosts = collectAllowedCostsForKeyFindings(facts);
+      const allText = findings.map((f) => `${f.title} ${f.body}`).join(" ");
+      if (!verifyDollarAmounts(allText, allowedCosts)) {
+        console.warn(
+          JSON.stringify({
+            evt: "key_findings_fact_mismatch",
+            template: "rationalization-v3",
+            attempt: attempt + 1,
+          })
+        );
+        continue;
+      }
+      return { findings, source: "llm" };
+    } catch (err) {
+      console.warn(
+        JSON.stringify({
+          evt: "key_findings_llm_error",
+          template: "rationalization-v3",
+          attempt: attempt + 1,
+          message: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
+  }
+  return {
+    findings: deterministicKeyFindingsFallback(facts, fmt, fmtCompact, m),
+    source: "deterministic_fallback",
+  };
+}
+
+function collectAllowedCostsForKeyFindings(
+  facts: KeyFindingsFacts
+): string[] {
+  const out: string[] = [
+    facts.totals.annualCost,
+    facts.totals.annualCostCompact,
+    facts.totals.threeYearSavings,
+    facts.totals.threeYearSavingsCompact,
+    facts.inHouseCost,
+    facts.inHouseCostCompact,
+  ];
+  for (const b of facts.buckets) out.push(b.cost, b.costCompact);
+  for (const v of facts.multiProductVendors) out.push(v.cost, v.costCompact);
+  return out;
+}
+
+function deterministicKeyFindingsFallback(
+  facts: KeyFindingsFacts,
+  fmt: (n: number) => string,
+  _fmtCompact: (n: number) => string,
+  m: RationalizationMetrics
+): KeyFinding[] {
+  const out: KeyFinding[] = [];
+
+  // 1. Programme size + Wave-1 anchor
+  const phasingOut = facts.buckets.reduce(
+    (s, b) => s + b.phasingOutCount,
+    0
+  );
+  out.push({
+    title: `${facts.totals.threeYearSavingsCompact} three-year programme anchored on ${phasingOut} Wave-1 retirements`,
+    body: `The recommended programme avoids ${facts.totals.threeYearSavings} of run-cost over a three-year horizon. ${phasingOut} application${phasingOut === 1 ? "" : "s"} sit in PHASING_OUT lifecycle and have already been classified — these form the Wave-1 retirement queue and close the open commitments first.`,
+  });
+
+  // 2. Vendor concentration
+  const topVendor = facts.multiProductVendors[0];
+  if (topVendor) {
+    out.push({
+      title: `${topVendor.vendor} concentration is the largest single-vendor lever`,
+      body: `${topVendor.vendor} carries ${topVendor.cost} across ${topVendor.count} applications spanning ${topVendor.capabilities.slice(0, 3).join(", ") || "multiple capabilities"}. Sequencing the FY27 procurement decision around this trio anchors the strongest negotiating position the portfolio offers.`,
+    });
+  } else if (facts.vendorTopShare !== "0%") {
+    out.push({
+      title: `${facts.vendorTopName} concentration shapes the procurement strategy`,
+      body: `${facts.vendorTopName} carries ${facts.vendorTopShare} of annual run-cost — the largest single-vendor exposure in the portfolio. Map every ${facts.vendorTopName} application to its renewal date before any spend optimization decision.`,
+    });
+  }
+
+  // 3. Phasing-out asymmetry
+  const eliminate = facts.buckets.find((b) => b.name === "ELIMINATE");
+  const migrate = facts.buckets.find((b) => b.name === "MIGRATE");
+  if ((eliminate?.phasingOutCount ?? 0) > 0 || (migrate?.phasingOutCount ?? 0) > 0) {
+    out.push({
+      title: `PHASING_OUT applications split between platform replacement and capability retirement`,
+      body: `${migrate?.phasingOutCount ?? 0} PHASING_OUT applications carry MIGRATE disposition (capability continues, app changes), and ${eliminate?.phasingOutCount ?? 0} carry ELIMINATE (capability retires with the app). The asymmetry is the strategic story: the operations stack is being modernized, not retired.`,
+    });
+  }
+
+  // 4. INVEST priority
+  const invest = facts.buckets.find((b) => b.name === "INVEST");
+  if (invest && invest.count > 0) {
+    out.push({
+      title: `${invest.costCompact} INVEST commitment frames the digital-transformation pace`,
+      body: `${invest.count} strategic applications carrying ${invest.cost} of committed spend on healthy platforms include ${invest.topApps.slice(0, 2).join(" and ")}. Capacity expansion on these systems leads the FY27 capital plan.`,
+    });
+  }
+
+  // 5. Redundancy
+  if (facts.redundancyCapCount > 0) {
+    const top = facts.topRedundantCapabilities[0];
+    out.push({
+      title: `${facts.redundancyCapCount} multi-served capabilities surface consolidation opportunity`,
+      body: `${facts.redundancyCapCount} capabilit${facts.redundancyCapCount === 1 ? "y is" : "ies are"} served by more than one application${top ? `; ${top.capability} alone is covered by ${top.appCount} apps (${top.apps.slice(0, 3).join(", ")})` : ""}. Consolidation onto the strongest retained app per capability surfaces savings beyond the bucket-level totals.`,
+    });
+  } else if (facts.inHouseCost && facts.inHouseShare !== "0%") {
+    out.push({
+      title: `${facts.inHouseShare} of annual spend sits in in-house systems without per-capability allocation`,
+      body: `${facts.inHouseCost} of annual run-cost is in-house-built. Without per-capability allocation this spend is invisible to vendor-driven optimization levers; mapping each in-house system to its capability surface is a precondition for the next round of cost analysis.`,
+    });
+  }
+
+  // Pad to 5 with the next-most-important deterministic finding.
+  while (out.length < 5) {
+    out.push({
+      title: `${facts.totals.classified} of ${facts.totals.apps} applications carry a TIME disposition`,
+      body: `Disposition coverage is ${Math.round((facts.totals.classified / Math.max(facts.totals.apps, 1)) * 100)}%, unlocking the full rationalization analysis. The portfolio totals ${facts.totals.annualCost} per year across ${facts.totals.apps} active applications.`,
+    });
+    break; // unreachable, but defensive
+  }
+  return out.slice(0, 5);
+}
+
+// ─── Per-app deep dives (top-decile LLM call) ──────────────────
+
+type DeepDive = {
+  dispositionRationale: string;
+  migrationPath: string;
+  waveJustification: string;
+};
+
+type DeepDivesFacts = {
+  clientName: string;
+  costCurrency: string;
+  apps: Array<{
+    id: string;
+    name: string;
+    vendor: string;
+    lifecycle: string;
+    businessValue: string;
+    technicalHealth: string;
+    disposition: string;
+    cost: string;
+    costCompact: string;
+    capabilities: string[];
+    capabilityAlternatives: Array<{ capability: string; otherApps: string[] }>;
+  }>;
+};
+
+function buildDeepDivesFacts(
+  m: RationalizationMetrics,
+  topApps: AppSummary[],
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string,
+  clientName: string
+): DeepDivesFacts {
+  // For each top app, build the capability-alternatives view.
+  const altsFor = (app: AppSummary) => {
+    const out: Array<{ capability: string; otherApps: string[] }> = [];
+    for (const cap of app.capabilityNames) {
+      const matrixEntry = m.redundancyMatrix.find(
+        (r) => r.capabilityName === cap
+      );
+      if (matrixEntry) {
+        const others = matrixEntry.appsCovering
+          .filter((a) => a.id !== app.id)
+          .map((a) => a.name);
+        if (others.length > 0) {
+          out.push({ capability: cap, otherApps: others });
+        }
+      }
+    }
+    return out;
+  };
+  return {
+    clientName,
+    costCurrency: m.costCurrency,
+    apps: topApps.map((a) => ({
+      id: a.id,
+      name: a.name,
+      vendor: a.vendor ?? "—",
+      lifecycle: a.lifecycle.replace(/_/g, " "),
+      businessValue: (a.businessValue ?? "—").replace(/^BV_/, ""),
+      technicalHealth: (a.technicalHealth ?? "—").replace(/^TH_/, ""),
+      disposition: a.rationalizationStatus,
+      cost: fmt(a.annualCostUsd),
+      costCompact: fmtCompact(a.annualCostUsd),
+      capabilities: a.capabilityNames,
+      capabilityAlternatives: altsFor(a),
+    })),
+  };
+}
+
+async function generateDeepDives(
+  facts: DeepDivesFacts
+): Promise<{
+  byId: Record<string, DeepDive>;
+  source: "llm" | "deterministic_fallback";
+}> {
+  if (facts.apps.length === 0) {
+    return { byId: {}, source: "deterministic_fallback" };
+  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await anthropic.messages.create({
+        model: MODEL_SONNET,
+        max_tokens: 2500,
+        system: RATIONALIZATION_DEEP_DIVES_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: `Facts:\n${JSON.stringify(facts, null, 2)}\n\nReturn JSON only.`,
+          },
+        ],
+      });
+      const textBlock = response.content.find((b) => b.type === "text");
+      const raw =
+        textBlock && "text" in textBlock && typeof textBlock.text === "string"
+          ? textBlock.text
+          : "";
+      const parsed = parseJsonish(raw) as Record<
+        string,
+        Partial<DeepDive>
+      >;
+      const byId: Record<string, DeepDive> = {};
+      let valid = 0;
+      for (const app of facts.apps) {
+        const entry = parsed[app.id];
+        if (
+          entry &&
+          typeof entry.dispositionRationale === "string" &&
+          typeof entry.migrationPath === "string" &&
+          typeof entry.waveJustification === "string"
+        ) {
+          byId[app.id] = {
+            dispositionRationale: entry.dispositionRationale,
+            migrationPath: entry.migrationPath,
+            waveJustification: entry.waveJustification,
+          };
+          valid++;
+        }
+      }
+      if (valid < facts.apps.length) continue;
+
+      // Fact-grounding post-check.
+      const allowedCosts: string[] = [];
+      for (const a of facts.apps) allowedCosts.push(a.cost, a.costCompact);
+      const allText = Object.values(byId)
+        .map(
+          (d) =>
+            `${d.dispositionRationale} ${d.migrationPath} ${d.waveJustification}`
+        )
+        .join(" ");
+      if (!verifyDollarAmounts(allText, allowedCosts)) {
+        console.warn(
+          JSON.stringify({
+            evt: "deep_dives_fact_mismatch",
+            template: "rationalization-v3",
+            attempt: attempt + 1,
+          })
+        );
+        continue;
+      }
+      return { byId, source: "llm" };
+    } catch (err) {
+      console.warn(
+        JSON.stringify({
+          evt: "deep_dives_llm_error",
+          template: "rationalization-v3",
+          attempt: attempt + 1,
+          message: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
+  }
+  // Deterministic fallback per app.
+  const byId: Record<string, DeepDive> = {};
+  for (const a of facts.apps) {
+    byId[a.id] = deterministicDeepDiveFallback(a);
+  }
+  return { byId, source: "deterministic_fallback" };
+}
+
+function deterministicDeepDiveFallback(
+  a: DeepDivesFacts["apps"][number]
+): DeepDive {
+  const altsLine =
+    a.capabilityAlternatives.length === 0
+      ? "no alternative app in the portfolio covers the same capabilities"
+      : `the portfolio offers alternatives on ${a.capabilityAlternatives.map((x) => x.capability).slice(0, 2).join(" and ")}`;
+  const wave =
+    a.lifecycle.includes("PHASING") || a.lifecycle === "RETIRED"
+      ? "NOW (<12 months)"
+      : a.disposition === "INVEST"
+        ? "LATER (24-36 months)"
+        : "NEXT (12-24 months)";
+  return {
+    dispositionRationale: `${a.name} sits in the ${a.disposition} bucket, reflecting ${a.businessValue} business value against ${a.technicalHealth} technical health on a ${a.lifecycle} platform; ${altsLine}.`,
+    migrationPath:
+      a.disposition === "ELIMINATE"
+        ? "Decommission via data archival and capability successor confirmation; align with the contract renewal cycle to capture the full saving."
+        : a.disposition === "MIGRATE"
+          ? "Modernize onto the retained platform that covers the same capability area; load-test before commitment opens."
+          : a.disposition === "INVEST"
+            ? "Expand capacity and integration to support the strategic capability bet."
+            : "Maintain at current service levels through the standard support contract.",
+    waveJustification: `Wave: ${wave}, driven by ${a.lifecycle} lifecycle and ${a.disposition} disposition.`,
+  };
+}
+
 export {
   RATIONALIZATION_EXEC_SUMMARY_VERSION,
   RATIONALIZATION_BUCKET_NARRATIVES_VERSION,
+  RATIONALIZATION_KEY_FINDINGS_VERSION,
+  RATIONALIZATION_DEEP_DIVES_VERSION,
 };

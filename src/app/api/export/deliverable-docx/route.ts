@@ -75,6 +75,7 @@ export async function POST(req: Request) {
         metrics.coverageRatio >= COVERAGE_THRESHOLD;
 
       const today = new Date().toISOString().slice(0, 10);
+      const engagementCode = `${slugify(workspace.name).toUpperCase().slice(0, 12)}-${today.slice(0, 7)}`;
 
       if (sufficientCoverage) {
         const result = await buildRationalizationDocx({
@@ -83,6 +84,8 @@ export async function POST(req: Request) {
           logoBytes: null,
           logoMimeType: null,
           preparedBy: user.name,
+          engagementCode,
+          contactLine: user.email ?? null,
           metrics,
         });
         const filename = `${slugify(clientName)}-rationalization-${today}.docx`;
@@ -99,7 +102,6 @@ export async function POST(req: Request) {
           },
         });
       } else {
-        const engagementCode = `${slugify(workspace.name).toUpperCase().slice(0, 12)}-${today.slice(0, 7)}`;
         const result = await buildPortfolioSnapshotReport({
           clientName,
           brandHex: workspace.brandColor,
