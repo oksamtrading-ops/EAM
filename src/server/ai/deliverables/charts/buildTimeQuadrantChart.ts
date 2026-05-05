@@ -157,24 +157,82 @@ export async function buildTimeQuadrantChart(opts: {
     <text x="${padLeft + innerW - 5}" y="${padTop + innerH + 25}" text-anchor="end" font-size="11" fill="${NEUTRAL_GREY}">Critical</text>
   `;
 
-  // Bubbles + labels
-  const bubbleParts = opts.points
+  // Bubbles — render circles first so labels overlay on top.
+  const circleParts = opts.points
     .map((p) => {
       const cx = xScale(p.x);
       const cy = yScale(p.y);
       const r = rScale(p.size);
       const fill = toneHex(dispoTone[p.disposition]);
       const stroke = brandRef(opts.brandHex);
-      // Truncate long labels
-      const label = p.label.length > 26 ? p.label.slice(0, 24) + "…" : p.label;
-      // Place label below the bubble; if near bottom, place above
-      const labelY = cy + r + 14 < padTop + innerH ? cy + r + 14 : cy - r - 6;
-      return `
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" fill-opacity="0.55" stroke="${stroke}" stroke-width="1.5"/>
-        <text x="${cx}" y="${labelY}" text-anchor="middle" font-size="11" font-weight="500" fill="#1F2937">${esc(label)}</text>
-      `;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" fill-opacity="0.55" stroke="${stroke}" stroke-width="1.5"/>`;
     })
     .join("");
+
+  // Labels — group apps by (x, y) bucket so apps at the same
+  // BV/TH coordinate get stacked vertically with a leader line
+  // pointing to the cluster center. Eliminates the unreadable
+  // overlap when Halloran SDV / CATIA / Apriso etc. all sit in
+  // (CRITICAL, GOOD).
+  type Cluster = {
+    cx: number;
+    cy: number;
+    r: number;
+    apps: Array<{ label: string; size: number }>;
+  };
+  const clusterMap = new Map<string, Cluster>();
+  for (const p of opts.points) {
+    // 5-unit buckets in BV/TH score-space — apps within ~5pts of
+    // the same coordinate get clustered.
+    const xKey = Math.round(p.x / 5);
+    const yKey = Math.round(p.y / 5);
+    const key = `${xKey}:${yKey}`;
+    const existing = clusterMap.get(key);
+    if (existing) {
+      // Largest bubble in the cluster anchors the leader line.
+      if (rScale(p.size) > existing.r) {
+        existing.cx = xScale(p.x);
+        existing.cy = yScale(p.y);
+        existing.r = rScale(p.size);
+      }
+      existing.apps.push({ label: p.label, size: p.size });
+    } else {
+      clusterMap.set(key, {
+        cx: xScale(p.x),
+        cy: yScale(p.y),
+        r: rScale(p.size),
+        apps: [{ label: p.label, size: p.size }],
+      });
+    }
+  }
+
+  const labelParts: string[] = [];
+  for (const cluster of clusterMap.values()) {
+    // Sort biggest first so the most important app reads at the top
+    cluster.apps.sort((a, b) => b.size - a.size);
+    // Stack labels below the cluster (or above if near bottom)
+    const placeBelow = cluster.cy + cluster.r + 14 + cluster.apps.length * 14 < padTop + innerH;
+    const lineHeight = 13;
+    const baseLabelY = placeBelow
+      ? cluster.cy + cluster.r + 14
+      : cluster.cy - cluster.r - 6 - (cluster.apps.length - 1) * lineHeight;
+    // Leader line from bubble edge to first label (only when stacking)
+    if (cluster.apps.length > 1) {
+      const leaderY = placeBelow ? cluster.cy + cluster.r : cluster.cy - cluster.r;
+      const leaderEnd = placeBelow ? baseLabelY - 4 : baseLabelY + cluster.apps.length * lineHeight + 2;
+      labelParts.push(
+        `<line x1="${cluster.cx}" y1="${leaderY}" x2="${cluster.cx}" y2="${leaderEnd}" stroke="#9CA3AF" stroke-width="0.8" stroke-dasharray="2 2"/>`
+      );
+    }
+    cluster.apps.forEach((app, i) => {
+      const label = app.label.length > 28 ? app.label.slice(0, 26) + "…" : app.label;
+      const labelY = baseLabelY + i * lineHeight;
+      labelParts.push(
+        `<text x="${cluster.cx}" y="${labelY}" text-anchor="middle" font-size="10.5" font-weight="500" fill="#1F2937">${esc(label)}</text>`
+      );
+    });
+  }
+  const bubbleParts = circleParts + labelParts.join("");
 
   // Legend bottom-right: bubble size = annual cost
   const legend = `

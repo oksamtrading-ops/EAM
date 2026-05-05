@@ -12,11 +12,16 @@ import {
 import { svgToDocxImage } from "./_renderer";
 import type { Paragraph } from "docx";
 
-/** Three-year savings waterfall:
- *    Bar 1 (full height): Total 3-yr run-cost (£44M × 3 = baseline)
- *    Bar 2: ELIMINATE avoidance (down)
- *    Bar 3: MIGRATE avoidance (down)
- *    Bar 4: Net 3-yr run-cost after programme (positive)
+/** Annual run-rate savings waterfall (post-programme view):
+ *    Bar 1 (full height): Today's annual run-cost (the decision baseline)
+ *    Bar 2: ELIMINATE avoidance — full annual cost removed once decommissioned
+ *    Bar 3: MIGRATE avoidance — half the annual cost removed once migrated
+ *    Bar 4: Annual run-cost after programme reaches steady state
+ *
+ *  Why annual not 3-year: the CFO buys an annual run-rate
+ *  reduction. Showing £132M (3× £44M) as the baseline reads as
+ *  inflating the savings number, which is the exact opposite of
+ *  the discipline a credible deliverable wants.
  *
  *  Layout left-to-right with floating bars connected by leader
  *  lines so the chain reads as a budget reconciliation. */
@@ -36,15 +41,17 @@ export async function buildSavingsWaterfall(opts: {
   const innerW = W - padLeft - padRight;
   const innerH = H - padTop - padBottom;
 
-  const baseline = opts.totalAnnualCostUsd * 3;
-  const elim = opts.eliminate3yrUsd;
-  const mig = opts.migrate3yrUsd;
+  // Annualized framing: divide the 3-yr savings figures by 3 to
+  // recover the steady-state annual avoidance.
+  const baseline = opts.totalAnnualCostUsd;
+  const elim = opts.eliminate3yrUsd / 3;
+  const mig = opts.migrate3yrUsd / 3;
   const net = baseline - elim - mig;
 
   const segments = [
     {
-      label: "3-yr current run-cost",
-      sublabel: "Baseline @ today's spend",
+      label: "Annual run-cost today",
+      sublabel: "Baseline @ current spend",
       value: baseline,
       from: 0,
       to: baseline,
@@ -53,7 +60,7 @@ export async function buildSavingsWaterfall(opts: {
     },
     {
       label: "ELIMINATE avoidance",
-      sublabel: "100% × 3 yrs",
+      sublabel: "100% of annual cost",
       value: -elim,
       from: baseline,
       to: baseline - elim,
@@ -62,7 +69,7 @@ export async function buildSavingsWaterfall(opts: {
     },
     {
       label: "MIGRATE avoidance",
-      sublabel: "50% × 3 yrs",
+      sublabel: "50% of annual cost",
       value: -mig,
       from: baseline - elim,
       to: baseline - elim - mig,
@@ -70,8 +77,8 @@ export async function buildSavingsWaterfall(opts: {
       type: "down" as const,
     },
     {
-      label: "3-yr net run-cost",
-      sublabel: "Post-programme",
+      label: "Annual run-cost post-programme",
+      sublabel: "Steady state once Wave 1 lands",
       value: net,
       from: 0,
       to: net,
@@ -130,11 +137,12 @@ export async function buildSavingsWaterfall(opts: {
     }
   });
 
-  // Savings annotation: arrow from baseline-top to net-top showing the saving figure
+  // Savings annotation: percentage reduction in annual run-cost
+  // is the number a CFO will sign off on.
   const savingPctOf = ((elim + mig) / baseline) * 100;
   const annotation = `
     <g transform="translate(${padLeft + innerW / 2}, ${padTop - 12})">
-      <text x="0" y="0" text-anchor="middle" font-size="13" font-weight="700" fill="${brandRef(opts.brandHex)}">Total savings: ${esc(fmtMoneyShort(elim + mig, opts.costCurrency))} (${savingPctOf.toFixed(0)}% of 3-yr baseline)</text>
+      <text x="0" y="0" text-anchor="middle" font-size="13" font-weight="700" fill="${brandRef(opts.brandHex)}">Annual reduction: ${esc(fmtMoneyShort(elim + mig, opts.costCurrency))} (${savingPctOf.toFixed(0)}% of run-cost) · 3-yr cumulative ${esc(fmtMoneyShort((elim + mig) * 3, opts.costCurrency))}</text>
     </g>
   `;
 
@@ -148,7 +156,7 @@ export async function buildSavingsWaterfall(opts: {
   const svg = chartFrame({
     width: W,
     height: H,
-    title: "Three-Year Savings Waterfall",
+    title: "Annual Run-Cost Reduction — Programme Steady State",
     brandHex: opts.brandHex,
     body,
   });

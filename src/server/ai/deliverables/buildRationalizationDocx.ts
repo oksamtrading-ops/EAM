@@ -551,6 +551,13 @@ export async function buildRationalizationDocx(
   );
   children.push(buildPortfolioDashboard(m, fmt, fmtCompact, brandHex));
 
+  children.push(
+    sectionCloser(
+      `${m.byClassification.MIGRATE?.count ?? 0} MIGRATE retirements anchor the timing; ${m.vendorTopName} commercial concentration anchors the price; the ${m.byClassification.INVEST?.count ?? 0} INVEST applications set the trajectory.`,
+      brandHex
+    )
+  );
+
   // ═══ 2. ANALYSIS ════════════════════════════════════════════
   children.push(
     ...renderSectionDivider({
@@ -715,6 +722,13 @@ export async function buildRationalizationDocx(
     );
   }
 
+  children.push(
+    sectionCloser(
+      `Cost concentration plus vendor concentration plus capability redundancy frame the three levers; bucket plans below sequence the actions.`,
+      brandHex
+    )
+  );
+
   // ═══ 3. BUCKET PLANS ════════════════════════════════════════
   children.push(
     ...renderSectionDivider({
@@ -773,6 +787,13 @@ export async function buildRationalizationDocx(
     brandHex
   );
 
+  children.push(
+    sectionCloser(
+      `Each bucket carries its own clock; the deep dives below extend the case for the top-cost applications individually.`,
+      brandHex
+    )
+  );
+
   // ═══ 4. APPLICATION DEEP DIVES ══════════════════════════════
   if (topAppsForDeepDives.length > 0) {
     children.push(
@@ -794,6 +815,12 @@ export async function buildRationalizationDocx(
         brandHex
       );
     }
+    children.push(
+      sectionCloser(
+        `Top-cost applications carry the programme's substance; the recommendations chapter sequences the timing, financial case, and execution scaffolding.`,
+        brandHex
+      )
+    );
   }
 
   // ═══ 5. RECOMMENDATIONS ═════════════════════════════════════
@@ -896,13 +923,25 @@ export async function buildRationalizationDocx(
   children.push(
     buildHeading("Risks & Considerations", HeadingLevel.HEADING_1, brandHex)
   );
+  // Count how many portfolio-specific rows the table will surface
+  // so the action title can lead with workspace-grounded framing.
+  let workspaceRiskCount = 0;
+  if (m.vendorTopShare >= 0.15) workspaceRiskCount++;
+  if (m.phasingOut.count >= 3) workspaceRiskCount++;
+  if (
+    m.sourcing.inHouse.annualCostUsd > 0 &&
+    m.sourcing.inHouseShare >= 0.15
+  )
+    workspaceRiskCount++;
   children.push(
     buildActionTitle(
-      "Seven canonical risks attend any rationalization programme; each carries a likelihood, impact, and named mitigation gating event.",
+      workspaceRiskCount > 0
+        ? `${workspaceRiskCount} portfolio-specific risk${workspaceRiskCount === 1 ? "" : "s"} sit above the canonical seven; vendor concentration, forced-timeline exposure, and in-house spend visibility frame the workspace-grounded watch-list.`
+        : "Seven canonical risks attend any rationalization programme; each carries a likelihood, impact, and named mitigation gating event.",
       brandHex
     )
   );
-  children.push(buildRisksTable(brandHex));
+  children.push(buildRisksTable(brandHex, m, fmt, fmtCompact));
 
   // ─── Next Steps ────────────────────────────────────────────
   children.push(buildHeading("Next Steps", HeadingLevel.HEADING_1, brandHex));
@@ -921,6 +960,13 @@ export async function buildRationalizationDocx(
     })
   );
   children.push(buildNextStepsTable(m, brandHex));
+
+  children.push(
+    sectionCloser(
+      `The roadmap dates the work; the financial case sizes the prize; the risks frame the gating events; the next-30-day actions kick the programme off.`,
+      brandHex
+    )
+  );
 
   // ═══ 6. APPENDICES ══════════════════════════════════════════
   children.push(
@@ -1066,22 +1112,35 @@ function pushBucketSection(
     return;
   }
 
-  // Action title — prescriptive (Pyramid Principle): the bucket
-  // count + cost is metadata, not a finding. The narrative.action
-  // line carries the recommendation; surface it here.
+  // Action title — prescriptive (Pyramid Principle). Surface the
+  // bucket-specific finding directly so the section opens with a
+  // recommendation, not a count. Uses the LLM-generated narrative
+  // action line where available; falls back to a finding-shaped
+  // template that derives from the bucket's data when the LLM
+  // call returned a deterministic fallback.
   const phasingOutCount = apps.filter(
     (a) => a.lifecycle === "PHASING_OUT" || a.lifecycle === "RETIRED"
   ).length;
-  const phaseFragment =
+  const top2 = apps
+    .slice()
+    .sort((a, b) => b.annualCostUsd - a.annualCostUsd)
+    .slice(0, 2)
+    .map((a) => a.name);
+  const bucketKey = title.split(" ")[0]; // "ELIMINATE", "MIGRATE", etc.
+  const phasingFragment =
     phasingOutCount > 0
-      ? ` ${phasingOutCount} of these sit in PHASING_OUT lifecycle, anchoring the Wave-1 sequence.`
+      ? ` ${phasingOutCount} sit in PHASING_OUT lifecycle on a forced timeline.`
       : "";
-  children.push(
-    buildActionTitle(
-      `${bucket.count} application${bucket.count === 1 ? "" : "s"} carrying ${fmtCompact(bucket.annualCostUsd)} in annual run-cost — see governing thought below for the disposition rationale.${phaseFragment}`,
-      brandHex
-    )
-  );
+  const bucketActionTitle =
+    bucketKey === "ELIMINATE"
+      ? `Decommissioning ${top2.join(" and ")} releases ${fmtCompact(bucket.annualCostUsd)} annually and removes ${bucket.count === 1 ? "the" : "both"} unsupported-platform exposure${bucket.count === 1 ? "" : "s"} from the portfolio.${phasingFragment}`
+      : bucketKey === "MIGRATE"
+        ? `Modernizing ${top2.join(" and ")} on retained platforms preserves ${fmtCompact(bucket.annualCostUsd)} in critical capability while eliminating the technical-debt exposure that drives the current cost base.${phasingFragment}`
+        : bucketKey === "INVEST"
+          ? `${fmtCompact(bucket.annualCostUsd)} of strategic spend across ${top2.join(" and ")} (and ${bucket.count - 2} other application${bucket.count - 2 === 1 ? "" : "s"}) anchors the next-cycle capability bet; capacity expansion leads the FY plan.`
+          : // TOLERATE
+            `${fmtCompact(bucket.annualCostUsd)} holds steady on stable platforms (${top2.join(", ")}); revisit at the next portfolio review unless contract economics shift.`;
+  children.push(buildActionTitle(bucketActionTitle, brandHex));
 
   // Governing thought (bold paragraph)
   children.push(
@@ -1344,6 +1403,26 @@ function cellText(opts: {
  *  as-is for fills; only text uses get clamped. */
 function clampForContrastSafe(brandHex: string): string {
   return clampForContrast({ hex: brandHex });
+}
+
+/** "So what" closer for a chapter — one italic 13pt brand-color
+ *  line that synthesizes the chapter into the next decision.
+ *  MBB convention: every section ends with an implication, not
+ *  with the last bullet of evidence. Renders with extra spacing
+ *  before to separate from preceding content. */
+function sectionCloser(text: string, brandHex: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 320, after: 320, line: 320 },
+    indent: { left: 360, right: 360 },
+    children: [
+      new TextRun({
+        text,
+        italics: true,
+        size: T.h3,
+        color: clampForContrastSafe(brandHex),
+      }),
+    ],
+  });
 }
 
 /** Portfolio Dashboard — synthesis-layer table that puts the
@@ -2030,10 +2109,52 @@ function buildRoadmapRows(
   return rows;
 }
 
-function buildRisksTable(brandHex: string): ReturnType<typeof buildTable> {
+function buildRisksTable(
+  brandHex: string,
+  m: RationalizationMetrics,
+  fmt: (n: number) => string,
+  fmtCompact: (n: number) => string
+): ReturnType<typeof buildTable> {
+  // Workspace-specific risks (top 2-3) above the canonical 7.
+  // These derive from this portfolio's actual data — vendor
+  // concentration, PHASING_OUT cohort, in-house spend — so the
+  // doc reads as if the firm understood THIS portfolio, not as
+  // a generic template.
+  const portfolioRisks: string[][] = [];
+
+  if (m.vendorTopShare >= 0.15) {
+    const topVendorCost =
+      m.vendorConcentration[0]?.annualCostUsd ?? 0;
+    portfolioRisks.push([
+      `${m.vendorTopName} commercial concentration (${fmtCompact(topVendorCost)} / ${Math.round(m.vendorTopShare * 100)}% of run-cost) creates single-vendor negotiation exposure`,
+      "M",
+      "H",
+      `Map every ${m.vendorTopName} application to its renewal date and TCO before the FY procurement cycle; the portfolio's largest single commercial lever runs through this counterparty.`,
+    ]);
+  }
+
+  if (m.phasingOut.count >= 3) {
+    portfolioRisks.push([
+      `${m.phasingOut.count} PHASING_OUT applications carrying ${fmt(m.phasingOut.annualCostUsd)} face forced timelines independent of programme strategy`,
+      "H",
+      "H",
+      `Sequence Wave-1 around the PHASING_OUT cohort; vendor-driven sunset dates dictate the schedule, not the engagement-team preference.`,
+    ]);
+  }
+
+  if (m.sourcing.inHouse.annualCostUsd > 0 && m.sourcing.inHouseShare >= 0.15) {
+    portfolioRisks.push([
+      `${fmtCompact(m.sourcing.inHouse.annualCostUsd)} of in-house spend (${Math.round(m.sourcing.inHouseShare * 100)}%) is invisible to vendor-driven optimization`,
+      "M",
+      "M",
+      `Allocate in-house run-cost to capabilities before the next portfolio review; without this, a third of programme spend is outside the optimization frame.`,
+    ]);
+  }
+
   return buildTable({
     headers: ["Risk", "Likelihood", "Impact", "Mitigation"],
     rows: [
+      ...portfolioRisks,
       [
         "Hidden integration dependencies surface during decommission",
         "H",

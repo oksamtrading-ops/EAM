@@ -52,9 +52,22 @@ Produce three fields:
    sequencing constraint. For ELIMINATE: data archival / contract
    cliff / capability successor. For INVEST: capacity expansion /
    integration enhancement / scope. For TOLERATE: maintenance scope.
-   Be specific where the facts support it (named technology, named
-   wave, dated milestone). Be conservative where they don't —
-   "platform modernization" beats inventing a target.
+
+   NAME THE TARGET WHERE THE INDUSTRY-STANDARD SUCCESSOR IS
+   UNAMBIGUOUS. A consultant earns the engagement fee by naming
+   the platform, not by writing "modern ERP". Use these patterns
+   when the input vendor + app name match the trigger:
+     - SAP ECC / R/3 → "S/4HANA conversion"
+     - Teamcenter (legacy version) → "Teamcenter X / cloud"
+     - On-prem CRM (Dynamics legacy / Siebel) → "Dynamics 365 cloud"
+     - On-prem PLM with NX present → "consolidate onto NX"
+     - Legacy AS/400 / iSeries → "cloud-native catalog platform"
+     - Legacy MES → "MOM-platform consolidation (Apriso / Opcenter)"
+     - Bespoke on-prem app → "managed-platform replacement"
+
+   When the input doesn't match any pattern above, stay
+   conservative — "platform modernization" beats inventing a
+   target. Never name a successor not implied by the data.
 
 3. **waveJustification** — 1 sentence (15-30 words) placing the app
    in NOW (<12mo) / NEXT (12-24mo) / LATER (24-36mo) and stating
