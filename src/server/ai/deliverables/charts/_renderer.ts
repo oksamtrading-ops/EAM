@@ -33,10 +33,18 @@ function readFirst(candidates: string[]): Buffer {
 async function ensureInit(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    // resvg-wasm WASM init (one-shot). The package is marked as
-    // serverExternalPackages so require.resolve gives us a real
-    // node_modules path at runtime on every host.
-    const wasmPath = require.resolve("@resvg/resvg-wasm/index_bg.wasm");
+    // resvg-wasm WASM init (one-shot). The /*turbopackIgnore*/
+    // and /*webpackIgnore*/ comments tell Next's bundlers to skip
+    // static resolution of the .wasm asset — it's a binary, not a
+    // JS module, and Turbopack auto-generates a broken loader
+    // ("Module not found: Can't resolve 'wbg'") when it tries to
+    // bundle it.  At runtime, require.resolve walks node_modules
+    // normally and hands back the on-disk path, which we read.
+    const wasmPath = require.resolve(
+      /*webpackIgnore: true*/
+      /*turbopackIgnore: true*/
+      "@resvg/resvg-wasm/index_bg.wasm"
+    );
     const wasmBuf = readFileSync(wasmPath);
     await initWasm(wasmBuf);
 
