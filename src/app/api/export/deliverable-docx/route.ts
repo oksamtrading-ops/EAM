@@ -6,6 +6,7 @@ import { buildRationalizationDocx } from "@/server/ai/deliverables/buildRational
 import { buildPortfolioSnapshotReport } from "@/server/ai/deliverables/buildPortfolioSnapshotReport";
 import { computeRationalizationMetrics } from "@/server/ai/deliverables/rationalizationMetrics";
 import { buildCapabilityMaturityDocx } from "@/server/ai/deliverables/buildCapabilityMaturityDocx";
+import { buildCapabilityMaturityBaselineReport } from "@/server/ai/deliverables/buildCapabilityMaturityBaselineReport";
 import { computeCapabilityMaturityMetrics } from "@/server/ai/deliverables/capabilityMaturityMetrics";
 import { classifyAnthropicError } from "@/server/ai/client";
 
@@ -157,30 +158,59 @@ export async function POST(req: Request) {
       const today = new Date().toISOString().slice(0, 10);
       const engagementCode = `${slugify(workspace.name).toUpperCase().slice(0, 12)}-${today.slice(0, 7)}`;
 
-      const result = await buildCapabilityMaturityDocx({
-        clientName,
-        brandHex: workspace.brandColor,
-        preparedBy: user.name,
-        engagementCode,
-        contactLine: user.email ?? null,
-        metrics,
-      });
-      const filename = `${slugify(clientName)}-capability-maturity-${today}.docx`;
-      return new Response(new Uint8Array(result.buffer), {
-        status: 200,
-        headers: {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Cache-Control": "no-store",
-          "X-Deliverable-Template": `capability-maturity@${result.templateVersion}`,
-          "X-Llm-Source": result.llmSource,
-          "X-Llm-Source-Detail": result.llmSourceDetail,
-          "X-Coverage-Pct": String(
-            Math.round(metrics.assessmentCoverageRatio * 100)
-          ),
-        },
-      });
+      const sufficientCoverage =
+        metrics.assessmentCoverageRatio >= COVERAGE_THRESHOLD;
+
+      if (sufficientCoverage) {
+        const result = await buildCapabilityMaturityDocx({
+          clientName,
+          brandHex: workspace.brandColor,
+          preparedBy: user.name,
+          engagementCode,
+          contactLine: user.email ?? null,
+          metrics,
+        });
+        const filename = `${slugify(clientName)}-capability-maturity-${today}.docx`;
+        return new Response(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+            "X-Deliverable-Template": `capability-maturity@${result.templateVersion}`,
+            "X-Llm-Source": result.llmSource,
+            "X-Llm-Source-Detail": result.llmSourceDetail,
+            "X-Coverage-Pct": String(
+              Math.round(metrics.assessmentCoverageRatio * 100)
+            ),
+          },
+        });
+      } else {
+        const result = await buildCapabilityMaturityBaselineReport({
+          clientName,
+          brandHex: workspace.brandColor,
+          preparedBy: user.name,
+          engagementCode,
+          contactLine: user.email ?? null,
+          metrics,
+        });
+        const filename = `${slugify(clientName)}-capability-baseline-${today}.docx`;
+        return new Response(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+            "X-Deliverable-Template": `capability-baseline@${result.templateVersion}`,
+            "X-Llm-Source": result.llmSource,
+            "X-Coverage-Pct": String(
+              Math.round(metrics.assessmentCoverageRatio * 100)
+            ),
+          },
+        });
+      }
     } catch (err) {
       const info = classifyAnthropicError(err);
       return NextResponse.json(
