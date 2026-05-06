@@ -77,6 +77,16 @@ export type AppSummary = {
   technicalHealth: string | null;
   annualCostUsd: number;
   capabilityNames: string[];
+  /** Per-capability maturity context for cross-deliverable bridge.
+   *  Populated only when the capability has any of currentMaturity /
+   *  targetMaturity / strategicImportance set to a non-default value;
+   *  empty when the workspace has not assessed capabilities. */
+  capabilityMaturity?: Array<{
+    name: string;
+    currentMaturity: string;
+    targetMaturity: string;
+    strategicImportance: string;
+  }>;
 };
 
 type Bucket = { count: number; annualCostUsd: number; apps: AppSummary[] };
@@ -1885,6 +1895,60 @@ function pushDeepDiveSection(
           "This application carries no capability assignment; mapping it is a precondition for the redundancy and consolidation analyses.",
         ],
         brandHex,
+      })
+    );
+  }
+
+  // ─── Cross-deliverable bridge ───────────────────────────────
+  // When the workspace has populated capability maturity for any of
+  // this app's linked capabilities, surface the maturity context.
+  // Data-gated: when no capability has non-default maturity, the
+  // entire subsection is skipped — zero regression risk on
+  // workspaces that haven't assessed capabilities.
+  const matRows = (app.capabilityMaturity ?? []).filter(
+    (c) =>
+      c.currentMaturity !== "NOT_ASSESSED" ||
+      c.targetMaturity !== "NOT_ASSESSED" ||
+      c.strategicImportance !== "NOT_ASSESSED"
+  );
+  if (matRows.length > 0) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 240, after: 80 },
+        children: [
+          new TextRun({
+            text: "Linked capability maturity",
+            bold: true,
+            color: clampForContrastSafe(brandHex),
+            size: T.body,
+          }),
+        ],
+      })
+    );
+    children.push(
+      buildTable({
+        headers: ["Capability", "Importance", "Current", "Target"],
+        rows: matRows.map((c) => [
+          c.name,
+          c.strategicImportance.replace(/_/g, " "),
+          c.currentMaturity.replace(/_/g, " "),
+          c.targetMaturity.replace(/_/g, " "),
+        ]),
+        brandHex,
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { before: 80, after: 160, line: 320 },
+        children: [
+          new TextRun({
+            text:
+              "Cross-reference: this disposition decision affects the capability lift case in the Capability Maturity Assessment. Sequence both deliverables together when the capability is rated CRITICAL or HIGH.",
+            italics: true,
+            color: "4B5563",
+            size: T.body,
+          }),
+        ],
       })
     );
   }

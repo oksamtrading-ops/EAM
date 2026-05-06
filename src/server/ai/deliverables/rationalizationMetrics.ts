@@ -58,7 +58,15 @@ export async function computeRationalizationMetrics(
       costCurrency: true,
       capabilities: {
         select: {
-          capability: { select: { id: true, name: true } },
+          capability: {
+            select: {
+              id: true,
+              name: true,
+              currentMaturity: true,
+              targetMaturity: true,
+              strategicImportance: true,
+            },
+          },
         },
       },
     },
@@ -78,6 +86,24 @@ export async function computeRationalizationMetrics(
     capabilityNames: app.capabilities
       .map((m) => m.capability?.name)
       .filter((n): n is string => !!n),
+    // Cross-deliverable bridge: surface capability maturity context
+    // for each linked capability. Renders in the per-app deep dive
+    // only when at least one capability has non-default values.
+    capabilityMaturity: app.capabilities
+      .map((m) => m.capability)
+      .filter(
+        (c): c is NonNullable<typeof c> =>
+          !!c &&
+          (c.currentMaturity !== "NOT_ASSESSED" ||
+            c.targetMaturity !== "NOT_ASSESSED" ||
+            c.strategicImportance !== "NOT_ASSESSED")
+      )
+      .map((c) => ({
+        name: c.name,
+        currentMaturity: c.currentMaturity,
+        targetMaturity: c.targetMaturity,
+        strategicImportance: c.strategicImportance,
+      })),
   });
 
   const buckets = {
