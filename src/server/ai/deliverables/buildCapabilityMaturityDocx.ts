@@ -2074,53 +2074,157 @@ async function generateKeyFindings(
 }
 
 function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[] {
-  const out: KeyFinding[] = [];
+  // Build a generous pool of candidate findings, then pick the
+  // first 5 that fire. Each candidate has an `if`-guard; this
+  // function MUST always return exactly 5, so the pool needs
+  // enough always-true (or near-always-true) candidates after
+  // the data-conditional ones to fill the slate.
   const coveragePct = Math.round(facts.assessmentCoverageRatio * 100);
+  const ws = facts.workspaceSpecificRisks;
+  const candidates: Array<{ when: boolean; finding: KeyFinding }> = [];
 
-  out.push({
-    title: `${facts.bandSizes.lift} priority lift candidates anchor the FY capability investment plan`,
-    body: `${facts.bandSizes.lift} capabilities at CRITICAL or HIGH strategic importance carry ${facts.cumulativeGapLevels} cumulative maturity-level gaps. ${Math.round(facts.appReadinessShare * 100)}% have applications mapped, signalling immediate execution-readiness for Wave-1 commitment. The priority cohort defines the engagement's primary investment thesis.`,
-  });
+  // 1. Priority lift cohort — always fires when there are any lifts.
+  if (facts.bandSizes.lift > 0) {
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${facts.bandSizes.lift} priority lift candidates anchor the FY capability investment plan`,
+        body: `${facts.bandSizes.lift} capabilities at CRITICAL or HIGH strategic importance carry ${facts.cumulativeGapLevels} cumulative maturity-level gaps. ${Math.round(facts.appReadinessShare * 100)}% have applications mapped, signalling immediate execution-readiness for Wave-1 commitment. The priority cohort defines the engagement's primary investment thesis.`,
+      },
+    });
+  }
 
+  // 2. Top L1 concentration.
   if (facts.topL1) {
-    out.push({
-      title: `${facts.topL1.name} domain owns the largest cumulative maturity gap`,
-      body: `${facts.topL1.name} carries ${facts.topL1.gapLevels} cumulative gap-levels across ${facts.topL1.childCount} L2/L3 capabilities — the largest single domain investment ask. Concentration of this magnitude warrants a dedicated programme stream rather than distributed investment across L1 domains.`,
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${facts.topL1.name} domain owns the largest cumulative maturity gap`,
+        body: `${facts.topL1.name} carries ${facts.topL1.gapLevels} cumulative gap-levels across ${facts.topL1.childCount} L2/L3 capabilities — the largest single domain investment ask. Concentration of this magnitude warrants a dedicated programme stream rather than distributed investment across L1 domains.`,
+      },
     });
   }
 
+  // 3. Coverage gap (only when material).
   if (coveragePct < 80) {
-    out.push({
-      title: `${100 - coveragePct}% of capabilities remain NOT_ASSESSED — coverage gap blocks investment case framing`,
-      body: `Assessment coverage stands at ${coveragePct}%. Capability owners must complete maturity ratings before the investment case for the unassessed tail can be framed. Sequence assessment workshops in the Wave-1 prep period; coverage gap closure is a precondition to budget commit.`,
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${100 - coveragePct}% of capabilities remain NOT_ASSESSED — coverage gap blocks investment case framing`,
+        body: `Assessment coverage stands at ${coveragePct}%. Capability owners must complete maturity ratings before the investment case for the unassessed tail can be framed. Sequence assessment workshops in the Wave-1 prep period; coverage gap closure is a precondition to budget commit.`,
+      },
     });
   }
 
+  // 4. CRITICAL-at-INITIAL/DEVELOPING asymmetry — workspace-specific risk
+  //    surfaced as a finding. Always available; fires when count > 0.
+  if (ws.criticalAtInitialOrDeveloping.count > 0) {
+    const n = ws.criticalAtInitialOrDeveloping.count;
+    const top2 = ws.criticalAtInitialOrDeveloping.capabilities.slice(0, 2);
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${n} CRITICAL capabilit${n === 1 ? "y sits" : "ies sit"} at INITIAL or DEVELOPING maturity`,
+        body: `The portfolio carries ${n} CRITICAL-importance capabilit${n === 1 ? "y" : "ies"} at the lowest two maturity levels${top2.length > 0 ? ` (${top2.join(", ")}${ws.criticalAtInitialOrDeveloping.capabilities.length > 2 ? ", …" : ""})` : ""}. The asymmetry between strategic importance and current state is the largest single quality signal in the deck; Wave-1 sequencing prioritizes this cohort.`,
+      },
+    });
+  }
+
+  // 5. Application-readiness asymmetry. Always meaningful when lift > 0.
+  if (facts.bandSizes.lift > 0) {
+    const readyPct = Math.round(facts.appReadinessShare * 100);
+    const orphaned = Math.max(
+      0,
+      facts.bandSizes.lift -
+        Math.round(facts.appReadinessShare * facts.bandSizes.lift)
+    );
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${readyPct}% of priority lift capabilities have applications mapped — execution readiness is the gating signal`,
+        body: `${readyPct}% of the ${facts.bandSizes.lift} priority lift capabilities map to at least one application; the orphaned ${orphaned} require tooling stand-up before the capability lift can commit. Wave-1 sequencing follows application readiness, not gap magnitude alone.`,
+      },
+    });
+  }
+
+  // 6. Invest-beyond cohort — pluralized.
   if (facts.bandSizes.investBeyond > 0) {
     const ib = facts.bandSizes.investBeyond;
     const noun = ib === 1 ? "capability" : "capabilities";
     const verb = ib === 1 ? "is" : "are";
-    out.push({
-      title: `${ib} ${noun} position${ib === 1 ? "s" : ""} for industry-leading investment`,
-      body: `${ib} CRITICAL or HIGH-importance ${noun} sit${ib === 1 ? "s" : ""} at MANAGED maturity and ${verb} positioned to push to OPTIMIZING. The forward-investment case anchors the FY+1 plan after the Wave-1 lift cohort lands.`,
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${ib} ${noun} position${ib === 1 ? "s" : ""} for industry-leading investment`,
+        body: `${ib} CRITICAL or HIGH-importance ${noun} sit${ib === 1 ? "s" : ""} at MANAGED maturity and ${verb} positioned to push to OPTIMIZING. The forward-investment case anchors the FY+1 plan after the Wave-1 lift cohort lands.`,
+      },
     });
   }
 
+  // 7. Reassess cohort.
   if (facts.bandSizes.reassess > 0) {
-    out.push({
-      title: `${facts.bandSizes.reassess} capabilities warrant investment rebalancing`,
-      body: `${facts.bandSizes.reassess} capabilities are over-served relative to strategic importance. Redirect capacity from these areas to the priority lift programme; acknowledge prior investment as past-tense fact while reallocating going forward.`,
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${facts.bandSizes.reassess} capabilities warrant investment rebalancing`,
+        body: `${facts.bandSizes.reassess} capabilities are over-served relative to strategic importance. Redirect capacity from these areas to the priority lift programme; acknowledge prior investment as past-tense fact while reallocating going forward.`,
+      },
     });
   }
 
-  while (out.length < 5) {
-    out.push({
-      title: `${facts.totalCapabilities} capabilities define the assessment scope`,
-      body: `The portfolio spans ${facts.totalCapabilities} capabilities across the L1/L2/L3 hierarchy. Coverage and consistency across the hierarchy determine how much of the investment case can be framed quantitatively versus qualitatively.`,
+  // 8. Top unassessed L1 — when present.
+  if (
+    ws.topUnassessedL1 &&
+    ws.topUnassessedL1.share > 0
+  ) {
+    const sharePct = Math.round(ws.topUnassessedL1.share * 100);
+    candidates.push({
+      when: true,
+      finding: {
+        title: `${ws.topUnassessedL1.l1Name} carries ${sharePct}% of the assessment gap`,
+        body: `${sharePct}% of the unassessed capabilities sit in the ${ws.topUnassessedL1.l1Name} domain. One assessment workshop on this cluster closes the largest single coverage gap in the portfolio; sequence it before the next portfolio review.`,
+      },
     });
-    break;
   }
-  return out.slice(0, 5);
+
+  // 9. Capabilities without owners — accountability finding.
+  if (ws.capabilitiesWithoutOwners.count > 0) {
+    const n = ws.capabilitiesWithoutOwners.count;
+    const allOwnerless = n >= facts.totalCapabilities;
+    candidates.push({
+      when: true,
+      finding: allOwnerless
+        ? {
+            title: `Capability ownership is not recorded for any of the ${facts.totalCapabilities} capabilities`,
+            body: `Ownership is the first gate the Wave-1 commit walks through; the data-collection gap on owner pairs is the most actionable item before the FY budget cycle. Capture business + IT owner pairs in the platform before the next portfolio review.`,
+          }
+        : {
+            title: `${n} capabilit${n === 1 ? "y lacks" : "ies lack"} a business + IT owner pair`,
+            body: `Accountability gap on ${n} of ${facts.totalCapabilities} capabilities blocks Wave-1 commit. Assign business + IT owners to every CRITICAL or HIGH-importance capability before the next portfolio review.`,
+          },
+    });
+  }
+
+  // 10. Always-true scope finding — last resort to guarantee 5.
+  candidates.push({
+    when: true,
+    finding: {
+      title: `${facts.totalCapabilities} capabilities define the assessment scope across ${Object.keys(facts.byImportance).length} importance bands`,
+      body: `The portfolio spans ${facts.totalCapabilities} capabilities across the L1/L2/L3 hierarchy. Coverage and consistency across the hierarchy determine how much of the investment case can be framed quantitatively versus qualitatively in the body sections below.`,
+    },
+  });
+
+  // Pick first 5 unique findings.
+  const out: KeyFinding[] = [];
+  const seen = new Set<string>();
+  for (const c of candidates) {
+    if (out.length >= 5) break;
+    if (!c.when) continue;
+    if (seen.has(c.finding.title)) continue;
+    seen.add(c.finding.title);
+    out.push(c.finding);
+  }
+  return out;
 }
 
 async function generateBandNarratives(
