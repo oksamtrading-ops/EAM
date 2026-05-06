@@ -137,6 +137,10 @@ export type CapabilityMaturityMetrics = {
     /** Over-served: current > target OR (current=target=OPTIMIZING
      *  AND importance ∈ LOW). The Reassess Strategy band. */
     reassessStrategy: CapabilityWithGap[];
+    /** MEDIUM/LOW importance with positive gap. Out of scope for
+     *  the priority investment thesis but acknowledged for
+     *  completeness — minor optimization, not a lift programme. */
+    monitorTail: CapabilityWithGap[];
     /** Coverage gap: current=NOT_ASSESSED OR target=NOT_ASSESSED. */
     notAssessed: CapabilityWithGap[];
   };
@@ -356,6 +360,7 @@ export async function computeCapabilityMaturityMetrics(
   const sustainAtTarget: CapabilityWithGap[] = [];
   const investBeyondTarget: CapabilityWithGap[] = [];
   const reassessStrategy: CapabilityWithGap[] = [];
+  const monitorTail: CapabilityWithGap[] = [];
   const notAssessed: CapabilityWithGap[] = [];
   for (const s of summaries) {
     const importanceWeight = IMPORTANCE_WEIGHT[s.strategicImportance] ?? 0;
@@ -399,19 +404,22 @@ export async function computeCapabilityMaturityMetrics(
     }
 
     // gapLevels > 0: lift candidates. Lift-to-target reserved for
-    // CRITICAL/HIGH importance — the investment thesis. Lower-
-    // importance lifts go to sustain (acknowledged but de-prioritized).
+    // CRITICAL/HIGH importance — the investment thesis. MEDIUM/LOW
+    // gaps go to monitorTail (acknowledged but de-prioritized);
+    // sustainAtTarget is strict gap===0 to keep band semantics
+    // honest — putting positive-gap caps in "Sustain at Target"
+    // contradicts the band name.
     if (
       s.strategicImportance === "CRITICAL" ||
       s.strategicImportance === "HIGH"
     ) {
       liftToTarget.push(withGap);
     } else {
-      sustainAtTarget.push(withGap);
+      monitorTail.push(withGap);
     }
   }
   // Sort each band by priority weight desc.
-  for (const arr of [liftToTarget, sustainAtTarget, investBeyondTarget, reassessStrategy, notAssessed]) {
+  for (const arr of [liftToTarget, sustainAtTarget, investBeyondTarget, reassessStrategy, monitorTail, notAssessed]) {
     arr.sort((a, b) => b.priorityWeight - a.priorityWeight);
   }
 
@@ -486,6 +494,7 @@ export async function computeCapabilityMaturityMetrics(
       sustainAtTarget,
       investBeyondTarget,
       reassessStrategy,
+      monitorTail,
       notAssessed,
     },
     topGapsByImpact,

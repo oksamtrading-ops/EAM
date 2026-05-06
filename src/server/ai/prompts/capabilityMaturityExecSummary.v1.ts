@@ -51,6 +51,10 @@ extend the case for the top {N} priority capabilities."
 
 ## CONTENT RULES
 
+0. **Pluralization must agree with counts.** "1 capability" never
+   "1 capabilities". "2 capabilities sit" never "2 capability sits".
+   Verbs agree with subjects: "1 capability is", "2 capabilities are".
+
 1. Every numeric claim must appear in the input. Capability
    counts are EXACT-MATCH (no "approximately 12 capabilities").
    The deliverable does NOT cite money figures (no investment

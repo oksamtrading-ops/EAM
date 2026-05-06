@@ -55,6 +55,9 @@ For each band, produce four fields:
 
 ## RULES
 
+- **Pluralization must agree with counts.** "1 capability" never
+  "1 capabilities". "2 capabilities sit" never "2 capability sits".
+  Verbs agree with subjects: "1 capability is", "2 capabilities are".
 - Every numeric claim must appear in the input. Capability counts
   are EXACT-MATCH. The deliverable does NOT cite money figures.
 - Capability names, L1 domain names, maturity levels from input.

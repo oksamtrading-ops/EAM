@@ -114,6 +114,7 @@ function makeFullMetrics(): CapabilityMaturityMetrics {
     bands: {
       liftToTarget: lift,
       sustainAtTarget: sustain,
+      monitorTail: [],
       investBeyondTarget: investBeyond,
       reassessStrategy: reassess,
       notAssessed,
@@ -162,6 +163,7 @@ function makeBaselineMetrics(): CapabilityMaturityMetrics {
     bands: {
       liftToTarget: assessed.filter((c) => (c.gapLevels ?? 0) > 0),
       sustainAtTarget: assessed.filter((c) => c.gapLevels === 0),
+      monitorTail: [],
       investBeyondTarget: [],
       reassessStrategy: [],
       notAssessed: unassessed,

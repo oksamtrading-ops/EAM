@@ -377,7 +377,7 @@ export async function buildCapabilityMaturityDocx(
 
   children.push(
     sectionCloser(
-      `${liftCount} priority lift candidates anchor the timing; ${topL1?.l1Name ?? "the lead L1 domain"} concentration anchors the sequencing; the ${m.bands.investBeyondTarget.length} invest-beyond-target capabilities set the trajectory.`,
+      `${liftCount} priority lift candidates anchor the timing; ${topL1?.l1Name ?? "the lead L1 domain"} concentration anchors the sequencing; the ${m.bands.investBeyondTarget.length} invest-beyond-target capabilit${m.bands.investBeyondTarget.length === 1 ? "y sets" : "ies set"} the trajectory.`,
       brandHex
     )
   );
@@ -509,30 +509,49 @@ export async function buildCapabilityMaturityDocx(
     children,
     "Lift to Target — Priority Investment",
     bandNarratives.LIFT_TO_TARGET,
-    m.bands.liftToTarget.slice(0, 12),
+    m.bands.liftToTarget,
     brandHex
   );
   pushBandSection(
     children,
     "Sustain at Target — Hold Position",
     bandNarratives.SUSTAIN,
-    m.bands.sustainAtTarget.slice(0, 12),
+    m.bands.sustainAtTarget,
     brandHex
   );
   pushBandSection(
     children,
     "Invest Beyond Target — Lead the Industry",
     bandNarratives.INVEST_BEYOND_TARGET,
-    m.bands.investBeyondTarget.slice(0, 12),
+    m.bands.investBeyondTarget,
     brandHex
   );
   pushBandSection(
     children,
     "Reassess Strategy — Rebalance Investment",
     bandNarratives.REASSESS_STRATEGY,
-    m.bands.reassessStrategy.slice(0, 12),
+    m.bands.reassessStrategy,
     brandHex
   );
+
+  // Monitor Tail — MEDIUM/LOW positive-gap capabilities outside
+  // the priority investment thesis. Render as a compact callout
+  // (not a full band section) — these don't drive the budget but
+  // dropping them entirely would leave a gap in the listing.
+  if (m.bands.monitorTail.length > 0) {
+    children.push(
+      buildCallout({
+        title: `Monitor Tail — ${m.bands.monitorTail.length} MEDIUM/LOW capabilities with minor gaps`,
+        tone: "info",
+        bullets: [
+          `${m.bands.monitorTail.length} capabilities at MEDIUM or LOW strategic importance show positive maturity gaps; out of scope for the priority investment thesis above.`,
+          `Top of the tail: ${m.bands.monitorTail.slice(0, 3).map((c) => c.name).join(", ")}${m.bands.monitorTail.length > 3 ? `, +${m.bands.monitorTail.length - 3} more (see Appendix A)` : ""}.`,
+          `Revisit at the next portfolio review; promote into Lift only if strategic importance is reassessed upward.`,
+        ],
+        brandHex,
+      })
+    );
+  }
 
   if (m.bands.notAssessed.length > 0) {
     children.push(
@@ -925,9 +944,9 @@ function pushBandSection(
   if (bandKey === "Lift") {
     actionTitle = `${capabilities.length} priority capabilities (${top2.join(" and ")}) require ${cumGap} cumulative levels of maturity uplift; this is the engagement's primary investment thesis.`;
   } else if (bandKey === "Sustain") {
-    actionTitle = `${capabilities.length} capabilities operate at target maturity; steady-state operations preserve capacity for higher-priority lift programmes.`;
+    actionTitle = `${capabilities.length} capabilit${capabilities.length === 1 ? "y" : "ies"} operate at target maturity (current = target); steady-state operations preserve capacity for higher-priority lift programmes.`;
   } else if (bandKey === "Invest") {
-    actionTitle = `${capabilities.length} CRITICAL/HIGH capabilities at MANAGED maturity (${top2.join(" and ")}) are positioned to lead the industry; pushing to OPTIMIZING is the forward investment case.`;
+    actionTitle = `${capabilities.length} CRITICAL/HIGH capabilit${capabilities.length === 1 ? "y" : "ies"} at MANAGED maturity (${top2.join(" and ")}) ${capabilities.length === 1 ? "is" : "are"} positioned to lead the industry; pushing to OPTIMIZING is the forward investment case.`;
   } else {
     // Reassess
     actionTitle = `${capabilities.length} capabilities (${top2.join(" and ")}) are over-served relative to strategic importance; redirect investment capacity to higher-priority gaps.`;
@@ -1401,12 +1420,27 @@ function pushRisksSection(
   }
 
   if (ws.capabilitiesWithoutOwners.count > 0) {
-    portfolioRisks.push([
-      `${ws.capabilitiesWithoutOwners.count} capabilities lack a business + IT owner pair — accountability gap blocks Wave-1 commit`,
-      "M",
-      "H",
-      "Assign a business owner and IT owner to every CRITICAL/HIGH capability before the next portfolio review.",
-    ]);
+    // When *every* capability lacks an owner pair, the signal is
+    // a data-collection gap (no ownership ever recorded), not a
+    // portfolio risk per se. Reframe so partner-readers don't
+    // discount the row as a system bug.
+    const allOwnerless =
+      ws.capabilitiesWithoutOwners.count >= m.totalCapabilities;
+    portfolioRisks.push(
+      allOwnerless
+        ? [
+            `Capability ownership is not recorded on any of the ${m.totalCapabilities} capabilities — data-collection gap, not a portfolio finding`,
+            "H",
+            "H",
+            "Capture business + IT owner pairs in the platform before the next portfolio review; ownership is the first gate the Wave-1 commit walks through.",
+          ]
+        : [
+            `${ws.capabilitiesWithoutOwners.count} capabilities lack a business + IT owner pair — accountability gap blocks Wave-1 commit`,
+            "M",
+            "H",
+            "Assign a business owner and IT owner to every CRITICAL/HIGH capability before the next portfolio review.",
+          ]
+    );
   }
 
   const allRows: string[][] = [
@@ -1967,7 +2001,7 @@ function deterministicExecFallback(facts: ExecSummaryFacts): string {
   const lines: string[] = [];
   const coveragePct = Math.round(facts.assessmentCoverageRatio * 100);
   lines.push(
-    `Findings indicate the ${facts.clientName} capability portfolio comprises ${facts.totalCapabilities} capabilities at ${coveragePct}% assessment coverage. ${facts.bandSizes.lift} require uplift on the priority lift band, carrying ${facts.cumulativeGapLevels} cumulative maturity-level gaps; ${facts.bandSizes.investBeyond} CRITICAL/HIGH capabilities sit at MANAGED maturity and warrant beyond-target investment to lead-the-industry positioning.`
+    `Findings indicate the ${facts.clientName} capability portfolio comprises ${facts.totalCapabilities} capabilities at ${coveragePct}% assessment coverage. ${facts.bandSizes.lift} require uplift on the priority lift band, carrying ${facts.cumulativeGapLevels} cumulative maturity-level gaps; ${facts.bandSizes.investBeyond} CRITICAL/HIGH capabilit${facts.bandSizes.investBeyond === 1 ? "y sits" : "ies sit"} at MANAGED maturity and warrant${facts.bandSizes.investBeyond === 1 ? "s" : ""} beyond-target investment to lead-the-industry positioning.`
   );
   if (facts.topL1) {
     lines.push(
@@ -2016,6 +2050,17 @@ async function generateKeyFindings(
         console.warn(JSON.stringify({ evt: "maturity_findings_fact_mismatch", attempt }));
         continue;
       }
+      // Pad to 5 from deterministic fallback when LLM emits fewer.
+      // The section header promises "Five Key Findings"; shipping 4
+      // breaks the partner-skim contract.
+      if (findings.length < 5) {
+        const fallback = deterministicKeyFindingsFallback(facts);
+        const seen = new Set(findings.map((f) => f.title));
+        for (const f of fallback) {
+          if (findings.length >= 5) break;
+          if (!seen.has(f.title)) findings.push(f);
+        }
+      }
       return { source: "llm", result: { findings } };
     } catch (err) {
       console.warn(JSON.stringify({ evt: "maturity_findings_llm_error", attempt, message: String(err) }));
@@ -2052,9 +2097,12 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
   }
 
   if (facts.bandSizes.investBeyond > 0) {
+    const ib = facts.bandSizes.investBeyond;
+    const noun = ib === 1 ? "capability" : "capabilities";
+    const verb = ib === 1 ? "is" : "are";
     out.push({
-      title: `${facts.bandSizes.investBeyond} capabilities position for industry-leading investment`,
-      body: `${facts.bandSizes.investBeyond} CRITICAL or HIGH-importance capabilities sit at MANAGED maturity and are positioned to push to OPTIMIZING. The forward-investment case anchors the FY+1 plan after the Wave-1 lift cohort lands.`,
+      title: `${ib} ${noun} position${ib === 1 ? "s" : ""} for industry-leading investment`,
+      body: `${ib} CRITICAL or HIGH-importance ${noun} sit${ib === 1 ? "s" : ""} at MANAGED maturity and ${verb} positioned to push to OPTIMIZING. The forward-investment case anchors the FY+1 plan after the Wave-1 lift cohort lands.`,
     });
   }
 
@@ -2174,7 +2222,7 @@ function deterministicBandFallback(
     }
     const top2 = block.top5.slice(0, 2).map((c) => c.name);
     return {
-      governingThought: `${block.count} capabilities sit in the ${kind} band, carrying ${block.cumulativeGap} cumulative gap-levels.`,
+      governingThought: `${block.count} capabilit${block.count === 1 ? "y sits" : "ies sit"} in the ${kind} band, carrying ${block.cumulativeGap} cumulative gap-levels.`,
       whyNow: [
         `Top capabilities by priority weight: ${top2.join(", ")}.`,
         `Average gap across the band: ${block.count > 0 ? (block.cumulativeGap / block.count).toFixed(1) : "0"} levels.`,

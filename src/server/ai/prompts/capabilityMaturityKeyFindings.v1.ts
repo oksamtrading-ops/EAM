@@ -71,6 +71,10 @@ capabilities).
 
 ## RULES
 
+- **Produce exactly five findings.** Not four, not six.
+- **Pluralization must agree with counts.** "1 capability" never
+  "1 capabilities". "2 capabilities sit" never "2 capability sits".
+  Verbs agree with subjects: "1 capability is", "2 capabilities are".
 - Every finding must include at least one quantified claim
   (capability count, percentage, gap-level count, or domain count).
 - Capability names, L1 domain names, maturity levels must come
