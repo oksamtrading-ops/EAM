@@ -26,7 +26,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3 | 4;
-type EngagementType = "rationalization" | "generic" | null;
+type EngagementType =
+  | "rationalization"
+  | "capability-maturity"
+  | "generic"
+  | null;
 
 export function DeliverableWizardClient() {
   const { workspaceId } = useWorkspace();
@@ -61,7 +65,11 @@ export function DeliverableWizardClient() {
     return next;
   }
 
-  async function generateRationalization() {
+  async function generateTyped(
+    type: "rationalization" | "capability-maturity",
+    successLabel: string,
+    fallbackFilename: string
+  ) {
     setGenerating(true);
     try {
       const res = await fetch("/api/export/deliverable-docx", {
@@ -69,7 +77,7 @@ export function DeliverableWizardClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId,
-          type: "rationalization",
+          type,
           clientNameOverride: clientNameOverride.trim() || undefined,
         }),
       });
@@ -81,7 +89,7 @@ export function DeliverableWizardClient() {
       const blob = await res.blob();
       const cd = res.headers.get("content-disposition") ?? "";
       const fnMatch = cd.match(/filename="([^"]+)"/);
-      const filename = fnMatch?.[1] ?? "rationalization.docx";
+      const filename = fnMatch?.[1] ?? fallbackFilename;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -90,12 +98,28 @@ export function DeliverableWizardClient() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Rationalization plan downloaded");
+      toast.success(successLabel);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Build failed");
     } finally {
       setGenerating(false);
     }
+  }
+
+  function generateRationalization() {
+    return generateTyped(
+      "rationalization",
+      "Rationalization plan downloaded",
+      "rationalization.docx"
+    );
+  }
+
+  function generateCapabilityMaturity() {
+    return generateTyped(
+      "capability-maturity",
+      "Capability maturity assessment downloaded",
+      "capability-maturity.docx"
+    );
   }
 
   async function generate() {
@@ -170,9 +194,9 @@ export function DeliverableWizardClient() {
             <EngagementCard
               icon={<Layers className="h-5 w-5" />}
               title="Capability Maturity Assessment"
-              description="Capability tree, current vs. target maturity, gap analysis."
-              available={false}
-              comingSoonNote="Available after the Rationalization template ships in production."
+              description="Strategic-importance × current-maturity matrix, action-class bands (Lift / Sustain / Invest Beyond / Reassess), per-capability deep dives, and a NOW / NEXT / LATER investment roadmap. Drawn from this workspace's capability assessments + linked applications."
+              available
+              onSelect={() => setEngagementType("capability-maturity")}
             />
             <EngagementCard
               icon={<MapIcon className="h-5 w-5" />}
@@ -311,6 +335,129 @@ export function DeliverableWizardClient() {
               ~5–15 seconds. The exec summary is grounded against the
               deterministic facts; numbers in the summary always match
               the body sections.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Capability Maturity confirmation step ────────────────────
+  if (engagementType === "capability-maturity") {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+              <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+                <Layers className="h-3.5 w-3.5 text-[var(--ai)]" />
+              </span>
+              Capability Maturity Assessment
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Generates from this workspace&apos;s capabilities, current
+              and target maturity, and linked applications.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEngagementType(null)}
+            className="text-xs"
+          >
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+            Change type
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="max-w-2xl mx-auto space-y-5">
+            <div className="rounded-lg border bg-card p-4">
+              <h2 className="text-sm font-semibold mb-2">
+                What&apos;s included
+              </h2>
+              <ul className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Branded cover, inside-cover disclaimer, deterministic TOC
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Synthesis layer: KPI hero row, CRITICAL maturity bar, Five Key Findings, Maturity Dashboard
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Strategic-importance × current-maturity matrix
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  L1-domain maturity heatmap with current → target progression
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Capability-Application coverage bridge (linked apps + TIME dispositions)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Action-class bands: Lift / Sustain / Invest Beyond / Reassess + NOT_ASSESSED callout
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Top-5 capability deep dives with gap-type classification + wave assignment
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Investment Roadmap (NOW / NEXT / LATER), workspace-specific risks, 30-day Next Steps
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Appendices: full capability listing, methodology, glossary
+                </li>
+              </ul>
+              <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t">
+                The deliverable&apos;s currency is gap-levels and
+                sequencing; investment cost is intentionally not
+                computed in v1 (the methodology callout makes the
+                trade-off explicit).
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Client name override (optional)
+              </Label>
+              <Input
+                value={clientNameOverride}
+                onChange={(e) => setClientNameOverride(e.target.value)}
+                placeholder="Defaults to the workspace's clientName"
+                className="mt-1"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Leave blank to use this workspace&apos;s configured client name.
+              </p>
+            </div>
+
+            <Button
+              onClick={generateCapabilityMaturity}
+              disabled={generating}
+              className="w-full gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Computing maturity metrics + assembling DOCX…
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Generate Capability Maturity Assessment
+                </>
+              )}
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              ~10–25 seconds. Four LLM calls run in parallel; counts and
+              percentages in the prose are exact-match-grounded against
+              the metrics.
             </p>
           </div>
         </div>

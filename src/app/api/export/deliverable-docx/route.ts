@@ -5,6 +5,8 @@ import { buildDeliverableDocx } from "@/server/ai/deliverables/buildDocx";
 import { buildRationalizationDocx } from "@/server/ai/deliverables/buildRationalizationDocx";
 import { buildPortfolioSnapshotReport } from "@/server/ai/deliverables/buildPortfolioSnapshotReport";
 import { computeRationalizationMetrics } from "@/server/ai/deliverables/rationalizationMetrics";
+import { buildCapabilityMaturityDocx } from "@/server/ai/deliverables/buildCapabilityMaturityDocx";
+import { computeCapabilityMaturityMetrics } from "@/server/ai/deliverables/capabilityMaturityMetrics";
 import { classifyAnthropicError } from "@/server/ai/client";
 
 // Coverage threshold for the rationalization fork: at <60% the
@@ -15,7 +17,7 @@ const COVERAGE_THRESHOLD = 0.6;
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-type DeliverableType = "generic" | "rationalization";
+type DeliverableType = "generic" | "rationalization" | "capability-maturity";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -31,9 +33,12 @@ export async function POST(req: Request) {
     clientNameOverride?: string;
   };
   const { workspaceId } = body;
-  const type: DeliverableType = body.type === "rationalization"
-    ? "rationalization"
-    : "generic";
+  const type: DeliverableType =
+    body.type === "rationalization"
+      ? "rationalization"
+      : body.type === "capability-maturity"
+      ? "capability-maturity"
+      : "generic";
 
   if (!workspaceId) {
     return NextResponse.json({ error: "Missing workspaceId" }, { status: 400 });
@@ -124,6 +129,58 @@ export async function POST(req: Request) {
           },
         });
       }
+    } catch (err) {
+      const info = classifyAnthropicError(err);
+      return NextResponse.json(
+        {
+          error: err instanceof Error ? err.message : info.friendly,
+          code: info.code,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ─── Capability Maturity Assessment template ──────────────
+  if (type === "capability-maturity") {
+    const clientName =
+      body.clientNameOverride?.trim() ||
+      workspace.clientName?.trim() ||
+      workspace.name;
+
+    try {
+      const metrics = await computeCapabilityMaturityMetrics(
+        db,
+        workspace.id
+      );
+
+      const today = new Date().toISOString().slice(0, 10);
+      const engagementCode = `${slugify(workspace.name).toUpperCase().slice(0, 12)}-${today.slice(0, 7)}`;
+
+      const result = await buildCapabilityMaturityDocx({
+        clientName,
+        brandHex: workspace.brandColor,
+        preparedBy: user.name,
+        engagementCode,
+        contactLine: user.email ?? null,
+        metrics,
+      });
+      const filename = `${slugify(clientName)}-capability-maturity-${today}.docx`;
+      return new Response(new Uint8Array(result.buffer), {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "no-store",
+          "X-Deliverable-Template": `capability-maturity@${result.templateVersion}`,
+          "X-Llm-Source": result.llmSource,
+          "X-Llm-Source-Detail": result.llmSourceDetail,
+          "X-Coverage-Pct": String(
+            Math.round(metrics.assessmentCoverageRatio * 100)
+          ),
+        },
+      });
     } catch (err) {
       const info = classifyAnthropicError(err);
       return NextResponse.json(
