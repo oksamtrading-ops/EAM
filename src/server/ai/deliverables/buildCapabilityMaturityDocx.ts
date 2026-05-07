@@ -1833,7 +1833,7 @@ type ExecSummaryFacts = {
   appReadinessShare: number;
 };
 
-function buildExecSummaryFacts(
+export function buildExecSummaryFacts(
   m: CapabilityMaturityMetrics,
   clientName: string
 ): ExecSummaryFacts {
@@ -1877,7 +1877,7 @@ type KeyFindingsFacts = ExecSummaryFacts & {
   topUnassessedL1: CapabilityMaturityMetrics["topUnassessedL1"];
 };
 
-function buildKeyFindingsFacts(
+export function buildKeyFindingsFacts(
   m: CapabilityMaturityMetrics,
   clientName: string
 ): KeyFindingsFacts {
@@ -1913,7 +1913,7 @@ type BandFactsBlock = {
   }>;
 };
 
-function buildBandNarrativesFacts(
+export function buildBandNarrativesFacts(
   m: CapabilityMaturityMetrics,
   clientName: string
 ): BandNarrativesFacts {
@@ -1965,7 +1965,7 @@ type DeepDivesFacts = {
   }>;
 };
 
-function buildDeepDivesFacts(
+export function buildDeepDivesFacts(
   caps: CapabilityWithGap[],
   clientName: string
 ): DeepDivesFacts {
@@ -1990,7 +1990,7 @@ function buildDeepDivesFacts(
 
 // ─── LLM call wrappers (with deterministic fallback) ─────────
 
-function collectAllowedCounts(m: CapabilityMaturityMetrics): number[] {
+export function collectAllowedCounts(m: CapabilityMaturityMetrics): number[] {
   const out = new Set<number>();
   out.add(m.totalCapabilities);
   for (const v of Object.values(m.byCurrentMaturity)) out.add(v);
@@ -2013,7 +2013,7 @@ function collectAllowedCounts(m: CapabilityMaturityMetrics): number[] {
   return Array.from(out);
 }
 
-async function generateExecSummary(
+export async function generateExecSummary(
   facts: ExecSummaryFacts,
   allowedCounts: number[],
   m: CapabilityMaturityMetrics,
@@ -2078,7 +2078,7 @@ function deterministicExecFallback(facts: ExecSummaryFacts): string {
   return lines.join("\n\n");
 }
 
-async function generateKeyFindings(
+export async function generateKeyFindings(
   facts: KeyFindingsFacts,
   allowedCounts: number[],
   m: CapabilityMaturityMetrics
@@ -2298,7 +2298,7 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
   return out;
 }
 
-async function generateBandNarratives(
+export async function generateBandNarratives(
   facts: BandNarrativesFacts,
   allowedCounts: number[],
   m: CapabilityMaturityMetrics
@@ -2436,7 +2436,7 @@ function deterministicBandFallback(
   void m;
 }
 
-async function generateDeepDives(
+export async function generateDeepDives(
   facts: DeepDivesFacts,
   topApps: CapabilityWithGap[],
   allowedCounts: number[]
