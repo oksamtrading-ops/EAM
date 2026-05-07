@@ -32,23 +32,37 @@ L1 domains, or maturity levels not in the input.
 
 ## STRUCTURE PER BAND (Pyramid Principle: answer first)
 
-For each band, produce four fields:
+For each band, produce **five** fields:
 
 1. **governingThought** — one complete sentence stating the answer,
-   not the topic. Must contain a number (count or gap-level total).
+   not the topic. **Must contain ≥2 numbers** (count + cumulative
+   gap, or count + percentage of cumulative lift).
    Example: "Eight CRITICAL/HIGH capabilities require maturity uplift
    totaling 17 gap-levels; the Engineering & Product Development
    domain owns 60% of the cumulative lift."
 
-2. **whyNow** — three short evidence bullets, ≤25 words each. Cite
-   capability names from input top5. No padding adjectives.
+2. **whyNow** — **five** short evidence bullets, ≤30 words each.
+   **Each bullet must reference ≥1 named capability from input
+   top5.** No padding adjectives. No restated governing-thought.
 
-3. **whatItMeans** — two sentences of consequence. Name the
+3. **whatItMeans** — **three** sentences of consequence. Name the
    gating dependency (assessment coverage; application readiness;
    owner accountability) and the sequencing implication (Wave 1
    anchor; budget cycle alignment; org-design pre-requisite).
+   **Reference ≥2 named L1 domains across the three sentences.**
 
-4. **action** — one imperative sentence with a present-tense verb
+4. **counterfactual** — 1-2 sentences. What breaks if Wave-1 does
+   NOT sequence on this band first. Cite a specific named
+   capability or L1 domain whose progression depends on this
+   band's lift. For SUSTAIN, return literal "—" (em dash) — no
+   counterfactual exists when current = target.
+   Example for LIFT: "Without Wave-1 priority on the Connected
+   Vehicle Services cluster, the Halloran SDV Platform's
+   INVEST commitment outruns its OTA Update Management
+   capability foundation, leaving regulatory cybersecurity
+   compliance on a forced timeline."
+
+5. **action** — one imperative sentence with a present-tense verb
    and a time reference. Example: "Sequence Wave 1 lift on the
    {top L1 domain} cluster by Q2; commit governance + tooling
    investment in the FY26 budget cycle."
@@ -64,8 +78,11 @@ For each band, produce four fields:
 - Third-person consulting prose. Active verbs, present tense.
   No hedging modals (should/might/could → use will/does/is).
 - No bullet points except in the whyNow array. No markdown.
-- If a band has zero capabilities in the input, return all four
+- If a band has zero capabilities in the input, return all five
   fields as the literal string "—" (em dash) for that band.
+- For SUSTAIN, the **counterfactual** field is always literal "—"
+  (steady-state has no counterfactual that doesn't read as
+  manufactured tension).
 
 ## BAND-SPECIFIC VOICE RULES
 
@@ -99,11 +116,12 @@ Return strict JSON, nothing else, no markdown fences:
 {
   "LIFT_TO_TARGET": {
     "governingThought": string,
-    "whyNow": [string, string, string],
+    "whyNow": [string, string, string, string, string],
     "whatItMeans": string,
+    "counterfactual": string,
     "action": string
   },
-  "SUSTAIN": { ... same shape },
+  "SUSTAIN": { ... same shape (counterfactual is literal "—") },
   "INVEST_BEYOND_TARGET": { ... same shape },
   "REASSESS_STRATEGY": { ... same shape }
 }`;

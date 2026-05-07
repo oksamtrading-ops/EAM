@@ -28,9 +28,11 @@ Produce exactly five findings. Each is:
 - A SHORT TITLE (≤10 words, sentence case, no period). The title
   is a finding stated as a fact ("Engineering & Product Development
   domain owns the largest maturity gap").
-- A BODY paragraph (2-3 sentences, 60-100 words). Body opens with
-  the supporting evidence, ends with the recommended sequencing
-  or implication.
+- A BODY paragraph (**3-4 sentences, 100-150 words**). Body opens
+  with the supporting evidence, develops a second analytical lens
+  (asymmetry, concentration, readiness, ownership), names ≥2
+  distinct entities (capability, L1 domain, or application), and
+  ends with the recommended sequencing or implication.
 
 Pyramid Principle: every finding leads with the answer.
 

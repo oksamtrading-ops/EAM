@@ -23,31 +23,65 @@ names, L1 domains, or maturity levels.
 
 ## STRUCTURE
 
-2-3 paragraphs, ~250-350 words total. No bullet points. No
-markdown.
+**Three paragraphs, 400-550 words total.** No bullet points, no
+markdown. Each paragraph covers a distinct analytical lens; do
+not let lenses bleed across paragraphs.
 
 Open with "Findings indicate..." or "Analysis of the {client}
 capability portfolio reveals...". Lead with the FINDING — the
 strategic claim about where the portfolio sits and what the
 investment thesis is. Not a meta-description of the document.
 
-Frame the narrative around (in approximate order, all from
-input facts):
-- Total capabilities + assessment coverage
-- Cumulative maturity gap (sum of positive gap-levels across
-  CRITICAL/HIGH importance capabilities)
-- Top L1 domain owning the largest gap
-- The PRIORITY LIFT band size (capabilities at CRITICAL/HIGH
-  importance with current < target)
-- Application-readiness signal (what % of priority gaps have
-  apps mapped vs are orphaned)
-- The REASSESS STRATEGY band when non-empty (handle with
-  diplomatic framing — see voice rules below)
+### Paragraph 1 — Portfolio shape (~120-160 words)
 
-Close with one sentence referencing body sections by name:
-"The Investment Roadmap below sequences the priority lift
-across NOW / NEXT / LATER waves; the Capability Deep Dives
-extend the case for the top {N} priority capabilities."
+The headline. Cover, in this order:
+- Total capabilities + assessment coverage %
+- Priority-lift band size + cumulative gap-levels
+- Top L1 domain owning the largest gap (name it; cite gap-level
+  count + child-capability count)
+- Importance-band counts (e.g. CRITICAL count, HIGH count) when
+  the asymmetry is visible
+
+### Paragraph 2 — Asymmetry + readiness + cross-deliverable bridge (~150-200 words)
+
+The diagnostic. Cover:
+- The strategic-importance × current-maturity asymmetry: how
+  many CRITICAL or HIGH capabilities sit at INITIAL or
+  DEVELOPING (name 2-3 of them)
+- Application-readiness signal: what % of priority-lift
+  capabilities map to ≥1 application; what fraction is orphaned
+  and requires tooling stand-up
+- Cross-deliverable bridge: when input includes linked-app
+  TIME dispositions, name 1-2 specific capability ↔ application
+  ↔ disposition triples (e.g. "BOM & Part Master ↔ Aftersales
+  Parts Catalog (AS/400) ↔ ELIMINATE"). This is the platform's
+  primary differentiator; surface it explicitly.
+- The REASSESS STRATEGY band when non-empty (diplomatic framing;
+  see voice rules)
+
+### Paragraph 3 — Sequencing + section bridge (~100-150 words)
+
+The recommendation. Cover:
+- The Wave-1 sequencing logic: which L1 cluster or capability
+  cohort anchors NOW (<12mo); which anchors NEXT (12-24mo)
+- The gating constraint (typically: CRITICAL-orphaned vs
+  CRITICAL-mapped — orphaned defaults to NEXT until tooling
+  stands up)
+- Close with one sentence referencing body sections by name:
+  "The Investment Roadmap below sequences the priority lift
+  across NOW / NEXT / LATER waves; the Capability Deep Dives
+  extend the case for the top {N} priority capabilities."
+
+## NAMED-ENTITY DENSITY
+
+The prose must reference, at minimum:
+- **≥4 distinct L1 domain names** drawn from input
+- **≥3 distinct capability names** drawn from input
+- **≥1 specific application name with TIME disposition** when
+  capability-application coverage is populated in input
+
+Density without padding: the words exist *because the prose
+covers more named entities*, not because sentences are longer.
 
 ## CONTENT RULES
 

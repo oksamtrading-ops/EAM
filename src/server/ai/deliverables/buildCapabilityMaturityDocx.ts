@@ -92,8 +92,12 @@ type KeyFindingsResult = { findings: KeyFinding[] };
 
 type BandNarrative = {
   governingThought: string;
-  whyNow: [string, string, string];
+  /** 5 evidence bullets per band (was 3 in v1.0). */
+  whyNow: string[];
   whatItMeans: string;
+  /** What breaks if Wave-1 does not sequence on this band first.
+   *  Literal "—" for SUSTAIN. New in density-lift v1.1. */
+  counterfactual: string;
   action: string;
 };
 type AllBandNarratives = {
@@ -107,6 +111,8 @@ type BandNarrativesResult = { narratives: AllBandNarratives };
 type DeepDive = {
   dispositionRationale: string;
   recommendedPath: string;
+  /** Execution-risk surface + mitigation. New in density-lift v1.1. */
+  riskProfile: string;
   waveJustification: string;
 };
 type DeepDivesResult = { byId: Record<string, DeepDive> };
@@ -1008,6 +1014,40 @@ function pushBandSection(
     })
   );
 
+  // Counterfactual — what breaks if Wave-1 skips this band.
+  // Suppressed when LLM/fallback emits "—" (SUSTAIN; empty bands).
+  if (
+    narrative.counterfactual &&
+    narrative.counterfactual.trim() !== "—" &&
+    narrative.counterfactual.trim().length > 0
+  ) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 120, after: 80 },
+        children: [
+          new TextRun({
+            text: "If Wave-1 skips this band",
+            bold: true,
+            color: clampForContrast({ hex: brandHex }),
+            size: 22,
+          }),
+        ],
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 160, line: 320 },
+        children: [
+          new TextRun({
+            text: narrative.counterfactual,
+            italics: true,
+            size: 22,
+          }),
+        ],
+      })
+    );
+  }
+
   // Recommended action
   children.push(
     new Paragraph({
@@ -1276,6 +1316,30 @@ function pushDeepDiveSection(
         children: renderInline(dive.recommendedPath),
       })
     );
+
+    // Risk profile — execution-risk surface + mitigation.
+    if (dive.riskProfile && dive.riskProfile.trim().length > 0) {
+      children.push(
+        new Paragraph({
+          spacing: { before: 80, after: 80 },
+          children: [
+            new TextRun({
+              text: "Risk profile",
+              bold: true,
+              color: clampForContrast({ hex: brandHex }),
+              size: T.body,
+            }),
+          ],
+        })
+      );
+      children.push(
+        new Paragraph({
+          spacing: { after: 160, line: 320 },
+          children: renderInline(dive.riskProfile),
+        })
+      );
+    }
+
     children.push(
       new Paragraph({
         spacing: { before: 80, after: 80 },
@@ -1965,7 +2029,7 @@ async function generateExecSummary(
     try {
       const response = await anthropic.messages.create({
         model: MODEL_SONNET,
-        max_tokens: 1500,
+        max_tokens: 2400,
         system: CAPABILITY_MATURITY_EXEC_SUMMARY_PROMPT,
         messages: [
           {
@@ -2029,7 +2093,7 @@ async function generateKeyFindings(
     try {
       const response = await anthropic.messages.create({
         model: MODEL_SONNET,
-        max_tokens: 1800,
+        max_tokens: 3000,
         system: CAPABILITY_MATURITY_KEY_FINDINGS_PROMPT,
         messages: [
           {
@@ -2085,33 +2149,39 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
 
   // 1. Priority lift cohort — always fires when there are any lifts.
   if (facts.bandSizes.lift > 0) {
+    const top3 = facts.topGaps3.slice(0, 3);
+    const topL1Name = facts.topL1?.name ?? "the leading L1 domain";
     candidates.push({
       when: true,
       finding: {
         title: `${facts.bandSizes.lift} priority lift candidates anchor the FY capability investment plan`,
-        body: `${facts.bandSizes.lift} capabilities at CRITICAL or HIGH strategic importance carry ${facts.cumulativeGapLevels} cumulative maturity-level gaps. ${Math.round(facts.appReadinessShare * 100)}% have applications mapped, signalling immediate execution-readiness for Wave-1 commitment. The priority cohort defines the engagement's primary investment thesis.`,
+        body: `${facts.bandSizes.lift} capabilities at CRITICAL or HIGH strategic importance carry ${facts.cumulativeGapLevels} cumulative maturity-level gaps; ${Math.round(facts.appReadinessShare * 100)}% have applications mapped, signalling immediate execution-readiness for Wave-1 commitment.${top3.length > 0 ? ` Top of the cohort by composite priority weight: ${top3.join(", ")}.` : ""} The cohort concentrates on the ${topL1Name} domain and defines the engagement's primary investment thesis. Wave-1 sequencing follows application readiness, not gap magnitude alone — orphaned capabilities default to NEXT until tooling stands up in parallel.`,
       },
     });
   }
 
   // 2. Top L1 concentration.
   if (facts.topL1) {
+    const sharePct = facts.cumulativeGapLevels > 0
+      ? Math.round((facts.topL1.gapLevels / facts.cumulativeGapLevels) * 100)
+      : 0;
     candidates.push({
       when: true,
       finding: {
         title: `${facts.topL1.name} domain owns the largest cumulative maturity gap`,
-        body: `${facts.topL1.name} carries ${facts.topL1.gapLevels} cumulative gap-levels across ${facts.topL1.childCount} L2/L3 capabilities — the largest single domain investment ask. Concentration of this magnitude warrants a dedicated programme stream rather than distributed investment across L1 domains.`,
+        body: `${facts.topL1.name} carries ${facts.topL1.gapLevels} cumulative gap-levels across ${facts.topL1.childCount} L2/L3 capabilities — ${sharePct}% of the priority-lift cumulative ${facts.cumulativeGapLevels}-level case and the largest single domain investment ask in the portfolio. Concentration of this magnitude warrants a dedicated programme stream rather than distributed investment across L1 domains; centre-of-excellence anchoring on the ${facts.topL1.name} cluster compounds the lift across child capabilities. Sequence Wave-1 governance + tooling commitments around this domain in the FY26 budget cycle.`,
       },
     });
   }
 
   // 3. Coverage gap (only when material).
   if (coveragePct < 80) {
+    const topUnassessed = ws.topUnassessedL1?.l1Name;
     candidates.push({
       when: true,
       finding: {
         title: `${100 - coveragePct}% of capabilities remain NOT_ASSESSED — coverage gap blocks investment case framing`,
-        body: `Assessment coverage stands at ${coveragePct}%. Capability owners must complete maturity ratings before the investment case for the unassessed tail can be framed. Sequence assessment workshops in the Wave-1 prep period; coverage gap closure is a precondition to budget commit.`,
+        body: `Assessment coverage stands at ${coveragePct}%; the unassessed tail blocks the investment case from being framed quantitatively across the full ${facts.totalCapabilities}-capability portfolio. ${topUnassessed ? `The gap concentrates in the ${topUnassessed} domain — one assessment workshop on this cluster closes the largest single coverage gap. ` : ""}Capability owners must complete maturity ratings before the unassessed tail can be sequenced; coverage gap closure is a precondition to budget commit. Sequence assessment workshops in the Wave-1 prep period as a parallel work-stream to the priority lift programme.`,
       },
     });
   }
@@ -2120,12 +2190,13 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
   //    surfaced as a finding. Always available; fires when count > 0.
   if (ws.criticalAtInitialOrDeveloping.count > 0) {
     const n = ws.criticalAtInitialOrDeveloping.count;
-    const top2 = ws.criticalAtInitialOrDeveloping.capabilities.slice(0, 2);
+    const top3 = ws.criticalAtInitialOrDeveloping.capabilities.slice(0, 3);
+    const topL1 = facts.topL1?.name ?? "the leading L1 domain";
     candidates.push({
       when: true,
       finding: {
         title: `${n} CRITICAL capabilit${n === 1 ? "y sits" : "ies sit"} at INITIAL or DEVELOPING maturity`,
-        body: `The portfolio carries ${n} CRITICAL-importance capabilit${n === 1 ? "y" : "ies"} at the lowest two maturity levels${top2.length > 0 ? ` (${top2.join(", ")}${ws.criticalAtInitialOrDeveloping.capabilities.length > 2 ? ", …" : ""})` : ""}. The asymmetry between strategic importance and current state is the largest single quality signal in the deck; Wave-1 sequencing prioritizes this cohort.`,
+        body: `The portfolio carries ${n} CRITICAL-importance capabilit${n === 1 ? "y" : "ies"} at the lowest two maturity levels${top3.length > 0 ? ` — including ${top3.join(", ")}${ws.criticalAtInitialOrDeveloping.capabilities.length > 3 ? `, plus ${ws.criticalAtInitialOrDeveloping.capabilities.length - 3} more` : ""}` : ""}. The asymmetry between strategic importance and current state is the largest single quality signal in the deck and concentrates on the ${topL1} domain. The cohort's lift case combines a forced timeline (CRITICAL importance) with a deep gap (INITIAL/DEVELOPING current state); Wave-1 sequencing prioritizes this cohort and gates FY budget on owner accountability + assessment-workshop completion.`,
       },
     });
   }
@@ -2142,7 +2213,7 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
       when: true,
       finding: {
         title: `${readyPct}% of priority lift capabilities have applications mapped — execution readiness is the gating signal`,
-        body: `${readyPct}% of the ${facts.bandSizes.lift} priority lift capabilities map to at least one application; the orphaned ${orphaned} require tooling stand-up before the capability lift can commit. Wave-1 sequencing follows application readiness, not gap magnitude alone.`,
+        body: `${readyPct}% of the ${facts.bandSizes.lift} priority lift capabilities map to at least one application; the orphaned ${orphaned} require dedicated tooling stand-up before the capability lift can commit. Capability lift on the orphaned cohort carries different programme economics than uplifting an existing application — tooling decisions move on the rationalization-track gate rather than the maturity-track gate. Wave-1 sequencing follows application readiness, not gap magnitude alone; the cross-deliverable bridge to the Application Rationalization Plan resolves the dual-gate dependency for these capabilities.`,
       },
     });
   }
@@ -2156,7 +2227,7 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
       when: true,
       finding: {
         title: `${ib} ${noun} position${ib === 1 ? "s" : ""} for industry-leading investment`,
-        body: `${ib} CRITICAL or HIGH-importance ${noun} sit${ib === 1 ? "s" : ""} at MANAGED maturity and ${verb} positioned to push to OPTIMIZING. The forward-investment case anchors the FY+1 plan after the Wave-1 lift cohort lands.`,
+        body: `${ib} CRITICAL or HIGH-importance ${noun} sit${ib === 1 ? "s" : ""} at MANAGED maturity and ${verb} positioned to push to OPTIMIZING in the FY+1 budget cycle. The forward-investment case anchors the trajectory after the Wave-1 lift cohort lands and converts established tooling foundations into industry-leading positioning rather than addressing capability gaps. Investment beyond target requires executive commitment to advanced analytics, real-time operations, and capability-stretch initiatives that compose onto the existing application stack rather than triggering re-platforming. Sequence the OPTIMIZING roadmap design in the FY+1 prep period, post-Wave-1 stabilization.`,
       },
     });
   }
@@ -2167,7 +2238,7 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
       when: true,
       finding: {
         title: `${facts.bandSizes.reassess} capabilities warrant investment rebalancing`,
-        body: `${facts.bandSizes.reassess} capabilities are over-served relative to strategic importance. Redirect capacity from these areas to the priority lift programme; acknowledge prior investment as past-tense fact while reallocating going forward.`,
+        body: `${facts.bandSizes.reassess} capabilities are over-served relative to strategic importance — current maturity exceeds target or LOW-importance capabilities sit at OPTIMIZING. Redirect capacity from these areas to the priority lift programme rather than retiring the capability; acknowledge prior investment as past-tense fact while reallocating going forward. The rebalancing case anchors the engagement's reallocation track and frees capacity for the cumulative ${facts.cumulativeGapLevels}-level lift case across CRITICAL/HIGH capabilities. Reassess strategic importance every six months to confirm the band membership before commitment.`,
       },
     });
   }
@@ -2182,7 +2253,7 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
       when: true,
       finding: {
         title: `${ws.topUnassessedL1.l1Name} carries ${sharePct}% of the assessment gap`,
-        body: `${sharePct}% of the unassessed capabilities sit in the ${ws.topUnassessedL1.l1Name} domain. One assessment workshop on this cluster closes the largest single coverage gap in the portfolio; sequence it before the next portfolio review.`,
+        body: `${sharePct}% of the unassessed capabilities sit in the ${ws.topUnassessedL1.l1Name} domain — the highest single concentration of NOT_ASSESSED capabilities in the portfolio. One assessment workshop on this cluster closes the largest single coverage gap and unlocks the investment case for those capabilities quantitatively. Sequence the workshop before the next portfolio review with capability owners and engagement-team facilitation; the workshop output feeds the Wave-1 prep period and the cumulative-gap recalibration. Coverage closure on the ${ws.topUnassessedL1.l1Name} cluster is a precondition to the domain's lift case being framed against the rest of the portfolio.`,
       },
     });
   }
@@ -2196,11 +2267,11 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
       finding: allOwnerless
         ? {
             title: `Capability ownership is not recorded for any of the ${facts.totalCapabilities} capabilities`,
-            body: `Ownership is the first gate the Wave-1 commit walks through; the data-collection gap on owner pairs is the most actionable item before the FY budget cycle. Capture business + IT owner pairs in the platform before the next portfolio review.`,
+            body: `Ownership is the first gate the Wave-1 commit walks through; the data-collection gap on business + IT owner pairs across all ${facts.totalCapabilities} capabilities is the most actionable item before the FY budget cycle. Capture owner pairs in the platform before the next portfolio review; ownership signals validate band membership and gate accountability for capability lift commitments. The accountability map also feeds the cross-deliverable bridge into the Application Rationalization Plan — owner agreement on disposition decisions concentrates on the same names, so the data-collection effort compounds across both deliverables.`,
           }
         : {
             title: `${n} capabilit${n === 1 ? "y lacks" : "ies lack"} a business + IT owner pair`,
-            body: `Accountability gap on ${n} of ${facts.totalCapabilities} capabilities blocks Wave-1 commit. Assign business + IT owners to every CRITICAL or HIGH-importance capability before the next portfolio review.`,
+            body: `Accountability gap on ${n} of ${facts.totalCapabilities} capabilities blocks Wave-1 commit; ownership is the first gate the budget cycle walks through. Assign business + IT owners to every CRITICAL or HIGH-importance capability before the next portfolio review and gate FY budget on owner accountability. The ownership map also feeds the engagement's risks watch-list and the cross-deliverable bridge to the Application Rationalization Plan, where the same owners co-validate TIME dispositions on linked applications.`,
           },
     });
   }
@@ -2210,7 +2281,7 @@ function deterministicKeyFindingsFallback(facts: KeyFindingsFacts): KeyFinding[]
     when: true,
     finding: {
       title: `${facts.totalCapabilities} capabilities define the assessment scope across ${Object.keys(facts.byImportance).length} importance bands`,
-      body: `The portfolio spans ${facts.totalCapabilities} capabilities across the L1/L2/L3 hierarchy. Coverage and consistency across the hierarchy determine how much of the investment case can be framed quantitatively versus qualitatively in the body sections below.`,
+      body: `The portfolio spans ${facts.totalCapabilities} capabilities across the L1/L2/L3 hierarchy at ${coveragePct}% assessment coverage. Coverage and consistency across the hierarchy determine how much of the investment case can be framed quantitatively versus qualitatively in the body sections below; the cumulative ${facts.cumulativeGapLevels}-level lift case rests on the assessed subset and grows as the unassessed tail closes. The scope spans ${Object.keys(facts.byImportance).length} importance bands and ${Object.keys(facts.byCurrentMaturity).length} current-maturity states; the importance × maturity matrix in the next chapter visualizes the densest cells.`,
     },
   });
 
@@ -2247,7 +2318,7 @@ async function generateBandNarratives(
     try {
       const response = await anthropic.messages.create({
         model: MODEL_SONNET,
-        max_tokens: 2500,
+        max_tokens: 4500,
         system: CAPABILITY_MATURITY_BAND_NARRATIVES_PROMPT,
         messages: [
           {
@@ -2264,7 +2335,7 @@ async function generateBandNarratives(
       const allText = (
         ["LIFT_TO_TARGET", "SUSTAIN", "INVEST_BEYOND_TARGET", "REASSESS_STRATEGY"] as const
       )
-        .map((k) => `${narratives[k].governingThought} ${narratives[k].whyNow.join(" ")} ${narratives[k].whatItMeans} ${narratives[k].action}`)
+        .map((k) => `${narratives[k].governingThought} ${narratives[k].whyNow.join(" ")} ${narratives[k].whatItMeans} ${narratives[k].counterfactual} ${narratives[k].action}`)
         .join(" ");
       if (!verifyMaturityNumbers(allText, allowedCounts)) {
         console.warn(JSON.stringify({ evt: "maturity_bands_fact_mismatch", attempt }));
@@ -2297,14 +2368,21 @@ function normalizeBandNarratives(
     ) {
       return null;
     }
+    // Accept 3-5 whyNow bullets (LLM may emit fewer than the 5
+    // we ask for; pad with em-dashes if so, cap at 5).
+    const whyNow: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const v = b.whyNow[i];
+      whyNow.push(typeof v === "string" && v.trim().length > 0 ? v : "—");
+    }
     out[k] = {
       governingThought: b.governingThought,
-      whyNow: [
-        String(b.whyNow[0] ?? "—"),
-        String(b.whyNow[1] ?? "—"),
-        String(b.whyNow[2] ?? "—"),
-      ],
+      whyNow,
       whatItMeans: b.whatItMeans,
+      counterfactual:
+        typeof b.counterfactual === "string" && b.counterfactual.trim().length > 0
+          ? b.counterfactual
+          : "—",
       action: b.action,
     };
   }
@@ -2319,21 +2397,34 @@ function deterministicBandFallback(
     if (block.count === 0) {
       return {
         governingThought: "—",
-        whyNow: ["—", "—", "—"],
+        whyNow: ["—", "—", "—", "—", "—"],
         whatItMeans: "—",
+        counterfactual: "—",
         action: "—",
       };
     }
-    const top2 = block.top5.slice(0, 2).map((c) => c.name);
+    const top5 = block.top5.slice(0, 5).map((c) => c.name);
+    const top3 = top5.slice(0, 3);
+    const avgGap = block.count > 0
+      ? (block.cumulativeGap / block.count).toFixed(1)
+      : "0";
+    const sustainCounterfactual = kind === "SUSTAIN" ? "—" : null;
     return {
-      governingThought: `${block.count} capabilit${block.count === 1 ? "y sits" : "ies sit"} in the ${kind} band, carrying ${block.cumulativeGap} cumulative gap-levels.`,
+      governingThought: `${block.count} capabilit${block.count === 1 ? "y sits" : "ies sit"} in the ${kind} band, carrying ${block.cumulativeGap} cumulative gap-levels at an average of ${avgGap} levels per capability.`,
       whyNow: [
-        `Top capabilities by priority weight: ${top2.join(", ")}.`,
-        `Average gap across the band: ${block.count > 0 ? (block.cumulativeGap / block.count).toFixed(1) : "0"} levels.`,
-        `Engagement team validates the band membership before commitment.`,
+        top5[0] ? `${top5[0]} anchors the band by composite priority weight.` : "Top capability by priority weight not yet ranked.",
+        top5[1] ? `${top5[1]} carries the second-largest weighted gap in the band.` : "—",
+        top5[2] ? `${top5[2]} reinforces the cohort's investment thesis.` : "—",
+        `Average gap across the band: ${avgGap} levels per capability across ${block.count} member${block.count === 1 ? "" : "s"}.`,
+        `Engagement team validates the band membership before commitment; capability owners confirm gap magnitude.`,
       ],
-      whatItMeans: `Investment in this band aligns with the action class. Sequencing and ownership accountability gate execution.`,
-      action: `Sequence ${kind.toLowerCase()} actions per the wave heuristic; capability owners validate within 30 days.`,
+      whatItMeans: `Investment in this band aligns with the action class and the cumulative ${block.cumulativeGap}-level lift case. Sequencing and ownership accountability gate execution. Application readiness varies across the cohort; the deep dives below extend the case for the top-priority members.`,
+      counterfactual:
+        sustainCounterfactual ??
+        (top3.length > 0
+          ? `Without Wave-1 priority on this band, ${top3.join(", ")} progression stalls; the cumulative ${block.cumulativeGap}-level lift case slips into the FY+1 budget cycle and the cross-deliverable bridge to the rationalization plan loses execution alignment.`
+          : `Without Wave-1 priority on this band, the cumulative ${block.cumulativeGap}-level lift case slips into the FY+1 budget cycle.`),
+      action: `Sequence ${kind.toLowerCase()} actions per the wave heuristic by Q2; capability owners validate within 30 days; commit governance + tooling investment in the FY26 budget cycle.`,
     };
   };
   return {
@@ -2357,7 +2448,7 @@ async function generateDeepDives(
     try {
       const response = await anthropic.messages.create({
         model: MODEL_SONNET,
-        max_tokens: 2500,
+        max_tokens: 4500,
         system: CAPABILITY_MATURITY_DEEP_DIVES_PROMPT,
         messages: [
           {
@@ -2370,6 +2461,7 @@ async function generateDeepDives(
       const raw = textBlock && "text" in textBlock ? (textBlock.text as string) : "";
       const parsed = parseJsonish(raw) as Record<string, Partial<DeepDive>>;
       const byId: Record<string, DeepDive> = {};
+      const topAppsById = new Map(topApps.map((c) => [c.id, c]));
       let valid = 0;
       for (const cap of facts.capabilities) {
         const entry = parsed[cap.id];
@@ -2379,9 +2471,22 @@ async function generateDeepDives(
           typeof entry.recommendedPath === "string" &&
           typeof entry.waveJustification === "string"
         ) {
+          // riskProfile is new — accept LLM emission; when missing,
+          // fall back to the deterministic version computed against
+          // the full capability summary rather than failing the
+          // whole batch.
+          const fullCap = topAppsById.get(cap.id);
+          const fallbackRisk = fullCap
+            ? deterministicDeepDiveFallback(fullCap).riskProfile
+            : "";
           byId[cap.id] = {
             dispositionRationale: entry.dispositionRationale,
             recommendedPath: entry.recommendedPath,
+            riskProfile:
+              typeof entry.riskProfile === "string" &&
+              entry.riskProfile.trim().length > 0
+                ? entry.riskProfile
+                : fallbackRisk,
             waveJustification: entry.waveJustification,
           };
           valid++;
@@ -2391,7 +2496,7 @@ async function generateDeepDives(
       const allText = Object.values(byId)
         .map(
           (d) =>
-            `${d.dispositionRationale} ${d.recommendedPath} ${d.waveJustification}`
+            `${d.dispositionRationale} ${d.recommendedPath} ${d.riskProfile} ${d.waveJustification}`
         )
         .join(" ");
       if (!verifyMaturityNumbers(allText, allowedCounts)) {
@@ -2412,26 +2517,40 @@ async function generateDeepDives(
 }
 
 function deterministicDeepDiveFallback(cap: CapabilityWithGap): DeepDive {
-  const gap =
+  const cur = cap.currentMaturity.replace(/_/g, " ");
+  const tgt = cap.targetMaturity.replace(/_/g, " ");
+  const imp = cap.strategicImportance.replace(/_/g, " ");
+  const gapPhrase =
     cap.gapLevels === null
-      ? "unknown"
+      ? "unknown gap"
       : cap.gapLevels > 0
         ? `${cap.gapLevels}-level lift`
         : cap.gapLevels < 0
           ? `${Math.abs(cap.gapLevels)}-level over-served`
-          : "at target";
-  const appLine =
-    cap.appsMappedCount === 0
-      ? "no application mapped — capability lift requires standing up dedicated tooling"
-      : `${cap.appsMappedCount} application${cap.appsMappedCount === 1 ? "" : "s"} mapped`;
+          : "at-target";
+  const apps = cap.appsMapped ?? [];
+  const appsLine = apps.length === 0
+    ? `No application is mapped to this capability — capability lift requires standing up dedicated tooling, which carries different programme economics than uplifting an existing app and qualifies as the orphaned-capability gating risk.`
+    : `${apps.length} application${apps.length === 1 ? "" : "s"} map${apps.length === 1 ? "s" : ""} to this capability: ${apps.slice(0, 3).map((a) => `${a.name} [${a.rationalizationStatus ?? "UNCLASSIFIED"}, ${a.lifecycle.replace(/_/g, " ")}]`).join("; ")}${apps.length > 3 ? `, and ${apps.length - 3} more` : ""}.`;
+  const dispositionRationale =
+    `${cap.name} carries a ${gapPhrase} in the ${cap.l1Name} domain at ${imp} strategic importance, currently at ${cur} maturity and targeting ${tgt}. ` +
+    `The gap magnitude positions this capability among the band's higher-priority members and anchors its share of the cumulative lift case. ` +
+    `${appsLine} ` +
+    (apps.some((a) => a.rationalizationStatus === "ELIMINATE")
+      ? `The ELIMINATE disposition on a linked application signals a capability migration in flight; the lift cannot lag the retirement.`
+      : apps.some((a) => a.rationalizationStatus === "MIGRATE" || a.rationalizationStatus === "INVEST")
+        ? `Linked-app dispositions of MIGRATE/INVEST reinforce execution-readiness for capability lift through the existing tooling foundation.`
+        : `Application-readiness signal is mixed; engagement team confirms platform capacity before commit.`);
+
   let recPath: string;
   if (cap.appsMappedCount === 0) {
-    recPath = "Stand up dedicated tooling or a managed-platform replacement; pair with capability ownership assignment.";
+    recPath = `Stand up dedicated tooling for the ${cap.l1Name} capability area or a managed-platform replacement that absorbs the capability scope. Pair the platform stand-up with capability ownership assignment, governance framework establishment, and a measurement layer; the orphaned-capability path requires the parallel rationalization-track new-tool decision before the lift can sequence.`;
   } else if (cap.currentMaturity === "INITIAL" || cap.currentMaturity === "DEVELOPING") {
-    recPath = "Governance framework + measurement layer + center-of-excellence anchoring; execute through existing application stack.";
+    recPath = `Governance framework plus measurement layer plus center-of-excellence anchoring for the ${cap.l1Name} domain; execute through the existing application stack and uplift maturity through process discipline rather than re-platforming. ${apps[0] ? `${apps[0].name} provides the execution foundation; capability lift composes onto its current capability scope.` : ""}`;
   } else {
-    recPath = "Platform modernization paired with governance uplift; sequence around application-stack capacity.";
+    recPath = `Platform modernization paired with governance uplift; sequence around application-stack capacity and capability-owner availability. The lift draws on existing tooling foundations rather than net-new stand-up.`;
   }
+
   let wave: string;
   if (cap.strategicImportance === "CRITICAL" && (cap.currentMaturity === "INITIAL" || cap.currentMaturity === "DEVELOPING") && cap.appsMappedCount > 0) {
     wave = "NOW";
@@ -2442,10 +2561,25 @@ function deterministicDeepDiveFallback(cap: CapabilityWithGap): DeepDive {
   } else {
     wave = "LATER";
   }
+
+  // Risk profile — pick dominant class, develop in 2-3 sentences.
+  let riskProfile: string;
+  if (cap.appsMappedCount === 0) {
+    riskProfile = `Orphaned-tooling risk dominates: capability lift depends on a parallel rationalization-track stand-up, and timing slip on either side cascades into the FY+1 budget cycle. Mitigation: bundle the orphaned ${cap.name} lift with the rationalization-track new-tool decision so commitments move on the same gate.`;
+  } else if (apps.some((a) => a.rationalizationStatus === "ELIMINATE" || a.lifecycle === "PHASING_OUT")) {
+    const elim = apps.find((a) => a.rationalizationStatus === "ELIMINATE" || a.lifecycle === "PHASING_OUT");
+    riskProfile = `Linked-app ELIMINATE risk: ${elim?.name ?? "the linked application"} sits in PHASING_OUT lifecycle and the capability's tooling foundation has a known sunset; the lift cannot lag the retirement. Mitigation: gate the ${cap.name} replacement timeline against the application's decommission calendar; sequence both as a single Wave-1 cohort.`;
+  } else if (cap.currentMaturity === "INITIAL" || cap.currentMaturity === "DEVELOPING") {
+    riskProfile = `Skills-gap risk: the lift from ${cur} to ${tgt} in the ${cap.l1Name} domain requires specialty knowledge depth the FY plan must accommodate via hires plus ramp time. Mitigation: stand up a center-of-excellence with a named lead before Wave-1 kickoff; capability owners validate skill availability at Week 4.`;
+  } else {
+    riskProfile = `Dependency-chain risk: ${cap.name}'s lift composes onto adjacent capabilities in the ${cap.l1Name} domain; sequencing this capability without confirming dependency progression is a sequencing trap. Mitigation: dependency-aware sequencing using the CapabilityDependency graph; load-test the dependency map before commit.`;
+  }
+
   return {
-    dispositionRationale: `${cap.name} sits in the ${cap.l1Name} domain at ${cap.strategicImportance.replace(/_/g, " ")} importance, currently at ${cap.currentMaturity.replace(/_/g, " ")} maturity targeting ${cap.targetMaturity.replace(/_/g, " ")} (${gap}); ${appLine}.`,
+    dispositionRationale,
     recommendedPath: recPath,
-    waveJustification: `Wave ${wave}: driven by ${cap.strategicImportance.replace(/_/g, " ")} importance and ${cap.currentMaturity.replace(/_/g, " ")} starting maturity.`,
+    riskProfile,
+    waveJustification: `Wave ${wave}: driven by ${imp} importance and ${cur} starting maturity${cap.appsMappedCount === 0 ? " with no mapped application" : ""}.`,
   };
 }
 

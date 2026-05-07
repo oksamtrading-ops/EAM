@@ -26,22 +26,27 @@ EXACT-MATCH.
 
 ## STRUCTURE PER CAPABILITY
 
-Produce three fields:
+Produce **four** fields:
 
-1. **dispositionRationale** — 2-3 sentences (50-90 words)
-   explaining why this capability sits in its action band. Reference
-   the strategic importance, current vs target maturity, and the
-   gap-level magnitude from facts. When appsMapped is non-empty,
-   note the application-readiness signal: apps with MIGRATE/INVEST
-   disposition reinforce the case for capability lift; apps with
-   ELIMINATE disposition signal a capability migration in flight.
-   When appsMapped is empty, EXPLICITLY name "no application
-   mapped to this capability" as the orphaned-capability gating
-   risk.
+1. **dispositionRationale** — **3-4 sentences (100-150 words)**
+   explaining why this capability sits in its action band. Cover,
+   in order:
+   - The gap magnitude (current → target, +N levels) and how it
+     ranks against the band's cumulative gap.
+   - Strategic importance and the L1 domain anchor.
+   - Application-readiness signal: when appsMapped is non-empty,
+     name **every linked application + its TIME disposition +
+     lifecycle state** (e.g. "Halloran SDV Platform [INVEST,
+     PLANNED]"). Apps with MIGRATE/INVEST reinforce the case for
+     capability lift; apps with ELIMINATE signal a capability
+     migration in flight.
+   - When appsMapped is empty, EXPLICITLY name "no application
+     mapped to this capability" as the orphaned-capability
+     gating risk.
 
-2. **recommendedPath** — 1-2 sentences (30-60 words) classifying
-   the gap and naming the recommended path. The classification is
-   the load-bearing piece:
+2. **recommendedPath** — **2-3 sentences (60-100 words)**
+   classifying the gap and naming the recommended path. The
+   classification is the load-bearing piece:
 
    **Gap-type classification rules** (apply when patterns match):
    - **PROCESS GAP**: when current ≤ DEFINED and target ≥ MANAGED,
@@ -65,7 +70,28 @@ Produce three fields:
    modernization paired with governance uplift". Never invent a
    target named technology not present in input.
 
-3. **waveJustification** — 1 sentence (15-30 words) placing the
+3. **riskProfile** — **2-3 sentences (60-100 words)** naming the
+   execution-risk surface and its mitigation. Pick the dominant
+   risk class for this capability and develop it:
+   - **Orphaned-tooling risk**: when no app is mapped, capability
+     lift depends on a parallel rationalization-track stand-up;
+     timing slip on either side cascades.
+   - **Skills-gap risk**: when current ≤ DEVELOPING in a specialty
+     L1 domain (engineering, data, security), the lift requires
+     hires + ramp time the FY plan must accommodate.
+   - **Dependency-chain risk**: when capability A depends on
+     capability B's progression, naming A's lift without B's is
+     a sequencing trap.
+   - **Regulatory cohort risk**: when the capability or its L1
+     domain references compliance (R155/R156, GDPR, SOX, etc.),
+     the timeline is forced rather than discretionary.
+   - **Linked-app ELIMINATE risk**: when a mapped app sits in
+     ELIMINATE/PHASING_OUT, the capability's tooling foundation
+     has a known sunset; the lift cannot lag the retirement.
+   Pair the risk surface with one mitigation phrase. Cite ≥1
+   named application or L1 domain when the risk is data-grounded.
+
+4. **waveJustification** — 1 sentence (15-30 words) placing the
    capability in NOW (<12mo) / NEXT (12-24mo) / LATER (24-36mo)
    and stating why.
 
@@ -102,6 +128,7 @@ capability ids from input.
   "<capabilityId>": {
     "dispositionRationale": "...",
     "recommendedPath": "...",
+    "riskProfile": "...",
     "waveJustification": "..."
   },
   ...
