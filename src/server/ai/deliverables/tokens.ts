@@ -98,3 +98,34 @@ export const IMPORTANCE_TONE: Record<string, Tone> = {
   LOW: "success",
   NOT_ASSESSED: "info",
 };
+
+/** Wave urgency for the Architecture Roadmap deliverable. NOW reads
+ *  as urgency (danger), NEXT as elevated attention (warn), LATER as
+ *  baseline (info). Mirrors the maturity-band action-class
+ *  semantics: stronger visual heat for the work that has to start
+ *  this fiscal year. */
+export const WAVE_TONE: Record<string, Tone> = {
+  NOW: "danger",
+  NEXT: "warn",
+  LATER: "info",
+};
+
+/** Initiative RAG (red-amber-green) status. Maps directly from
+ *  Initiative.ragStatus. */
+export const INITIATIVE_RAG_TONE: Record<string, Tone> = {
+  GREEN: "success",
+  AMBER: "warn",
+  RED: "danger",
+};
+
+/** Initiative category colour-coding for the Gantt swim-lane.
+ *  Mirrors the InitiativeCategory enum on the schema. */
+export const INITIATIVE_CATEGORY_TONE: Record<string, Tone> = {
+  MODERNISATION: "info",
+  CONSOLIDATION: "success",
+  DIGITALISATION: "auth",
+  COMPLIANCE: "warn",
+  OPTIMISATION: "success",
+  INNOVATION: "auth",
+  DECOMMISSION: "danger",
+};
