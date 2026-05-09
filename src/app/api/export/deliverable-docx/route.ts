@@ -8,7 +8,17 @@ import { computeRationalizationMetrics } from "@/server/ai/deliverables/rational
 import { buildCapabilityMaturityDocx } from "@/server/ai/deliverables/buildCapabilityMaturityDocx";
 import { buildCapabilityMaturityBaselineReport } from "@/server/ai/deliverables/buildCapabilityMaturityBaselineReport";
 import { computeCapabilityMaturityMetrics } from "@/server/ai/deliverables/capabilityMaturityMetrics";
+import { buildArchitectureRoadmapDocx } from "@/server/ai/deliverables/buildArchitectureRoadmapDocx";
+import { buildArchitectureRoadmapBaselineReport } from "@/server/ai/deliverables/buildArchitectureRoadmapBaselineReport";
+import { computeArchitectureRoadmapMetrics } from "@/server/ai/deliverables/architectureRoadmapMetrics";
 import { classifyAnthropicError } from "@/server/ai/client";
+
+// Initiative threshold for the architecture-roadmap fork: at <8
+// initiatives the portfolio is too sparse for a credible
+// multi-year transformation plan; ship the Baseline Report
+// (definition priorities + cross-deliverable bridge gaps + 30-day
+// work plan) instead.
+const ROADMAP_INITIATIVE_THRESHOLD = 8;
 
 // Coverage threshold for the rationalization fork: at <60% the
 // portfolio is too sparsely classified for a credible disposition
@@ -18,7 +28,11 @@ const COVERAGE_THRESHOLD = 0.6;
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-type DeliverableType = "generic" | "rationalization" | "capability-maturity";
+type DeliverableType =
+  | "generic"
+  | "rationalization"
+  | "capability-maturity"
+  | "architecture-roadmap";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -39,6 +53,8 @@ export async function POST(req: Request) {
       ? "rationalization"
       : body.type === "capability-maturity"
       ? "capability-maturity"
+      : body.type === "architecture-roadmap"
+      ? "architecture-roadmap"
       : "generic";
 
   if (!workspaceId) {
@@ -208,6 +224,80 @@ export async function POST(req: Request) {
             "X-Coverage-Pct": String(
               Math.round(metrics.assessmentCoverageRatio * 100)
             ),
+          },
+        });
+      }
+    } catch (err) {
+      const info = classifyAnthropicError(err);
+      return NextResponse.json(
+        {
+          error: err instanceof Error ? err.message : info.friendly,
+          code: info.code,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ─── Architecture Roadmap template ─────────────────────────
+  if (type === "architecture-roadmap") {
+    const clientName =
+      body.clientNameOverride?.trim() ||
+      workspace.clientName?.trim() ||
+      workspace.name;
+
+    try {
+      const metrics = await computeArchitectureRoadmapMetrics(db, workspace.id);
+
+      const today = new Date().toISOString().slice(0, 10);
+      const engagementCode = `${slugify(workspace.name).toUpperCase().slice(0, 12)}-${today.slice(0, 7)}`;
+
+      const sufficientInitiatives =
+        metrics.totalInitiatives >= ROADMAP_INITIATIVE_THRESHOLD;
+
+      if (sufficientInitiatives) {
+        const result = await buildArchitectureRoadmapDocx({
+          clientName,
+          brandHex: workspace.brandColor,
+          preparedBy: user.name,
+          engagementCode,
+          contactLine: user.email ?? null,
+          metrics,
+        });
+        const filename = `${slugify(clientName)}-architecture-roadmap-${today}.docx`;
+        return new Response(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+            "X-Deliverable-Template": `architecture-roadmap@${result.templateVersion}`,
+            "X-Llm-Source": result.llmSource,
+            "X-Llm-Source-Detail": result.llmSourceDetail,
+            "X-Initiative-Count": String(metrics.totalInitiatives),
+          },
+        });
+      } else {
+        const result = await buildArchitectureRoadmapBaselineReport({
+          clientName,
+          brandHex: workspace.brandColor,
+          preparedBy: user.name,
+          engagementCode,
+          contactLine: user.email ?? null,
+          metrics,
+        });
+        const filename = `${slugify(clientName)}-roadmap-baseline-${today}.docx`;
+        return new Response(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+            "X-Deliverable-Template": `architecture-roadmap-baseline@${result.templateVersion}`,
+            "X-Llm-Source": result.llmSource,
+            "X-Initiative-Count": String(metrics.totalInitiatives),
           },
         });
       }

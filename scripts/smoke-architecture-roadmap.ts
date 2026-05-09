@@ -226,7 +226,7 @@ const metrics: ArchitectureRoadmapMetrics = {
 };
 
 async function main() {
-  console.log("Building Architecture Roadmap (in-memory fixture)…");
+  console.log("Building Architecture Roadmap (full path, in-memory fixture)…");
   const result = await buildArchitectureRoadmapDocx({
     clientName: "Halloran Motor Company",
     brandHex: "#5A4FCF",
@@ -236,9 +236,37 @@ async function main() {
     metrics,
   });
   writeFileSync("/tmp/smoke-architecture-roadmap.docx", result.buffer);
-  console.log(`OK — /tmp/smoke-architecture-roadmap.docx (${result.buffer.length} bytes)`);
-  console.log(`  llmSource=${result.llmSource}, detail=${result.llmSourceDetail}`);
-  if (result.buffer.length < 100_000) throw new Error("doc too small");
+  console.log(`  full: ${result.buffer.length} bytes, llmSource=${result.llmSource}, detail=${result.llmSourceDetail}`);
+  if (result.buffer.length < 100_000) throw new Error("full doc too small");
+
+  // Baseline path — sparse fixture
+  const { buildArchitectureRoadmapBaselineReport } = await import(
+    "../src/server/ai/deliverables/buildArchitectureRoadmapBaselineReport"
+  );
+  console.log("Building Architecture Roadmap Baseline Report (sparse fixture)…");
+  const sparseMetrics = {
+    ...metrics,
+    totalInitiatives: 4,
+    allInitiatives: ALL.slice(0, 4),
+    waves: {
+      NOW: { ...buildWaveBlock("NOW"), count: ALL.slice(0, 4).filter((i) => i.wave === "NOW").length, initiatives: ALL.slice(0, 4).filter((i) => i.wave === "NOW") },
+      NEXT: { ...buildWaveBlock("NEXT"), count: 0, initiatives: [] },
+      LATER: { ...buildWaveBlock("LATER"), count: 0, initiatives: [] },
+    },
+  };
+  const baseline = await buildArchitectureRoadmapBaselineReport({
+    clientName: "Halloran Motor Company",
+    brandHex: "#5A4FCF",
+    preparedBy: "Smoke Test",
+    engagementCode: "HALLORAN-2026-05",
+    contactLine: "test@example.com",
+    metrics: sparseMetrics as any,
+  });
+  writeFileSync("/tmp/smoke-architecture-roadmap-baseline.docx", baseline.buffer);
+  console.log(`  baseline: ${baseline.buffer.length} bytes, llmSource=${baseline.llmSource}`);
+  // Baseline is text-only (no charts, by design — no chart is
+  // meaningful at <8 initiatives). 12KB+ is plausible.
+  if (baseline.buffer.length < 12_000) throw new Error("baseline doc too small");
 }
 
 main().catch((err) => {

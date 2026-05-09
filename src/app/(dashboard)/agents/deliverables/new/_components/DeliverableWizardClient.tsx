@@ -29,6 +29,7 @@ type Step = 1 | 2 | 3 | 4;
 type EngagementType =
   | "rationalization"
   | "capability-maturity"
+  | "architecture-roadmap"
   | "generic"
   | null;
 
@@ -66,7 +67,7 @@ export function DeliverableWizardClient() {
   }
 
   async function generateTyped(
-    type: "rationalization" | "capability-maturity",
+    type: "rationalization" | "capability-maturity" | "architecture-roadmap",
     successLabel: string,
     fallbackFilename: string
   ) {
@@ -119,6 +120,14 @@ export function DeliverableWizardClient() {
       "capability-maturity",
       "Capability maturity assessment downloaded",
       "capability-maturity.docx"
+    );
+  }
+
+  function generateArchitectureRoadmap() {
+    return generateTyped(
+      "architecture-roadmap",
+      "Architecture roadmap downloaded",
+      "architecture-roadmap.docx"
     );
   }
 
@@ -201,9 +210,9 @@ export function DeliverableWizardClient() {
             <EngagementCard
               icon={<MapIcon className="h-5 w-5" />}
               title="Architecture Roadmap"
-              description="Current state to target state, phased initiative plan with dependencies."
-              available={false}
-              comingSoonNote="Available after the Rationalization template ships in production."
+              description="NOW / NEXT / LATER wave plan with Gantt swim-lane, dependency keystones, per-initiative deep dives, benefits curve, risk heatmap. Cross-references rationalization + maturity outputs as a structural bridge."
+              available
+              onSelect={() => setEngagementType("architecture-roadmap")}
             />
 
             <div className="pt-4 border-t">
@@ -451,6 +460,124 @@ export function DeliverableWizardClient() {
                 <>
                   <Download className="h-4 w-4" />
                   Generate Capability Maturity Assessment
+                </>
+              )}
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              ~10–25 seconds. Four LLM calls run in parallel; counts and
+              percentages in the prose are exact-match-grounded against
+              the metrics.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Architecture Roadmap confirmation step ──────────────────
+  if (engagementType === "architecture-roadmap") {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="glass-toolbar border-b px-4 sm:px-5 py-2.5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-md font-semibold text-foreground tracking-tight flex items-center gap-2">
+              <span className="h-6 w-6 rounded-md bg-[var(--ai)]/15 flex items-center justify-center">
+                <MapIcon className="h-3.5 w-3.5 text-[var(--ai)]" />
+              </span>
+              Architecture Roadmap
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Generates from this workspace&apos;s active initiatives, dependencies,
+              and cross-references to applications + capabilities.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEngagementType(null)}
+            className="text-xs"
+          >
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+            Change type
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="max-w-2xl mx-auto space-y-5">
+            <div className="rounded-lg border bg-card p-4">
+              <h2 className="text-sm font-semibold mb-2">
+                What&apos;s included
+              </h2>
+              <ul className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Branded cover, inside-cover disclaimer, deterministic TOC
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Synthesis: KPI hero row, NOW / NEXT / LATER Gantt swim-lane (hero chart), Five Key Findings, Wave Dashboard
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Current State: executive summary, initiative inventory, dependency network with keystone identification, cross-deliverable coverage
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Wave Plans: NOW / NEXT / LATER narratives with counterfactual blocks
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Top-7 initiative deep dives with linked apps + capabilities + risk profile + wave assignment
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Roadmap & Risks: benefits delivery curve, risk heatmap, workspace-specific risks, 30-day Next Steps
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 text-[var(--ai)] mt-0.5 shrink-0" />
+                  Appendices: full initiative listing, methodology, glossary
+                </li>
+              </ul>
+              <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t">
+                The deliverable&apos;s currency is initiative count × wave ×
+                dependency coverage; per-initiative budgets are not
+                aggregated in v1 (the methodology callout makes the
+                trade-off explicit). At &lt;8 initiatives the workspace
+                routes to the Architecture Roadmap Baseline Report
+                instead — definition priorities + cross-deliverable
+                bridge gaps + 30-day plan.
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Client name override (optional)
+              </Label>
+              <Input
+                value={clientNameOverride}
+                onChange={(e) => setClientNameOverride(e.target.value)}
+                placeholder="Defaults to the workspace's clientName"
+                className="mt-1"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Leave blank to use this workspace&apos;s configured client name.
+              </p>
+            </div>
+
+            <Button
+              onClick={generateArchitectureRoadmap}
+              disabled={generating}
+              className="w-full gap-1.5 bg-[var(--ai)] hover:bg-[var(--ai)]/90 text-white"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Computing roadmap metrics + assembling DOCX…
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Generate Architecture Roadmap
                 </>
               )}
             </Button>
